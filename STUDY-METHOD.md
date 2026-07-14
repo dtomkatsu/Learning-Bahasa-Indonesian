@@ -16,7 +16,39 @@ particle-heavy, and specific to the people and places in your actual life. The g
 4. Mine vocab into `vocab/<name>-vocab.tsv` (three columns: Indonesian, English/notes, tag) — only add things you
    didn't already know cold. Don't re-log particles you've already logged once; cross-check against
    `vocab/conversation-1-vocab.tsv` first.
-5. Run the four listening passes below against the audio + clean transcript.
+5. Build a synced player: `python3 scripts/build_player.py transcripts/<name>.clean.txt audio/<name>.<ext>
+   <name>-player.html "Conversation N"`. See **Playing the audio** below.
+6. Run the four listening passes below against the audio + clean transcript.
+
+## Playing the audio
+
+`scripts/build_player.py` generates a self-contained HTML page (already built for Conversation 1 as
+`conversation-1-player.html`) with the audio and full transcript side by side:
+
+- Click any line and the audio jumps there and starts playing.
+- Hover a line for a **loop** button — repeats just that line, for shadowing.
+- Speed buttons (0.6x/0.75x/1x/1.25x) for slow listening on hard stretches.
+- The transcript auto-highlights and scrolls to follow playback.
+- A search box to jump straight to a phrase.
+
+**To open it:** just open the file directly in a browser —
+
+```
+open ~/Learning-Bahasa-Indonesian/conversation-1-player.html
+```
+
+(or double-click it in Finder). The audio loads from the adjacent `audio/` folder via a relative path, so this
+works with zero setup.
+
+If seeking feels broken in your browser (some browsers are picky about local-file media seeking), serve the
+folder over HTTP instead, which is guaranteed to support seeking:
+
+```
+cd ~/Learning-Bahasa-Indonesian && npx --yes http-server -p 8770 --cors -c-1
+```
+
+then open `http://localhost:8770/conversation-1-player.html`. (Plain `python3 -m http.server` does *not* work
+for this — it doesn't support the HTTP Range requests that audio seeking needs.)
 
 ## The four passes (per recording, or per meaty chunk of one)
 
