@@ -418,6 +418,7 @@ function renderCard() {
   document.getElementById('flagLineBtn').addEventListener('click', flagCurrentLine);
   document.getElementById('btnBad').addEventListener('click', () => rate(false));
   document.getElementById('btnGood').addEventListener('click', () => rate(true));
+  updatePlayBtnLabel();
 }
 
 function flagCurrentLine() {
@@ -429,8 +430,17 @@ function flagCurrentLine() {
   pickNext();
 }
 
+function isWithinCurrentClip() {
+  return current && audio.src.endsWith(current.audio) && audio.readyState >= 1 &&
+    audio.currentTime >= current.sec - 0.25 && audio.currentTime < current.nextSec;
+}
+
 function playLine() {
   if (!current) return;
+  if (isWithinCurrentClip()) {
+    if (audio.paused) { stopAt = current.nextSec; audio.play(); } else { audio.pause(); }
+    return;
+  }
   stopAt = current.nextSec;
   const start = () => { audio.currentTime = current.sec; audio.play(); };
   if (audio.src.endsWith(current.audio) && audio.readyState >= 1) {
@@ -442,8 +452,17 @@ function playLine() {
   }
 }
 
+function updatePlayBtnLabel() {
+  const btn = document.getElementById('playBtn');
+  if (!btn) return;
+  btn.innerHTML = (!audio.paused && isWithinCurrentClip()) ? '&#10073;&#10073; Pause' : '&#9654; Play line';
+}
+
+audio.addEventListener('play', updatePlayBtnLabel);
+audio.addEventListener('pause', updatePlayBtnLabel);
 audio.addEventListener('timeupdate', () => {
   if (stopAt !== null && audio.currentTime >= stopAt) { audio.pause(); stopAt = null; }
+  updatePlayBtnLabel();
 });
 
 function reveal() {
@@ -461,6 +480,8 @@ function rate(good) {
 }
 
 function pickNext() {
+  audio.pause();
+  stopAt = null;
   if (!pool.length) { renderEmpty('No quiz items for this tag.'); renderStats(); return; }
   const due = practiceAhead ? pool : pool.filter(d => srsIsDue(srs[d.id]));
   if (!due.length) { renderAllCaughtUp(); renderStats(); return; }
@@ -468,7 +489,6 @@ function pickNext() {
   if (due.length > 1 && current && next.id === current.id) next = due[Math.floor(Math.random() * due.length)];
   current = next;
   revealed = false;
-  stopAt = null;
   renderCard();
   renderStats();
 }
