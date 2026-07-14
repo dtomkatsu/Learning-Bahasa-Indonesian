@@ -17,9 +17,12 @@ For each conversation (matched by transcripts/<name>.clean.txt +
 audio/<name>.<ext> + an optional transcripts/<name>.translations.json).
 
 Progress persists in the browser via localStorage using real spaced
-repetition (simplified SM-2, see scripts/_srs_js.py) — only cards that are
-actually due get shown, word and sentence modes scheduled independently
-(item ids are prefixed by kind so they never collide in the one store).
+repetition — FSRS-5 (see scripts/_srs_js.py), the algorithm Anki itself
+recommends as its default. Rating is the familiar 4-button Again/Hard/
+Good/Easy with an interval preview on each, and only cards that are
+actually due get shown. Word and sentence modes are scheduled
+independently (item ids are prefixed by kind so they never collide in
+the one store).
 
 Usage:
     python3 build_quiz.py
@@ -219,10 +222,12 @@ PAGE = """<!doctype html>
 <title>Quiz — Learning Bahasa Indonesian</title>
 <style>
   :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb;
-    --accent:#2563eb; --card:#f9fafb; --good:#16a34a; --bad:#dc2626; --blank:#f59e0b; }
+    --accent:#2563eb; --card:#f9fafb; --blank:#f59e0b; --bad:#dc2626;
+    --again:#dc2626; --hard:#d97706; --good:#16a34a; --easy:#2563eb; }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#111318; --fg:#e7e9ee; --muted:#9aa1ac; --line:#2a2e37; --accent:#5b9dff;
-      --card:#1a1d24; --good:#4ade80; --bad:#f87171; --blank:#fbbf24; }
+      --card:#1a1d24; --blank:#fbbf24; --bad:#f87171;
+      --again:#f87171; --hard:#fbbf24; --good:#4ade80; --easy:#7cb0ff; }
   }
   * { box-sizing:border-box; }
   html, body { margin:0; background:var(--bg); color:var(--fg);
@@ -259,12 +264,17 @@ PAGE = """<!doctype html>
   button.flagLineBtn { font-size:0.78rem; padding:8px 14px; border-radius:8px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; margin-left:8px; }
   button.flagLineBtn:hover { border-color:var(--bad); color:var(--bad); }
-  .rate { display:flex; gap:10px; margin-top:14px; }
+  .rate { display:flex; gap:8px; margin-top:14px; }
   .rate[hidden] { display:none; }
-  button.rate-btn { flex:1; padding:12px; border-radius:10px; border:1px solid var(--line);
-    background:var(--card); color:var(--fg); font-size:0.9rem; cursor:pointer; }
-  button.rate-btn.bad { border-color:var(--bad); color:var(--bad); }
+  button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--fg); font-size:0.85rem; cursor:pointer; display:flex;
+    flex-direction:column; align-items:center; gap:2px; }
+  button.rate-btn:hover { filter:brightness(1.1); }
+  button.rate-btn .prev { font-size:0.7rem; opacity:0.7; }
+  button.rate-btn.again { border-color:var(--again); color:var(--again); }
+  button.rate-btn.hard { border-color:var(--hard); color:var(--hard); }
   button.rate-btn.good { border-color:var(--good); color:var(--good); }
+  button.rate-btn.easy { border-color:var(--easy); color:var(--easy); }
   .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
@@ -297,12 +307,12 @@ PAGE = """<!doctype html>
 <script>
 __SRS_JS__
 const ITEMS = __DATA__;
-const SRS_KEY = 'bahasa:quiz:srs:v1';
-const LEGACY_KEY = 'bahasa:quiz:v1';
+const SRS_KEY = 'bahasa:quiz:fsrs:v1';
+const LEGACY_KEYS = ['bahasa:quiz:v1', 'bahasa:quiz:srs:v1'];
 const FLAG_KEY = 'bahasa:flaggedLines:v1';
 const audio = document.getElementById('qaudio');
 
-let srs = srsMigrateFromBoxes(SRS_KEY, LEGACY_KEY);
+let srs = srsMigrateLegacy(SRS_KEY, LEGACY_KEYS);
 let practiceAhead = false;
 
 function loadFlags() {
@@ -409,16 +419,25 @@ function renderCard() {
     <button class="flagLineBtn" id="flagLineBtn" title="Hide this line everywhere — silent clip or ASR junk">&#128681; Not real content</button>
     <div class="reveal" id="revealBox">${revealInner}</div>
     <div class="rate" id="rateRow" hidden>
-      <button class="rate-btn bad" id="btnBad">Missed it</button>
-      <button class="rate-btn good" id="btnGood">Got it</button>
+      <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
+      <button class="rate-btn hard" id="btn2"><span class="lbl">Hard</span><span class="prev" id="prev2"></span></button>
+      <button class="rate-btn good" id="btn3"><span class="lbl">Good</span><span class="prev" id="prev3"></span></button>
+      <button class="rate-btn easy" id="btn4"><span class="lbl">Easy</span><span class="prev" id="prev4"></span></button>
     </div>
   `;
   document.getElementById('playBtn').addEventListener('click', playLine);
   document.getElementById('revealBtn').addEventListener('click', reveal);
   document.getElementById('flagLineBtn').addEventListener('click', flagCurrentLine);
-  document.getElementById('btnBad').addEventListener('click', () => rate(false));
-  document.getElementById('btnGood').addEventListener('click', () => rate(true));
+  [1, 2, 3, 4].forEach(g => {
+    document.getElementById('btn' + g).addEventListener('click', () => rate(g));
+  });
   updatePlayBtnLabel();
+}
+
+function updatePreviews() {
+  if (!current) return;
+  const labels = fsrsPreviewLabels(srs[current.id], Date.now());
+  for (let g = 1; g <= 4; g++) document.getElementById('prev' + g).textContent = labels[g];
 }
 
 function flagCurrentLine() {
@@ -469,11 +488,12 @@ function reveal() {
   revealed = true;
   document.getElementById('revealBox').classList.add('shown');
   document.getElementById('rateRow').hidden = false;
+  updatePreviews();
 }
 
-function rate(good) {
+function rate(grade) {
   if (!current) return;
-  srs[current.id] = srsSchedule(srs[current.id], good);
+  srs[current.id] = fsrsNextState(srs[current.id], grade, Date.now());
   srsSave(SRS_KEY, srs);
   practiceAhead = false;
   pickNext();
@@ -516,6 +536,10 @@ unflagBtn.addEventListener('click', () => {
     applyFilter();
     pickNext();
   }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (revealed && ['1','2','3','4'].includes(e.key)) rate(parseInt(e.key, 10));
 });
 
 updateUnflagCount();

@@ -65,18 +65,20 @@ up there too.
 Two practice modes, both self-contained HTML/JS. Neither needs a server or an account — everything lives in the
 browser's `localStorage`.
 
-Both use real spaced repetition (`scripts/_srs_js.py`, shared by both build scripts) — a simplified SM-2, the
-same family Anki uses, not just a session-level shuffle. Each card tracks an ease factor, an interval (days),
-and a due date. Answer correctly and the interval grows (1 day → 3 days → interval × ease, ease inching up);
-miss it and the interval resets with a short 10-minute relearn step so it resurfaces the same session instead of
-vanishing for a day. **Only cards that are actually due get shown** — if you're caught up, the app says so
-("🎉 All caught up! Next review in Xh") rather than pretending there's more to do, with a "Practice ahead
-anyway" button if you want to review early regardless. Flashcards and quiz's Word/Sentence modes each schedule
-independently (separate `localStorage` keys), since knowing a word cold isn't the same signal as recognizing it
-in a cloze or following it in a full sentence.
+Both use real spaced repetition — **FSRS-5** (`scripts/_srs_js.py`, shared by both build scripts), the algorithm
+Anki itself now recommends as its default over the older SM-2 family, because it predicts recall probability
+more accurately and needs fewer reviews for the same retention (per Anki's own docs). Each card tracks a
+difficulty and a stability (days until predicted recall drops to 90%); rating is the familiar 4-button
+**Again / Hard / Good / Easy**, each showing a live preview of the resulting interval — click the card, reveal
+the answer, and the buttons already say things like "Hard · 1d" / "Good · 3d" / "Easy · 16d" before you pick,
+same as Anki. **Only cards that are actually due get shown** — if you're caught up, the app says so ("🎉 All
+caught up! Next review in Xh") rather than pretending there's more to do, with a "Practice ahead anyway" button
+if you want to review early regardless. Flashcards and quiz's Word/Sentence modes each schedule independently
+(separate `localStorage` keys), since knowing a word cold isn't the same signal as recognizing it in a cloze or
+following it in a full sentence.
 
 - **`flashcards.html`** (`scripts/build_flashcards.py`) — flips through every `vocab/*.tsv` deck. Filter by tag
-  (particle, food, family, etc.), rate "still learning" / "got it", `space` to flip, `1`/`2` to rate.
+  (particle, food, family, etc.), `space` to flip, `1`/`2`/`3`/`4` to rate Again/Hard/Good/Easy.
 - **`quiz.html`** (`scripts/build_quiz.py`) — two modes, toggled at the top of the page:
   - **Word** — cross-references vocab terms against real transcript lines. A term used inside a longer sentence
     becomes a **cloze** card (blank it, guess from context, play the actual audio of that line, then reveal). A
@@ -93,8 +95,10 @@ in a cloze or following it in a full sentence.
   caption is ASR garbage; it's excluded immediately and won't be regenerated on the next build since flags live
   in the browser, not the transcript file. "Unflag lines (N)" clears everything if you flag something by mistake.
 
-Old "box"-based progress (from before spaced repetition existed) is migrated automatically on first load into
-real interval/due-date state, then the legacy key is deleted — no action needed, and it only happens once.
+Progress from either earlier scheme (the original session-only "box" system, or the simplified 2-button SM-2
+that preceded FSRS) migrates automatically on first load — reviewed items are seeded with a baseline difficulty
+and a stability floor, due immediately for their first real FSRS review — then the legacy key is deleted.
+No action needed, and each migration only happens once.
 
 Both are linked from `index.html` under "Practice," so they're reachable from **Bahasa Player.app** like
 everything else — no separate app needed.

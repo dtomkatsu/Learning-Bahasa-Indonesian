@@ -6,10 +6,11 @@
 <title>Flashcards — Learning Bahasa Indonesian</title>
 <style>
   :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb;
-    --accent:#2563eb; --card:#f9fafb; --good:#16a34a; --bad:#dc2626; }
+    --accent:#2563eb; --card:#f9fafb;
+    --again:#dc2626; --hard:#d97706; --good:#16a34a; --easy:#2563eb; }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#111318; --fg:#e7e9ee; --muted:#9aa1ac; --line:#2a2e37; --accent:#5b9dff;
-      --card:#1a1d24; --good:#4ade80; --bad:#f87171; }
+      --card:#1a1d24; --again:#f87171; --hard:#fbbf24; --good:#4ade80; --easy:#7cb0ff; }
   }
   * { box-sizing:border-box; }
   html, body { margin:0; background:var(--bg); color:var(--fg); height:100%;
@@ -31,12 +32,16 @@
   #card .back .en { font-size:1.25rem; font-weight:600; margin-bottom:6px; }
   #card .back .tag { color:var(--muted); font-size:0.78rem; }
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
-  .rate { display:flex; gap:10px; }
-  button.rate-btn { flex:1; padding:12px; border-radius:10px; border:1px solid var(--line);
-    background:var(--card); color:var(--fg); font-size:0.9rem; cursor:pointer; }
-  button.rate-btn:hover { filter:brightness(1.08); }
-  button.rate-btn.bad { border-color:var(--bad); color:var(--bad); }
+  .rate { display:flex; gap:8px; }
+  button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--fg); font-size:0.85rem; cursor:pointer; display:flex;
+    flex-direction:column; align-items:center; gap:2px; }
+  button.rate-btn:hover { filter:brightness(1.1); }
+  button.rate-btn .prev { font-size:0.7rem; opacity:0.7; }
+  button.rate-btn.again { border-color:var(--again); color:var(--again); }
+  button.rate-btn.hard { border-color:var(--hard); color:var(--hard); }
   button.rate-btn.good { border-color:var(--good); color:var(--good); }
+  button.rate-btn.easy { border-color:var(--easy); color:var(--easy); }
   .rate[hidden] { display:none; }
   .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
@@ -57,8 +62,10 @@
   <div id="card"><div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div></div>
   <div class="hint">Click the card (or press space) to flip</div>
   <div class="rate" id="rateRow" hidden>
-    <button class="rate-btn bad" id="btnBad">Still learning</button>
-    <button class="rate-btn good" id="btnGood">Got it</button>
+    <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
+    <button class="rate-btn hard" id="btn2"><span class="lbl">Hard</span><span class="prev" id="prev2"></span></button>
+    <button class="rate-btn good" id="btn3"><span class="lbl">Good</span><span class="prev" id="prev3"></span></button>
+    <button class="rate-btn easy" id="btn4"><span class="lbl">Easy</span><span class="prev" id="prev4"></span></button>
   </div>
   <div class="tools">
     <button class="plain" id="resetBtn">Reset progress</button>
@@ -69,73 +76,157 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RELEARN_MS = 10 * 60 * 1000;
-const MATURE_INTERVAL_DAYS = 21;
+const MATURE_STABILITY_DAYS = 21;
+const DESIRED_RETENTION = 0.9;
+
+const FSRS_W = [
+  0.40255, 1.18385, 3.173, 15.69105, 7.1949,
+  0.5345, 1.4604, 0.0046, 1.54575, 0.1192,
+  1.01925, 1.9395, 0.11, 0.29605, 2.2698,
+  0.2315, 2.9898, 0.51655, 0.6621
+];
+const FSRS_F = 19 / 81;
+const FSRS_C = -0.5;
 
 function srsLoad(key) {
   try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; }
 }
 function srsSave(key, s) { localStorage.setItem(key, JSON.stringify(s)); }
 
-// One-time migration from the old session-only "box" system (no due dates)
-// into real SRS state, then removes the legacy key so it isn't re-applied.
-function srsMigrateFromBoxes(srsKey, legacyKey) {
-  let srs = srsLoad(srsKey);
-  const legacy = srsLoad(legacyKey);
-  if (!Object.keys(legacy).length) return srs;
-  const stepIntervals = [0, 1, 3, 6];
-  for (const [id, v] of Object.entries(legacy)) {
-    if (srs[id]) continue;
-    const box = (v && v.box) || 0;
-    srs[id] = { ease: 2.3, interval: stepIntervals[Math.min(box, 3)], reps: box, due: Date.now() };
+function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+function clampD(d) { return clamp(d, 1, 10); }
+
+function fsrsRetrievability(elapsedDays, stability) {
+  if (elapsedDays <= 0) return 1;
+  return Math.pow(1 + FSRS_F * (elapsedDays / stability), FSRS_C);
+}
+
+// Days until retrievability decays to `desiredR` starting from `stability`.
+function fsrsIntervalDays(desiredR, stability) {
+  return (stability / FSRS_F) * (Math.pow(desiredR, 1 / FSRS_C) - 1);
+}
+
+function fsrsInitialDifficulty(g) {
+  return clampD(FSRS_W[4] - Math.exp(FSRS_W[5] * (g - 1)) + 1);
+}
+function fsrsInitialStability(g) {
+  return FSRS_W[g - 1]; // W[0..3] are literally the four initial-stability values
+}
+
+function fsrsUpdateDifficulty(D, g) {
+  const deltaD = -FSRS_W[6] * (g - 3);
+  const dPrime = D + deltaD * ((10 - D) / 9);
+  const mixed = FSRS_W[7] * fsrsInitialDifficulty(4) + (1 - FSRS_W[7]) * dPrime;
+  return clampD(mixed);
+}
+
+function fsrsUpdateStability(S, D, R, g) {
+  if (g === 1) {
+    // Lapse: new stability can't exceed the pre-lapse stability.
+    const sMin = FSRS_W[11] * Math.pow(D, -FSRS_W[12]) *
+      (Math.pow(S + 1, FSRS_W[13]) - 1) * Math.exp(FSRS_W[14] * (1 - R));
+    return Math.min(sMin, S);
   }
-  srsSave(srsKey, srs);
-  localStorage.removeItem(legacyKey);
-  return srs;
+  const hardPenalty = g === 2 ? FSRS_W[15] : 1;
+  const easyBonus = g === 4 ? FSRS_W[16] : 1;
+  const growth = 1 + hardPenalty * easyBonus * Math.exp(FSRS_W[8]) *
+    (11 - D) * Math.pow(S, -FSRS_W[9]) * (Math.exp(FSRS_W[10] * (1 - R)) - 1);
+  return S * growth;
+}
+
+function fsrsUpdateSameDayStability(S, g) {
+  return S * Math.exp(FSRS_W[17] * (g - 3 + FSRS_W[18]));
+}
+
+// Pure: computes the resulting state for grade g without touching storage.
+// state is null/undefined for a never-reviewed card.
+function fsrsNextState(state, g, now) {
+  if (!state || !state.stability) {
+    const S = fsrsInitialStability(g);
+    const D = fsrsInitialDifficulty(g);
+    const due = g === 1 ? now + RELEARN_MS : now + fsrsIntervalDays(DESIRED_RETENTION, S) * DAY_MS;
+    return { difficulty: D, stability: S, due, lastReview: now, reps: g === 1 ? 0 : 1 };
+  }
+  const elapsedDays = Math.max(0, (now - state.lastReview) / DAY_MS);
+  const R = fsrsRetrievability(elapsedDays, state.stability);
+  const D = fsrsUpdateDifficulty(state.difficulty, g);
+  const S = elapsedDays < 1
+    ? fsrsUpdateSameDayStability(state.stability, g)
+    : fsrsUpdateStability(state.stability, state.difficulty, R, g);
+  const due = g === 1 ? now + RELEARN_MS : now + fsrsIntervalDays(DESIRED_RETENTION, S) * DAY_MS;
+  const reps = g === 1 ? 0 : (state.reps || 0) + 1;
+  return { difficulty: D, stability: S, due, lastReview: now, reps };
+}
+
+// { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' } -> formatted next-interval string,
+// for showing an Anki-style preview on each rating button.
+function fsrsPreviewLabels(state, now) {
+  const out = {};
+  for (let g = 1; g <= 4; g++) {
+    const next = fsrsNextState(state, g, now);
+    out[g] = srsFmtInterval(next.due - now);
+  }
+  return out;
 }
 
 function srsIsDue(state) {
   return !state || !state.due || state.due <= Date.now();
 }
-
 function srsIsMature(state) {
-  return !!(state && state.interval >= MATURE_INTERVAL_DAYS);
-}
-
-function srsSchedule(state, good) {
-  const s = state ? Object.assign({}, state) : { ease: 2.3, interval: 0, reps: 0, due: 0 };
-  if (good) {
-    s.reps = (s.reps || 0) + 1;
-    if (s.reps === 1) s.interval = 1;
-    else if (s.reps === 2) s.interval = 3;
-    else s.interval = Math.max(1, Math.round(s.interval * s.ease));
-    s.ease = Math.min(3.0, s.ease + 0.1);
-    s.due = Date.now() + s.interval * DAY_MS;
-  } else {
-    s.reps = 0;
-    s.interval = 0;
-    s.ease = Math.max(1.3, s.ease - 0.2);
-    s.due = Date.now() + RELEARN_MS;
-  }
-  return s;
+  return !!(state && state.stability >= MATURE_STABILITY_DAYS);
 }
 
 function srsFmtDue(ts) {
   if (!isFinite(ts)) return 'later';
-  const diff = ts - Date.now();
-  if (diff <= 0) return 'now';
-  const mins = Math.round(diff / 60000);
+  return srsFmtInterval(ts - Date.now());
+}
+function srsFmtInterval(ms) {
+  if (ms <= 0) return 'now';
+  const mins = Math.round(ms / 60000);
   if (mins < 60) return mins + 'm';
   const hrs = Math.round(mins / 60);
   if (hrs < 24) return hrs + 'h';
   const days = Math.round(hrs / 24);
-  return days + 'd';
+  if (days < 30) return days + 'd';
+  const months = Math.round(days / 30);
+  if (months < 12) return months + 'mo';
+  return (Math.round(months / 12 * 10) / 10) + 'y';
+}
+
+// One-time migration from the old simplified-SM2 state (ease/interval/reps,
+// no difficulty/stability) into FSRS state, then removes the legacy key.
+// Items with reps >= 1 are seeded as if their most recent rating was "Good"
+// (grade 3), using their old interval as a stability floor, and are put up
+// for immediate re-review under the new model rather than guessing a
+// mapping that doesn't really exist between the two systems.
+function srsMigrateLegacy(srsKey, legacyKeys) {
+  let srs = srsLoad(srsKey);
+  for (const legacyKey of legacyKeys) {
+    const legacy = srsLoad(legacyKey);
+    if (!Object.keys(legacy).length) continue;
+    for (const [id, v] of Object.entries(legacy)) {
+      if (srs[id]) continue;
+      const hasProgress = v && ((v.reps || 0) >= 1 || (v.box || 0) >= 1);
+      const S = hasProgress ? Math.max(fsrsInitialStability(3), v.interval || 0) : fsrsInitialStability(3);
+      srs[id] = {
+        difficulty: fsrsInitialDifficulty(3),
+        stability: S,
+        due: Date.now(),
+        lastReview: Date.now(),
+        reps: hasProgress ? 1 : 0,
+      };
+    }
+    localStorage.removeItem(legacyKey);
+  }
+  srsSave(srsKey, srs);
+  return srs;
 }
 
 const DECK = [{"front": "kan", "back": "tag question / seeking agreement — \"right?\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "sih", "back": "softener / mild emphasis or curiosity", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "dong", "back": "insistence — \"come on, obviously\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "loh / lho", "back": "mild surprise, \"you know\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "nih", "back": "here — draws attention to something close", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "kok", "back": "how come? — surprise or mild complaint", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "deh", "back": "softening a suggestion / conceding a point", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "gitu / begitu", "back": "like that — trails off a sentence", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "banget", "back": "very / so — intensifier", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "mendingan", "back": "better off, rather — for comparing options", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "entar", "back": "colloquial for \"nanti\" — later", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "makanya", "back": "that's why", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "atuh", "back": "Sundanese softener/emphasis particle, no direct translation", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "mah", "back": "Sundanese topic marker, roughly \"as for...\"", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "udah", "back": "colloquial \"sudah\" — already", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "belum", "back": "not yet", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "nggak / enggak", "back": "colloquial \"tidak\" — not, no", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "iya", "back": "yes / right (softer than \"ya\")", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kalau", "back": "if / when (conditional)", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "soalnya", "back": "because, the thing is...", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kayaknya", "back": "it seems like, I think", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "gimana", "back": "colloquial \"bagaimana\" — how", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "biar", "back": "so that / \"in order to\"", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "Mami", "back": "Mom (used directly, not \"Ibu\")", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Papi / Bapak", "back": "Dad", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Mbak", "back": "older sister / polite term for young woman", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Dek / Adek", "back": "younger sibling, term of endearment", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "sayangku", "back": "my love/darling — affectionate term", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "salim", "back": "hand-to-forehead greeting gesture for elders", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "assalamualaikum", "back": "Islamic greeting, \"peace be upon you\" — used casually arriving/leaving", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "tahu", "back": "tofu", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "lele", "back": "catfish", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "santan", "back": "coconut milk", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "bayam", "back": "spinach", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "ayam", "back": "chicken", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "nasi", "back": "rice", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "enak", "back": "tasty, delicious", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "kupingmu", "back": "your ear — used scoldingly re: earbuds/headphones", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "aplikasi", "back": "application, app", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "unduh / download", "back": "to download", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "ngecas", "back": "colloquial — to charge (a device)", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "kupas / patok", "back": "landmark / marker (for giving directions)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kanan", "back": "turn right", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kiri", "back": "turn left", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "lurus", "back": "straight (ahead)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "bensin", "back": "gasoline", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "gang", "back": "small alley/lane", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "jemput", "back": "to pick (someone) up", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "tiduran", "back": "to lie down", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "ganti baju", "back": "to change clothes", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "mati lampu", "back": "power outage", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "nyala", "back": "on / lit (of power, lights)", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "sedih", "back": "sad", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "takut", "back": "scared", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "bahaya", "back": "dangerous", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "seram", "back": "scary, creepy", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "aduh", "back": "ouch/oh no — general exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "astaga", "back": "oh my god — mild exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "manis", "back": "sweet (also: cute)", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "mantap", "back": "awesome, solid — approval", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "asik", "back": "fun, enjoyable", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "lumayan", "back": "decent, not bad, pretty good", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "gila", "back": "crazy — used as an intensifier exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "suku", "back": "ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "keturunan", "back": "descent, lineage", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "Ini dari sana?", "back": "Is this from there?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak apa-apa", "back": "It's okay / no worries / it doesn't matter", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ayo kita nonton", "back": "Let's go watch [something]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sudah semakin lancar", "back": "[You're] getting more fluent already", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Tahu kan berapa nih harganya?", "back": "You know how much this costs, right?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kalau tak dengar suaramu", "back": "If I don't hear your voice (song lyric quoted mid-conversation)", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Jangan ganggu", "back": "Don't disturb [me]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sabar", "back": "Be patient / hang on", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ya udah", "back": "Alright then / fine, okay — resigned agreement", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak seru", "back": "Not fun / that's no fun", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Apa namanya?", "back": "What's it called again? — filler while searching for a word", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kamu mau download di anu, di laptopmu?", "back": "Do you want to download it on your laptop?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ini di atas dia menunjukkan Indonesia", "back": "Up here it shows Indonesian [on screen]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak keaslian", "back": "It's not the real/original one", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Terlalu maksa", "back": "That's too forced / trying too hard", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kok aneh", "back": "That's weird, huh", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Can I ask a question?", "back": "code-switch: Dila asks permission mid-Indonesian-sentence in English", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "Reprimanded", "back": "code-switch: Devin supplies the English legal term Dila reaches for", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "sayangku's kids' ankle", "back": "running joke/mishearing during the recording — good example of ASR mangling affectionate teasing", "tag": "codeswitch", "deck": "conversation-1-vocab"}];
-const SRS_KEY = 'bahasa:flashcards:srs:v1';
-const LEGACY_KEY = 'bahasa:flashcards:v1';
+const SRS_KEY = 'bahasa:flashcards:fsrs:v1';
+const LEGACY_KEYS = ['bahasa:flashcards:v1', 'bahasa:flashcards:srs:v1'];
 
-let srs = srsMigrateFromBoxes(SRS_KEY, LEGACY_KEY);
+let srs = srsMigrateLegacy(SRS_KEY, LEGACY_KEYS);
 
 let pool = DECK.slice();
 let current = null;
@@ -203,31 +294,38 @@ function renderStats() {
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 
+function updatePreviews() {
+  if (!current) return;
+  const labels = fsrsPreviewLabels(srs[current.front], Date.now());
+  for (let g = 1; g <= 4; g++) document.getElementById('prev' + g).textContent = labels[g];
+}
+
 function flip() {
   if (!current) return;
   flipped = !flipped;
   cardEl.classList.toggle('flipped', flipped);
   rateRow.hidden = !flipped;
+  if (flipped) updatePreviews();
 }
 
-function rate(good) {
+function rate(grade) {
   if (!current) return;
-  srs[current.front] = srsSchedule(srs[current.front], good);
+  srs[current.front] = fsrsNextState(srs[current.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
   practiceAhead = false;
   pickNext();
 }
 
 cardEl.addEventListener('click', flip);
-document.getElementById('btnBad').addEventListener('click', (e) => { e.stopPropagation(); rate(false); });
-document.getElementById('btnGood').addEventListener('click', (e) => { e.stopPropagation(); rate(true); });
+[1, 2, 3, 4].forEach(g => {
+  document.getElementById('btn' + g).addEventListener('click', (e) => { e.stopPropagation(); rate(g); });
+});
 document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === ' ') { e.preventDefault(); flip(); }
-  else if (flipped && e.key === '1') rate(false);
-  else if (flipped && e.key === '2') rate(true);
+  else if (flipped && ['1','2','3','4'].includes(e.key)) rate(parseInt(e.key, 10));
 });
 
 pickNext();
