@@ -16,9 +16,27 @@ particle-heavy, and specific to the people and places in your actual life. The g
 4. Mine vocab into `vocab/<name>-vocab.tsv` (three columns: Indonesian, English/notes, tag) — only add things you
    didn't already know cold. Don't re-log particles you've already logged once; cross-check against
    `vocab/conversation-1-vocab.tsv` first.
-5. Build a synced player: `python3 scripts/build_player.py transcripts/<name>.clean.txt audio/<name>.<ext>
-   <name>-player.html "Conversation N"`. See **Playing the audio** below.
-6. Run the four listening passes below against the audio + clean transcript.
+5. (Optional but recommended) Translate the Indonesian lines to English — see **Translations** below.
+6. Build a synced player: `python3 scripts/build_player.py transcripts/<name>.clean.txt audio/<name>.<ext>
+   <name>-player.html --title "Conversation N" --translations transcripts/<name>.translations.json`
+   (drop `--translations` if you skipped step 5). See **Playing the audio** below.
+7. Regenerate `flashcards.html` (`python3 scripts/build_flashcards.py`), `quiz.html`
+   (`python3 scripts/build_quiz.py`), and `index.html` (`python3 scripts/build_index.py`) — flashcards/quiz pull
+   from *all* vocab decks and transcripts automatically, so re-running them picks up the new conversation.
+8. Run the four listening passes below against the audio + clean transcript.
+
+## Translations
+
+For a conversation's Indonesian lines to show English translations in the player (and to get sentence
+translations in quiz reveals), build `transcripts/<name>.translations.json` — a JSON object mapping each
+Indonesian-language entry's index (0-based over the full parsed transcript, string keys) to an English string.
+
+There's no automated translation API wired up; Conversation 1's 473 lines were translated by splitting the list
+into chunks and dispatching parallel research-agent calls (via the `Agent` tool), each given
+`notes/conversation-1-notes.md` for context (particle glossary, speaker roles, cultural notes) and asked to
+return strict JSON `[{"idx": N, "en": "..."}]`. The results were merged with a short Python snippet into the
+single `.translations.json` file. Repeat that pattern for new conversations — it's the same shape of work every
+time (extract Indonesian lines → chunk → translate with context → merge by idx → sanity-check no idx is missing).
 
 ## Playing the audio
 
@@ -30,9 +48,30 @@ particle-heavy, and specific to the people and places in your actual life. The g
 - Speed buttons (0.6x/0.75x/1x/1.25x) for slow listening on hard stretches.
 - The transcript auto-highlights and scrolls to follow playback.
 - A search box to jump straight to a phrase.
+- **Show translations** toggle (top right) reveals an English gloss under every Indonesian line, if a
+  `--translations` file was supplied at build time. Off by default — the point is to try comprehension first.
 
 `scripts/build_index.py` regenerates `index.html`, a landing page linking to every `*-player.html` in the
-project — run it after adding a new conversation's player so it shows up there too.
+project, plus the Flashcards/Quiz practice modes — run it after adding a new conversation's player so it shows
+up there too.
+
+## Comprehension exercises
+
+Two practice modes, both self-contained HTML/JS with progress saved to the browser's `localStorage` (a simple
+4-box mastery system: get it right, it shows up less often; get it wrong, it resets to box 0 and comes back
+soon). Neither needs a server or an account.
+
+- **`flashcards.html`** (`scripts/build_flashcards.py`) — flips through every `vocab/*.tsv` deck. Filter by tag
+  (particle, food, family, etc.), rate "still learning" / "got it", `space` to flip, `1`/`2` to rate.
+- **`quiz.html`** (`scripts/build_quiz.py`) — cross-references vocab terms against real transcript lines. A term
+  used inside a longer sentence becomes a **cloze** card (blank it, guess from context, play the actual audio
+  of that line, then reveal). A term that basically *is* the whole line (most of the "phrase" tag entries)
+  becomes a **recall** card (listen first, then reveal). Terms with no match in any transcript are silently
+  skipped — not every vocab word needs its own exercise. Re-run this after adding a new conversation or vocab
+  deck; it re-scans everything from scratch.
+
+Both are linked from `index.html` under "Practice," so they're reachable from **Bahasa Player.app** like
+everything else — no separate app needed.
 
 ### The app (no terminal needed)
 

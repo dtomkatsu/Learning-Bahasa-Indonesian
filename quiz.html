@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiz — Learning Bahasa Indonesian</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2563eb; --card:#f9fafb; --good:#16a34a; --bad:#dc2626; --blank:#f59e0b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111318; --fg:#e7e9ee; --muted:#9aa1ac; --line:#2a2e37; --accent:#5b9dff;
+      --card:#1a1d24; --good:#4ade80; --bad:#f87171; --blank:#fbbf24; }
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  .wrap { max-width:600px; margin:0 auto; padding:28px 20px 60px; }
+  .top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+  h1 { font-size:1.15rem; margin:0; }
+  a.back { color:var(--muted); font-size:0.8rem; text-decoration:none; }
+  .stats { color:var(--muted); font-size:0.8rem; margin-bottom:16px; }
+  select { font-size:0.8rem; padding:5px 7px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); color:var(--fg); }
+  #card { border:1px solid var(--line); border-radius:14px; background:var(--card);
+    min-height:200px; padding:24px 22px; margin:18px 0; }
+  .source { font-size:0.72rem; color:var(--muted); margin-bottom:10px; }
+  .prompt { font-size:1.15rem; line-height:1.5; margin-bottom:6px; }
+  .prompt .blank { color:var(--blank); font-weight:700; letter-spacing:1px; }
+  .hint { color:var(--muted); font-size:0.82rem; margin-bottom:16px; }
+  .playrow { margin-bottom:14px; }
+  button.play { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--accent);
+    background:transparent; color:var(--accent); cursor:pointer; }
+  button.play:hover { background:var(--accent); color:#fff; }
+  .reveal { display:none; border-top:1px dashed var(--line); margin-top:14px; padding-top:14px; }
+  .reveal.shown { display:block; }
+  .reveal .id { font-size:1.05rem; margin-bottom:4px; }
+  .reveal .id b { color:var(--accent); }
+  .reveal .en { color:var(--muted); font-size:0.9rem; }
+  button.revealBtn { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--line);
+    background:var(--bg); color:var(--fg); cursor:pointer; }
+  .rate { display:flex; gap:10px; margin-top:14px; }
+  .rate[hidden] { display:none; }
+  button.rate-btn { flex:1; padding:12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--fg); font-size:0.9rem; cursor:pointer; }
+  button.rate-btn.bad { border-color:var(--bad); color:var(--bad); }
+  button.rate-btn.good { border-color:var(--good); color:var(--good); }
+  .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
+  button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); color:var(--muted); cursor:pointer; }
+  .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:60px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Quiz</h1>
+    <a class="back" href="index.html">&larr; all conversations</a>
+  </div>
+  <div class="stats" id="stats"></div>
+  <select id="tagFilter"></select>
+  <div id="card"></div>
+  <div class="tools">
+    <button class="plain" id="resetBtn">Reset progress</button>
+    <span class="stats" id="deckInfo"></span>
+  </div>
+</div>
+<audio id="qaudio" preload="none"></audio>
+<script>
+const ITEMS = [{"term": "kan", "hint": "tag question / seeking agreement — \"right?\"", "tag": "particle", "mode": "cloze", "sentence": "Kan mencari apa yang adek bagus, kan? Adek juga terapi. Soalnya lebih besar dari dia.", "sentenceHtml": "<b>Kan</b> mencari apa yang adek bagus, kan? Adek juga terapi. Soalnya lebih besar dari dia.", "cloze": "_____ mencari apa yang adek bagus, kan? Adek juga terapi. Soalnya lebih besar dari dia.", "translation": "We're looking for what's good for the little one, right? The little one's in therapy too, because it's a bigger thing for them.", "sec": 229, "nextSec": 236, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "sih", "hint": "softener / mild emphasis or curiosity", "tag": "particle", "mode": "cloze", "sentence": "Eh, gunakan loh pelajaranmu. Lebih terhormat sih.", "sentenceHtml": "Eh, gunakan loh pelajaranmu. Lebih terhormat <b>sih</b>.", "cloze": "Eh, gunakan loh pelajaranmu. Lebih terhormat _____.", "translation": "Hey, use what you learned, you know. It's more respectable, honestly.", "sec": 242, "nextSec": 250, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "dong", "hint": "insistence — \"come on, obviously\"", "tag": "particle", "mode": "cloze", "sentence": "Di sini, dong.", "sentenceHtml": "Di sini, <b>dong</b>.", "cloze": "Di sini, _____.", "translation": "Here, come on.", "sec": 526, "nextSec": 528, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "nih", "hint": "here — draws attention to something close", "tag": "particle", "mode": "cloze", "sentence": "Tapi bahaya nih. Kalau saya mau masak.", "sentenceHtml": "Tapi bahaya <b>nih</b>. Kalau saya mau masak.", "cloze": "Tapi bahaya _____. Kalau saya mau masak.", "translation": "But this is dangerous, you know — if I want to cook.", "sec": 1088, "nextSec": 1091, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "kok", "hint": "how come? — surprise or mild complaint", "tag": "particle", "mode": "cloze", "sentence": "Kok tadi udah deket?", "sentenceHtml": "<b>Kok</b> tadi udah deket?", "cloze": "_____ tadi udah deket?", "translation": "How come it was already close by earlier?", "sec": 394, "nextSec": 401, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "deh", "hint": "softening a suggestion / conceding a point", "tag": "particle", "mode": "cloze", "sentence": "Jangan mikir tak mati deh bensin.", "sentenceHtml": "Jangan mikir tak mati <b>deh</b> bensin.", "cloze": "Jangan mikir tak mati _____ bensin.", "translation": "Don't worry, we won't run out of gas.", "sec": 1223, "nextSec": 1225, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "banget", "hint": "very / so — intensifier", "tag": "particle", "mode": "cloze", "sentence": "Bagus, ya. Ini di atas dia memang menunjukkan Indonesia banget, yang di bawah Inggris. Jadi kalau kita ngomong pakai bahasa Inggris, dia tetap di atas itu translate. Di sini juga tetap di Inggris, jadi jelas. Ada tulisannya juga, speaker 1, speaker 2.", "sentenceHtml": "Bagus, ya. Ini di atas dia memang menunjukkan Indonesia <b>banget</b>, yang di bawah Inggris. Jadi kalau kita ngomong pakai bahasa Inggris, dia tetap di atas itu translate. Di sini juga tetap di Inggris, jadi jelas. Ada tulisannya juga, speaker 1, speaker 2.", "cloze": "Bagus, ya. Ini di atas dia memang menunjukkan Indonesia _____, yang di bawah Inggris. Jadi kalau kita ngomong pakai bahasa Inggris, dia tetap di atas itu translate. Di sini juga tetap di Inggris, jadi jelas. Ada tulisannya juga, speaker 1, speaker 2.", "translation": "Nice, right? Up top it really does show Indonesian, and English is at the bottom. So if we talk in English, it still translates up there. Down here it stays in English too, so it's clear. It even has labels, speaker 1, speaker 2.", "sec": 56, "nextSec": 64, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "entar", "hint": "colloquial for \"nanti\" — later", "tag": "particle", "mode": "cloze", "sentence": "Entar kita tangkap sini dekat sini.", "sentenceHtml": "<b>Entar</b> kita tangkap sini dekat sini.", "cloze": "_____ kita tangkap sini dekat sini.", "translation": "We'll catch some near here later.", "sec": 1214, "nextSec": 1218, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "makanya", "hint": "that's why", "tag": "particle", "mode": "cloze", "sentence": "Ih, makanya kupingmu itu loh, jangan pakai gituan.", "sentenceHtml": "Ih, <b>makanya</b> kupingmu itu loh, jangan pakai gituan.", "cloze": "Ih, _____ kupingmu itu loh, jangan pakai gituan.", "translation": "Ugh, that's why — your ears, you know, don't use that kind of thing.", "sec": 112, "nextSec": 115, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "atuh", "hint": "Sundanese softener/emphasis particle, no direct translation", "tag": "particle_sundanese", "mode": "cloze", "sentence": "Itu mah mau buat airdrop atuh.", "sentenceHtml": "Itu mah mau buat airdrop <b>atuh</b>.", "cloze": "Itu mah mau buat airdrop _____.", "translation": "That's for doing AirDrop, come on.", "sec": 888, "nextSec": 893, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "mah", "hint": "Sundanese topic marker, roughly \"as for...\"", "tag": "particle_sundanese", "mode": "cloze", "sentence": "Itu mah mau buat airdrop atuh.", "sentenceHtml": "Itu <b>mah</b> mau buat airdrop atuh.", "cloze": "Itu _____ mau buat airdrop atuh.", "translation": "That's for doing AirDrop, come on.", "sec": 888, "nextSec": 893, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "udah", "hint": "colloquial \"sudah\" — already", "tag": "grammar", "mode": "cloze", "sentence": "Kok tadi udah deket?", "sentenceHtml": "Kok tadi <b>udah</b> deket?", "cloze": "Kok tadi _____ deket?", "translation": "How come it was already close by earlier?", "sec": 394, "nextSec": 401, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "belum", "hint": "not yet", "tag": "grammar", "mode": "cloze", "sentence": "Tapi belum update Netflix-nya.", "sentenceHtml": "Tapi <b>belum</b> update Netflix-nya.", "cloze": "Tapi _____ update Netflix-nya.", "translation": "But the Netflix hasn't updated yet.", "sec": 518, "nextSec": 521, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "iya", "hint": "yes / right (softer than \"ya\")", "tag": "grammar", "mode": "cloze", "sentence": "Iya, itu, betul.", "sentenceHtml": "<b>Iya</b>, itu, betul.", "cloze": "_____, itu, betul.", "translation": "Yeah, that's right.", "sec": 20, "nextSec": 21, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "kalau", "hint": "if / when (conditional)", "tag": "grammar", "mode": "cloze", "sentence": "Aku tuh lebih takut, gitu loh, kalau misalkan, eh, apa, jadi dari sedih itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "sentenceHtml": "Aku tuh lebih takut, gitu loh, <b>kalau</b> misalkan, eh, apa, jadi dari sedih itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "cloze": "Aku tuh lebih takut, gitu loh, _____ misalkan, eh, apa, jadi dari sedih itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "translation": "I get scared more easily, you know, like say, um, what, so it goes from sad straight to scared, so I get distracted, you know.", "sec": 0, "nextSec": 8, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "soalnya", "hint": "because, the thing is...", "tag": "grammar", "mode": "cloze", "sentence": "Kan mencari apa yang adek bagus, kan? Adek juga terapi. Soalnya lebih besar dari dia.", "sentenceHtml": "Kan mencari apa yang adek bagus, kan? Adek juga terapi. <b>Soalnya</b> lebih besar dari dia.", "cloze": "Kan mencari apa yang adek bagus, kan? Adek juga terapi. _____ lebih besar dari dia.", "translation": "We're looking for what's good for the little one, right? The little one's in therapy too, because it's a bigger thing for them.", "sec": 229, "nextSec": 236, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "kayaknya", "hint": "it seems like, I think", "tag": "grammar", "mode": "cloze", "sentence": "Kalau itu kayaknya mau beli santan.", "sentenceHtml": "Kalau itu <b>kayaknya</b> mau beli santan.", "cloze": "Kalau itu _____ mau beli santan.", "translation": "That one, I think, is to buy coconut milk.", "sec": 1313, "nextSec": 1321, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "gimana", "hint": "colloquial \"bagaimana\" — how", "tag": "grammar", "mode": "cloze", "sentence": "Gimana bisa ngecas?", "sentenceHtml": "<b>Gimana</b> bisa ngecas?", "cloze": "_____ bisa ngecas?", "translation": "How do you charge it?", "sec": 1036, "nextSec": 1039, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "biar", "hint": "so that / \"in order to\"", "tag": "grammar", "mode": "cloze", "sentence": "Bu Di, biar sifatnya nggak keaslian.", "sentenceHtml": "Bu Di, <b>biar</b> sifatnya nggak keaslian.", "cloze": "Bu Di, _____ sifatnya nggak keaslian.", "translation": "Bu Di, so it doesn't come off as fake.", "sec": 459, "nextSec": 465, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Mami", "hint": "Mom (used directly, not \"Ibu\")", "tag": "family", "mode": "cloze", "sentence": "Sekarang Mami tidak bisa ngomong aneh-aneh. Nanti ini.", "sentenceHtml": "Sekarang <b>Mami</b> tidak bisa ngomong aneh-aneh. Nanti ini.", "cloze": "Sekarang _____ tidak bisa ngomong aneh-aneh. Nanti ini.", "translation": "Now Mom can't say anything weird. This thing'll catch it.", "sec": 255, "nextSec": 258, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Mbak", "hint": "older sister / polite term for young woman", "tag": "family", "mode": "cloze", "sentence": "Itu kan Mami ya. Ini Mbak ya.", "sentenceHtml": "Itu kan Mami ya. Ini <b>Mbak</b> ya.", "cloze": "Itu kan Mami ya. Ini _____ ya.", "translation": "That's Mom, right? This is my sister, right?", "sec": 1451, "nextSec": 1454, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "sayangku", "hint": "my love/darling — affectionate term", "tag": "family", "mode": "cloze", "sentence": "Sayangku, you are being sarcastic.", "sentenceHtml": "<b>Sayangku</b>, you are being sarcastic.", "cloze": "_____, you are being sarcastic.", "translation": "Sweetheart, you are being sarcastic.", "sec": 3332, "nextSec": 3334, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "salim", "hint": "hand-to-forehead greeting gesture for elders", "tag": "family", "mode": "cloze", "sentence": "Salim dulu. Salim dulu. Salim.", "sentenceHtml": "<b>Salim</b> dulu. Salim dulu. Salim.", "cloze": "_____ dulu. Salim dulu. Salim.", "translation": "Do the salim. Do the salim. Salim.", "sec": 1156, "nextSec": 1158, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "assalamualaikum", "hint": "Islamic greeting, \"peace be upon you\" — used casually arriving/leaving", "tag": "family", "mode": "recall", "sentence": "Assalamualaikum.", "sentenceHtml": "<b>Assalamualaikum</b>.", "cloze": null, "translation": "Assalamualaikum.", "sec": 403, "nextSec": 408, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "tahu", "hint": "tofu", "tag": "food", "mode": "cloze", "sentence": "Itu aja nggak tahu.", "sentenceHtml": "Itu aja nggak <b>tahu</b>.", "cloze": "Itu aja nggak _____.", "translation": "Don't even know that.", "sec": 167, "nextSec": 169, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "lele", "hint": "catfish", "tag": "food", "mode": "recall", "sentence": "Lele.", "sentenceHtml": "<b>Lele</b>.", "cloze": null, "translation": "Catfish.", "sec": 1211, "nextSec": 1212, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "santan", "hint": "coconut milk", "tag": "food", "mode": "cloze", "sentence": "Kalau itu kayaknya mau beli santan.", "sentenceHtml": "Kalau itu kayaknya mau beli <b>santan</b>.", "cloze": "Kalau itu kayaknya mau beli _____.", "translation": "That one, I think, is to buy coconut milk.", "sec": 1313, "nextSec": 1321, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "bayam", "hint": "spinach", "tag": "food", "mode": "cloze", "sentence": "Oh, bayam.", "sentenceHtml": "Oh, <b>bayam</b>.", "cloze": "Oh, _____.", "translation": "Oh, spinach.", "sec": 1117, "nextSec": 1117, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "ayam", "hint": "chicken", "tag": "food", "mode": "recall", "sentence": "Ayam.", "sentenceHtml": "<b>Ayam</b>.", "cloze": null, "translation": "Chicken.", "sec": 1121, "nextSec": 1121, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "enak", "hint": "tasty, delicious", "tag": "food", "mode": "cloze", "sentence": "Rice enak.", "sentenceHtml": "Rice <b>enak</b>.", "cloze": "Rice _____.", "translation": "The rice is good.", "sec": 1101, "nextSec": 1102, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "kupingmu", "hint": "your ear — used scoldingly re: earbuds/headphones", "tag": "tech", "mode": "cloze", "sentence": "Ih, makanya kupingmu itu loh, jangan pakai gituan.", "sentenceHtml": "Ih, makanya <b>kupingmu</b> itu loh, jangan pakai gituan.", "cloze": "Ih, makanya _____ itu loh, jangan pakai gituan.", "translation": "Ugh, that's why — your ears, you know, don't use that kind of thing.", "sec": 112, "nextSec": 115, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "aplikasi", "hint": "application, app", "tag": "tech", "mode": "cloze", "sentence": "Itu, ada aplikasi.", "sentenceHtml": "Itu, ada <b>aplikasi</b>.", "cloze": "Itu, ada _____.", "translation": "That — there's an app.", "sec": 110, "nextSec": 112, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "ngecas", "hint": "colloquial — to charge (a device)", "tag": "tech", "mode": "cloze", "sentence": "Gimana bisa ngecas?", "sentenceHtml": "Gimana bisa <b>ngecas</b>?", "cloze": "Gimana bisa _____?", "translation": "How do you charge it?", "sec": 1036, "nextSec": 1039, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "belok kanan", "hint": "turn right", "tag": "errands", "mode": "cloze", "sentence": "Di itu belok kanan itu kiri.", "sentenceHtml": "Di itu <b>belok kanan</b> itu kiri.", "cloze": "Di itu _____ itu kiri.", "translation": "Turn right there — no, left.", "sec": 1239, "nextSec": 1241, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "lurus", "hint": "straight (ahead)", "tag": "errands", "mode": "cloze", "sentence": "Tahu kamu yang, eh, kalau mis- yang, yang kalau misalkan belok kanan lurus ke rumahnya Adijah?", "sentenceHtml": "Tahu kamu yang, eh, kalau mis- yang, yang kalau misalkan belok kanan <b>lurus</b> ke rumahnya Adijah?", "cloze": "Tahu kamu yang, eh, kalau mis- yang, yang kalau misalkan belok kanan _____ ke rumahnya Adijah?", "translation": "You know, like, if you turn right and go straight to Adijah's house?", "sec": 1249, "nextSec": 1255, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "bensin", "hint": "gasoline", "tag": "errands", "mode": "cloze", "sentence": "Nggak ada bensin.", "sentenceHtml": "Nggak ada <b>bensin</b>.", "cloze": "Nggak ada _____.", "translation": "There's no gas.", "sec": 1220, "nextSec": 1222, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "gang", "hint": "small alley/lane", "tag": "errands", "mode": "cloze", "sentence": "Yang pas luar dekat gang itu kan?", "sentenceHtml": "Yang pas luar dekat <b>gang</b> itu kan?", "cloze": "Yang pas luar dekat _____ itu kan?", "translation": "The one right outside near the alley, right?", "sec": 1268, "nextSec": 1270, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "jemput", "hint": "to pick (someone) up", "tag": "errands", "mode": "cloze", "sentence": "Jemput pun.", "sentenceHtml": "<b>Jemput</b> pun.", "cloze": "_____ pun.", "translation": "Come pick me up too.", "sec": 2782, "nextSec": 2783, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "tiduran", "hint": "to lie down", "tag": "home", "mode": "recall", "sentence": "Tiduran.", "sentenceHtml": "<b>Tiduran</b>.", "cloze": null, "translation": "Lie down.", "sec": 554, "nextSec": 555, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "ganti baju", "hint": "to change clothes", "tag": "home", "mode": "cloze", "sentence": "Malam nanti kita ganti baju paginya.", "sentenceHtml": "Malam nanti kita <b>ganti baju</b> paginya.", "cloze": "Malam nanti kita _____ paginya.", "translation": "Tonight we'll change, and again in the morning.", "sec": 596, "nextSec": 604, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "mati lampu", "hint": "power outage", "tag": "home", "mode": "cloze", "sentence": "Mati lampu, Mak.", "sentenceHtml": "<b>Mati lampu</b>, Mak.", "cloze": "_____, Mak.", "translation": "Power's out, Mom.", "sec": 440, "nextSec": 442, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "nyala", "hint": "on / lit (of power, lights)", "tag": "home", "mode": "recall", "sentence": "Nyala.", "sentenceHtml": "<b>Nyala</b>.", "cloze": null, "translation": "It's on.", "sec": 447, "nextSec": 447, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "sedih", "hint": "sad", "tag": "emotion", "mode": "cloze", "sentence": "Aku tuh lebih takut, gitu loh, kalau misalkan, eh, apa, jadi dari sedih itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "sentenceHtml": "Aku tuh lebih takut, gitu loh, kalau misalkan, eh, apa, jadi dari <b>sedih</b> itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "cloze": "Aku tuh lebih takut, gitu loh, kalau misalkan, eh, apa, jadi dari _____ itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "translation": "I get scared more easily, you know, like say, um, what, so it goes from sad straight to scared, so I get distracted, you know.", "sec": 0, "nextSec": 8, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "takut", "hint": "scared", "tag": "emotion", "mode": "cloze", "sentence": "Aku tuh lebih takut, gitu loh, kalau misalkan, eh, apa, jadi dari sedih itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "sentenceHtml": "Aku tuh lebih <b>takut</b>, gitu loh, kalau misalkan, eh, apa, jadi dari sedih itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "cloze": "Aku tuh lebih _____, gitu loh, kalau misalkan, eh, apa, jadi dari sedih itu langsung jadi takut, jadi kedit distraksi, gitu loh.", "translation": "I get scared more easily, you know, like say, um, what, so it goes from sad straight to scared, so I get distracted, you know.", "sec": 0, "nextSec": 8, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "bahaya", "hint": "dangerous", "tag": "emotion", "mode": "recall", "sentence": "Bahaya.", "sentenceHtml": "<b>Bahaya</b>.", "cloze": null, "translation": "Dangerous.", "sec": 513, "nextSec": 513, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "seram", "hint": "scary, creepy", "tag": "emotion", "mode": "cloze", "sentence": "Eh, nggak mau balon. Balon seram. Saya senang balon mainan.", "sentenceHtml": "Eh, nggak mau balon. Balon <b>seram</b>. Saya senang balon mainan.", "cloze": "Eh, nggak mau balon. Balon _____. Saya senang balon mainan.", "translation": "Hey, I don't want the balloon. Scary balloon. I like toy balloons.", "sec": 797, "nextSec": 802, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "aduh", "hint": "ouch/oh no — general exclamation", "tag": "emotion", "mode": "recall", "sentence": "Aduh.", "sentenceHtml": "<b>Aduh</b>.", "cloze": null, "translation": "Ugh.", "sec": 622, "nextSec": 627, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "astaga", "hint": "oh my god — mild exclamation", "tag": "emotion", "mode": "cloze", "sentence": "Astaga, I did not bring.", "sentenceHtml": "<b>Astaga</b>, I did not bring.", "cloze": "_____, I did not bring.", "translation": "Oh my god, I did not bring [it].", "sec": 807, "nextSec": 811, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "manis", "hint": "sweet (also: cute)", "tag": "emotion", "mode": "cloze", "sentence": "Aduh, manis banget.", "sentenceHtml": "Aduh, <b>manis</b> banget.", "cloze": "Aduh, _____ banget.", "translation": "Wow, so sweet.", "sec": 4078, "nextSec": 4081, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "mantap", "hint": "awesome, solid — approval", "tag": "emotion", "mode": "recall", "sentence": "Mantap.", "sentenceHtml": "<b>Mantap</b>.", "cloze": null, "translation": "Nice.", "sec": 1081, "nextSec": 1082, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "asik", "hint": "fun, enjoyable", "tag": "emotion", "mode": "cloze", "sentence": "Asik banget.", "sentenceHtml": "<b>Asik</b> banget.", "cloze": "_____ banget.", "translation": "So much fun.", "sec": 3564, "nextSec": 3565, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "lumayan", "hint": "decent, not bad, pretty good", "tag": "emotion", "mode": "cloze", "sentence": "Hmm, lumayan.", "sentenceHtml": "Hmm, <b>lumayan</b>.", "cloze": "Hmm, _____.", "translation": "Hmm, pretty good.", "sec": 2942, "nextSec": 2945, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "gila", "hint": "crazy — used as an intensifier exclamation", "tag": "emotion", "mode": "cloze", "sentence": "Gila, kita. Lebih, lebih.", "sentenceHtml": "<b>Gila</b>, kita. Lebih, lebih.", "cloze": "_____, kita. Lebih, lebih.", "translation": "Man, we're crazy. More, more.", "sec": 3900, "nextSec": 3908, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "suku", "hint": "ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)", "tag": "culture", "mode": "cloze", "sentence": "Oh, iya. Nggak, nggak satu suku. Jadi ada Bali, Lombok.", "sentenceHtml": "Oh, iya. Nggak, nggak satu <b>suku</b>. Jadi ada Bali, Lombok.", "cloze": "Oh, iya. Nggak, nggak satu _____. Jadi ada Bali, Lombok.", "translation": "Oh, right. No, it's not just one ethnic group. So there's Bali, Lombok.", "sec": 3651, "nextSec": 3655, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Ini dari sana?", "hint": "Is this from there?", "tag": "phrase", "mode": "recall", "sentence": "Ini dari sana?", "sentenceHtml": "<b>Ini dari sana?</b>", "cloze": null, "translation": "Is this from over there?", "sec": 1181, "nextSec": 1182, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Nggak apa-apa", "hint": "It's okay / no worries / it doesn't matter", "tag": "phrase", "mode": "recall", "sentence": "Nggak apa-apa.", "sentenceHtml": "<b>Nggak apa-apa</b>.", "cloze": null, "translation": "It's fine.", "sec": 344, "nextSec": 346, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Ayo kita nonton", "hint": "Let's go watch [something]", "tag": "phrase", "mode": "recall", "sentence": "Ayo kita nonton?", "sentenceHtml": "<b>Ayo kita nonton</b>?", "cloze": null, "translation": "Let's go watch [something]?", "sec": 3291, "nextSec": 3293, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Sudah semakin lancar", "hint": "[You're] getting more fluent already", "tag": "phrase", "mode": "recall", "sentence": "Sudah semakin lancar.", "sentenceHtml": "<b>Sudah semakin lancar</b>.", "cloze": null, "translation": "It's getting more fluent already.", "sec": 642, "nextSec": 650, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Tahu kan berapa nih harganya?", "hint": "You know how much this costs, right?", "tag": "phrase", "mode": "recall", "sentence": "Tahu kan berapa nih harganya?", "sentenceHtml": "<b>Tahu kan berapa nih harganya?</b>", "cloze": null, "translation": "You know how much this costs, right?", "sec": 3911, "nextSec": 3914, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Kalau tak dengar suaramu", "hint": "If I don't hear your voice (song lyric quoted mid-conversation)", "tag": "phrase", "mode": "cloze", "sentence": "Semalam saja tak mampu. Kalau tak dengar suaramu itu. I'm not feeling feel for.", "sentenceHtml": "Semalam saja tak mampu. <b>Kalau tak dengar suaramu</b> itu. I&#x27;m not feeling feel for.", "cloze": "Semalam saja tak mampu. _____ itu. I'm not feeling feel for.", "translation": "Just last night I couldn't handle it. When I don't hear your voice. I'm not feeling it.", "sec": 1050, "nextSec": 1058, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Jangan ganggu", "hint": "Don't disturb [me]", "tag": "phrase", "mode": "recall", "sentence": "Jangan ganggu.", "sentenceHtml": "<b>Jangan ganggu</b>.", "cloze": null, "translation": "Don't bother her.", "sec": 3301, "nextSec": 3303, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Sabar", "hint": "Be patient / hang on", "tag": "phrase", "mode": "recall", "sentence": "Sabar.", "sentenceHtml": "<b>Sabar</b>.", "cloze": null, "translation": "Hold on.", "sec": 428, "nextSec": 429, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Ya udah", "hint": "Alright then / fine, okay — resigned agreement", "tag": "phrase", "mode": "cloze", "sentence": "Ya udah, adik makan aja. Siapa tahu ini buat di rumah. Eh, entar dulu, tak tanya.", "sentenceHtml": "<b>Ya udah</b>, adik makan aja. Siapa tahu ini buat di rumah. Eh, entar dulu, tak tanya.", "cloze": "_____, adik makan aja. Siapa tahu ini buat di rumah. Eh, entar dulu, tak tanya.", "translation": "Okay then, just eat, sis. Who knows, maybe this is for at home. Oh wait, hold on, let me ask.", "sec": 4057, "nextSec": 4062, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Nggak seru", "hint": "Not fun / that's no fun", "tag": "phrase", "mode": "recall", "sentence": "Nggak seru.", "sentenceHtml": "<b>Nggak seru</b>.", "cloze": null, "translation": "Not fun.", "sec": 3589, "nextSec": 3590, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Apa namanya?", "hint": "What's it called again? — filler while searching for a word", "tag": "phrase", "mode": "cloze", "sentence": "Apa namanya? Soniox.", "sentenceHtml": "<b>Apa namanya?</b> Soniox.", "cloze": "_____ Soniox.", "translation": "What's it called? Soniox.", "sec": 79, "nextSec": 81, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Kamu mau download di anu, di laptopmu?", "hint": "Do you want to download it on your laptop?", "tag": "phrase", "mode": "recall", "sentence": "Kamu mau download di anu, di laptopmu?", "sentenceHtml": "<b>Kamu mau download di anu, di laptopmu?</b>", "cloze": null, "translation": "Do you want to download it on your, um, your laptop?", "sec": 128, "nextSec": 136, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Nggak keaslian", "hint": "It's not the real/original one", "tag": "phrase", "mode": "cloze", "sentence": "Bu Di, biar sifatnya nggak keaslian.", "sentenceHtml": "Bu Di, biar sifatnya <b>nggak keaslian</b>.", "cloze": "Bu Di, biar sifatnya _____.", "translation": "Bu Di, so it doesn't come off as fake.", "sec": 459, "nextSec": 465, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Terlalu maksa", "hint": "That's too forced / trying too hard", "tag": "phrase", "mode": "recall", "sentence": "Terlalu maksa.", "sentenceHtml": "<b>Terlalu maksa</b>.", "cloze": null, "translation": "That's too forced.", "sec": 3579, "nextSec": 3580, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}, {"term": "Kok aneh", "hint": "That's weird, huh", "tag": "phrase", "mode": "recall", "sentence": "Kok aneh.", "sentenceHtml": "<b>Kok aneh</b>.", "cloze": null, "translation": "That's weird.", "sec": 3954, "nextSec": 3962, "audio": "audio/conversation-1.m4a", "source": "Conversation 1"}];
+const STORE_KEY = 'bahasa:quiz:v1';
+const audio = document.getElementById('qaudio');
+
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveProgress(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
+let progress = loadProgress();
+function keyOf(item) { return item.source + '::' + item.term; }
+function boxOf(item) { const k = keyOf(item); return (progress[k] && progress[k].box) || 0; }
+
+let pool = ITEMS.slice();
+let current = null;
+let revealed = false;
+let stopAt = null;
+
+const cardEl = document.getElementById('card');
+const tagFilter = document.getElementById('tagFilter');
+
+function uniqueTags() { return [...new Set(ITEMS.map(d => d.tag))].sort(); }
+tagFilter.innerHTML = '<option value="">All tags</option>' +
+  uniqueTags().map(t => `<option value="${t}">${t}</option>`).join('');
+tagFilter.addEventListener('change', () => { applyFilter(); pickNext(); });
+
+function applyFilter() {
+  const t = tagFilter.value;
+  pool = t ? ITEMS.filter(d => d.tag === t) : ITEMS.slice();
+}
+applyFilter();
+
+function weightedPick(items) {
+  const weights = items.map(d => Math.max(1, 4 - boxOf(d)));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return items[i];
+  }
+  return items[items.length - 1];
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function renderCard() {
+  if (!current) { cardEl.innerHTML = '<div class="empty">No quiz items for this tag.</div>'; return; }
+  const promptText = current.mode === 'cloze'
+    ? escapeHtml(current.cloze).replace('_____', '<span class="blank">_____</span>')
+    : '🔊 Listen first, then reveal.';
+  cardEl.innerHTML = `
+    <div class="source">${current.source} · ${current.tag}</div>
+    <div class="prompt">${promptText}</div>
+    <div class="hint">clue: ${escapeHtml(current.hint)}</div>
+    <div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>
+    <button class="revealBtn" id="revealBtn">Reveal answer</button>
+    <div class="reveal" id="revealBox">
+      <div class="id">${current.sentenceHtml}</div>
+      <div class="en">${current.translation ? escapeHtml(current.translation) : ''}</div>
+    </div>
+    <div class="rate" id="rateRow" hidden>
+      <button class="rate-btn bad" id="btnBad">Missed it</button>
+      <button class="rate-btn good" id="btnGood">Got it</button>
+    </div>
+  `;
+  document.getElementById('playBtn').addEventListener('click', playLine);
+  document.getElementById('revealBtn').addEventListener('click', reveal);
+  document.getElementById('btnBad').addEventListener('click', () => rate(false));
+  document.getElementById('btnGood').addEventListener('click', () => rate(true));
+}
+
+function playLine() {
+  if (!current) return;
+  stopAt = current.nextSec;
+  const start = () => { audio.currentTime = current.sec; audio.play(); };
+  if (audio.src.endsWith(current.audio) && audio.readyState >= 1) {
+    start();
+  } else {
+    audio.src = current.audio;
+    audio.addEventListener('loadedmetadata', start, {once:true});
+    audio.load();
+  }
+}
+
+audio.addEventListener('timeupdate', () => {
+  if (stopAt !== null && audio.currentTime >= stopAt) { audio.pause(); stopAt = null; }
+});
+
+function reveal() {
+  revealed = true;
+  document.getElementById('revealBox').classList.add('shown');
+  document.getElementById('rateRow').hidden = false;
+}
+
+function rate(good) {
+  if (!current) return;
+  const k = keyOf(current);
+  const box = boxOf(current);
+  progress[k] = { box: good ? Math.min(3, box + 1) : 0 };
+  saveProgress(progress);
+  pickNext();
+}
+
+function pickNext() {
+  if (!pool.length) { current = null; renderCard(); renderStats(); return; }
+  let next = weightedPick(pool);
+  if (pool.length > 1 && current && next.term === current.term && next.source === current.source) next = weightedPick(pool);
+  current = next;
+  revealed = false;
+  stopAt = null;
+  renderCard();
+  renderStats();
+}
+
+function renderStats() {
+  const boxes = [0,0,0,0];
+  ITEMS.forEach(d => boxes[boxOf(d)]++);
+  document.getElementById('stats').textContent =
+    `${ITEMS.length} quiz items — new ${boxes[0]}, learning ${boxes[1]+boxes[2]}, mastered ${boxes[3]}`;
+  document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset all quiz progress?')) { progress = {}; saveProgress(progress); pickNext(); }
+});
+
+pickNext();
+</script>
+</body>
+</html>

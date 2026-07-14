@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flashcards — Learning Bahasa Indonesian</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2563eb; --card:#f9fafb; --good:#16a34a; --bad:#dc2626; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111318; --fg:#e7e9ee; --muted:#9aa1ac; --line:#2a2e37; --accent:#5b9dff;
+      --card:#1a1d24; --good:#4ade80; --bad:#f87171; }
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--fg); height:100%;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  .wrap { max-width:560px; margin:0 auto; padding:28px 20px 60px; }
+  .top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+  h1 { font-size:1.15rem; margin:0; }
+  a.back { color:var(--muted); font-size:0.8rem; text-decoration:none; }
+  .stats { color:var(--muted); font-size:0.8rem; margin-bottom:16px; }
+  select { font-size:0.8rem; padding:5px 7px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); color:var(--fg); }
+  #card { border:1px solid var(--line); border-radius:14px; background:var(--card);
+    min-height:220px; display:flex; align-items:center; justify-content:center; text-align:center;
+    padding:28px 20px; cursor:pointer; margin:18px 0; user-select:none; }
+  #card .front { font-size:1.5rem; font-weight:600; }
+  #card .back { display:none; }
+  #card.flipped .front { display:none; }
+  #card.flipped .back { display:block; }
+  #card .back .en { font-size:1.25rem; font-weight:600; margin-bottom:6px; }
+  #card .back .tag { color:var(--muted); font-size:0.78rem; }
+  .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
+  .rate { display:flex; gap:10px; }
+  button.rate-btn { flex:1; padding:12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--fg); font-size:0.9rem; cursor:pointer; }
+  button.rate-btn:hover { filter:brightness(1.08); }
+  button.rate-btn.bad { border-color:var(--bad); color:var(--bad); }
+  button.rate-btn.good { border-color:var(--good); color:var(--good); }
+  .rate[hidden] { display:none; }
+  .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
+  button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); color:var(--muted); cursor:pointer; }
+  .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:60px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Flashcards</h1>
+    <a class="back" href="index.html">&larr; all conversations</a>
+  </div>
+  <div class="stats" id="stats"></div>
+  <select id="tagFilter"></select>
+  <div id="card"><div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div></div>
+  <div class="hint">Click the card (or press space) to flip</div>
+  <div class="rate" id="rateRow" hidden>
+    <button class="rate-btn bad" id="btnBad">Still learning</button>
+    <button class="rate-btn good" id="btnGood">Got it</button>
+  </div>
+  <div class="tools">
+    <button class="plain" id="resetBtn">Reset progress</button>
+    <span class="stats" id="deckInfo"></span>
+  </div>
+</div>
+<script>
+const DECK = [{"front": "kan", "back": "tag question / seeking agreement — \"right?\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "sih", "back": "softener / mild emphasis or curiosity", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "dong", "back": "insistence — \"come on, obviously\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "loh / lho", "back": "mild surprise, \"you know\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "nih", "back": "here — draws attention to something close", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "kok", "back": "how come? — surprise or mild complaint", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "deh", "back": "softening a suggestion / conceding a point", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "gitu / begitu", "back": "like that — trails off a sentence", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "banget", "back": "very / so — intensifier", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "mendingan", "back": "better off, rather — for comparing options", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "entar", "back": "colloquial for \"nanti\" — later", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "makanya", "back": "that's why", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "atuh", "back": "Sundanese softener/emphasis particle, no direct translation", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "mah", "back": "Sundanese topic marker, roughly \"as for...\"", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "udah", "back": "colloquial \"sudah\" — already", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "belum", "back": "not yet", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "nggak / enggak", "back": "colloquial \"tidak\" — not, no", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "iya", "back": "yes / right (softer than \"ya\")", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kalau", "back": "if / when (conditional)", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "soalnya", "back": "because, the thing is...", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kayaknya", "back": "it seems like, I think", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "gimana", "back": "colloquial \"bagaimana\" — how", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "biar", "back": "so that / \"in order to\"", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "Mami", "back": "Mom (used directly, not \"Ibu\")", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Papi / Bapak", "back": "Dad", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Mbak", "back": "older sister / polite term for young woman", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Dek / Adek", "back": "younger sibling, term of endearment", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "sayangku", "back": "my love/darling — affectionate term", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "salim", "back": "hand-to-forehead greeting gesture for elders", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "assalamualaikum", "back": "Islamic greeting, \"peace be upon you\" — used casually arriving/leaving", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "tahu", "back": "tofu", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "lele", "back": "catfish", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "santan", "back": "coconut milk", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "bayam", "back": "spinach", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "ayam", "back": "chicken", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "nasi", "back": "rice", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "enak", "back": "tasty, delicious", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "kupingmu", "back": "your ear — used scoldingly re: earbuds/headphones", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "aplikasi", "back": "application, app", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "unduh / download", "back": "to download", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "ngecas", "back": "colloquial — to charge (a device)", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "kupas / patok", "back": "landmark / marker (for giving directions)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kanan", "back": "turn right", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kiri", "back": "turn left", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "lurus", "back": "straight (ahead)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "bensin", "back": "gasoline", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "gang", "back": "small alley/lane", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "jemput", "back": "to pick (someone) up", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "tiduran", "back": "to lie down", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "ganti baju", "back": "to change clothes", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "mati lampu", "back": "power outage", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "nyala", "back": "on / lit (of power, lights)", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "sedih", "back": "sad", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "takut", "back": "scared", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "bahaya", "back": "dangerous", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "seram", "back": "scary, creepy", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "aduh", "back": "ouch/oh no — general exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "astaga", "back": "oh my god — mild exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "manis", "back": "sweet (also: cute)", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "mantap", "back": "awesome, solid — approval", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "asik", "back": "fun, enjoyable", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "lumayan", "back": "decent, not bad, pretty good", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "gila", "back": "crazy — used as an intensifier exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "suku", "back": "ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "keturunan", "back": "descent, lineage", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "Ini dari sana?", "back": "Is this from there?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak apa-apa", "back": "It's okay / no worries / it doesn't matter", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ayo kita nonton", "back": "Let's go watch [something]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sudah semakin lancar", "back": "[You're] getting more fluent already", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Tahu kan berapa nih harganya?", "back": "You know how much this costs, right?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kalau tak dengar suaramu", "back": "If I don't hear your voice (song lyric quoted mid-conversation)", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Jangan ganggu", "back": "Don't disturb [me]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sabar", "back": "Be patient / hang on", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ya udah", "back": "Alright then / fine, okay — resigned agreement", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak seru", "back": "Not fun / that's no fun", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Apa namanya?", "back": "What's it called again? — filler while searching for a word", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kamu mau download di anu, di laptopmu?", "back": "Do you want to download it on your laptop?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ini di atas dia menunjukkan Indonesia", "back": "Up here it shows Indonesian [on screen]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak keaslian", "back": "It's not the real/original one", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Terlalu maksa", "back": "That's too forced / trying too hard", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kok aneh", "back": "That's weird, huh", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Can I ask a question?", "back": "code-switch: Dila asks permission mid-Indonesian-sentence in English", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "Reprimanded", "back": "code-switch: Devin supplies the English legal term Dila reaches for", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "sayangku's kids' ankle", "back": "running joke/mishearing during the recording — good example of ASR mangling affectionate teasing", "tag": "codeswitch", "deck": "conversation-1-vocab"}];
+const STORE_KEY = 'bahasa:flashcards:v1';
+
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveProgress(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
+let progress = loadProgress();
+
+function boxOf(front) { return (progress[front] && progress[front].box) || 0; }
+
+let pool = DECK.slice();
+let current = null;
+let flipped = false;
+
+const cardEl = document.getElementById('card');
+const frontEl = cardEl.querySelector('.front');
+const enEl = cardEl.querySelector('.en');
+const tagEl = cardEl.querySelector('.tag');
+const rateRow = document.getElementById('rateRow');
+const tagFilter = document.getElementById('tagFilter');
+
+function uniqueTags() {
+  return [...new Set(DECK.map(d => d.tag))].sort();
+}
+tagFilter.innerHTML = '<option value="">All tags</option>' +
+  uniqueTags().map(t => `<option value="${t}">${t}</option>`).join('');
+tagFilter.addEventListener('change', () => { applyFilter(); pickNext(); });
+
+function applyFilter() {
+  const t = tagFilter.value;
+  pool = t ? DECK.filter(d => d.tag === t) : DECK.slice();
+}
+applyFilter();
+
+function weightedPick(items) {
+  const weights = items.map(d => Math.max(1, 4 - boxOf(d.front)));
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return items[i];
+  }
+  return items[items.length - 1];
+}
+
+function pickNext() {
+  if (!pool.length) { renderEmpty(); return; }
+  let next = weightedPick(pool);
+  if (pool.length > 1 && current && next.front === current.front) next = weightedPick(pool);
+  current = next;
+  flipped = false;
+  cardEl.classList.remove('flipped');
+  frontEl.textContent = current.front;
+  enEl.textContent = current.back;
+  tagEl.textContent = current.tag;
+  rateRow.hidden = true;
+  renderStats();
+}
+
+function renderEmpty() {
+  cardEl.innerHTML = '<div class="empty">No cards for this tag.</div>';
+  rateRow.hidden = true;
+}
+
+function renderStats() {
+  const boxes = [0,0,0,0];
+  DECK.forEach(d => boxes[boxOf(d.front)]++);
+  document.getElementById('stats').textContent =
+    `${DECK.length} cards — new ${boxes[0]}, learning ${boxes[1]+boxes[2]}, mastered ${boxes[3]}`;
+  document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
+}
+
+function flip() {
+  if (!current) return;
+  flipped = !flipped;
+  cardEl.classList.toggle('flipped', flipped);
+  rateRow.hidden = !flipped;
+}
+
+function rate(good) {
+  if (!current) return;
+  const front = current.front;
+  const box = boxOf(front);
+  progress[front] = { box: good ? Math.min(3, box + 1) : 0 };
+  saveProgress(progress);
+  pickNext();
+}
+
+cardEl.addEventListener('click', flip);
+document.getElementById('btnBad').addEventListener('click', (e) => { e.stopPropagation(); rate(false); });
+document.getElementById('btnGood').addEventListener('click', (e) => { e.stopPropagation(); rate(true); });
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset all flashcard progress?')) { progress = {}; saveProgress(progress); pickNext(); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === ' ') { e.preventDefault(); flip(); }
+  else if (flipped && e.key === '1') rate(false);
+  else if (flipped && e.key === '2') rate(true);
+});
+
+pickNext();
+</script>
+</body>
+</html>

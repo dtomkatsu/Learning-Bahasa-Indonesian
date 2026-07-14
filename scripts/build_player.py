@@ -3,15 +3,22 @@
 Build a synced HTML audio+transcript player from a cleaned transcript.
 
 Usage:
-    python3 build_player.py <clean_transcript.txt> <audio_relative_path> <output.html> [title]
+    python3 build_player.py <clean_transcript.txt> <audio_relative_path> <output.html>
+        [--title "Conversation N"] [--translations <translations.json>]
 
 `audio_relative_path` should be relative to wherever output.html will be
 opened/served from (e.g. "audio/conversation-1.m4a" if both live under the
 project root and output.html sits at the project root too).
+
+`--translations` points to a JSON object mapping entry index (as a string,
+0-based, over the full parsed entry list including English lines) to an
+English translation string. Only Indonesian-language entries look up a
+translation; see scripts/merge_translations.py or the translate-with-agents
+workflow described in STUDY-METHOD.md for how to generate one.
 """
+import argparse
 import json
 import re
-import sys
 from html import escape
 
 ENTRY_RE = re.compile(
@@ -89,6 +96,8 @@ PAGE = """<!doctype html>
   .tag-Indonesian { color:var(--id-tag); }
   .tag-English { color:var(--en-tag); }
   .text { font-size:0.95rem; line-height:1.4; }
+  .en { font-size:0.85rem; line-height:1.35; color:var(--muted); margin-top:2px; display:none; }
+  body.show-en .en { display:block; }
   .loopbtn { flex:0 0 auto; opacity:0; font-size:0.7rem; padding:3px 6px; }
   .row:hover .loopbtn, .loopbtn.active { opacity:1; }
   .loopbtn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
@@ -97,6 +106,7 @@ PAGE = """<!doctype html>
 </head>
 <body>
 <div id="topbar">
+  <a class="back" href="index.html" style="color:var(--muted);font-size:0.78rem;text-decoration:none;">&larr;</a>
   <h1>__TITLE__</h1>
   <audio id="audio" controls preload="metadata" src="__AUDIO__"></audio>
   <div class="speeds">
@@ -106,10 +116,11 @@ PAGE = """<!doctype html>
     <button data-rate="1.25">1.25x</button>
   </div>
   <div class="tools">
+    <button id="toggleEn">Show translations</button>
     <input id="search" placeholder="jump to phrase…">
   </div>
 </div>
-<div id="hint">Click any line to jump the audio there. Hover a line for a "loop" button to repeat just that line (great for shadowing). Speed buttons apply immediately.</div>
+<div id="hint">Click any line to jump the audio there. Hover a line for a "loop" button to repeat just that line (great for shadowing). Speed buttons apply immediately. "Show translations" reveals an English gloss under each Indonesian line.</div>
 <div id="list"></div>
 <script>
 const DATA = __DATA__;
@@ -134,10 +145,12 @@ DATA.forEach((e, i) => {
     <div class="body">
       <div class="meta"><span class="spk">${e.speaker}</span> · <span class="tag-${e.lang}">${e.lang}</span></div>
       <div class="text"></div>
+      <div class="en"></div>
     </div>
     <button class="loopbtn">loop</button>
   `;
   row.querySelector('.text').textContent = e.text;
+  row.querySelector('.en').textContent = e.en || '';
   row.addEventListener('click', (ev) => {
     if (ev.target.classList.contains('loopbtn')) return;
     loopIdx = null;
@@ -192,6 +205,17 @@ document.querySelectorAll('.speeds button').forEach(b => {
   });
 });
 
+const EN_KEY = 'bahasa:showTranslations';
+const toggleEnBtn = document.getElementById('toggleEn');
+function setShowEn(on) {
+  document.body.classList.toggle('show-en', on);
+  toggleEnBtn.classList.toggle('active', on);
+  toggleEnBtn.textContent = on ? 'Hide translations' : 'Show translations';
+  localStorage.setItem(EN_KEY, on ? '1' : '0');
+}
+toggleEnBtn.addEventListener('click', () => setShowEn(!document.body.classList.contains('show-en')));
+setShowEn(localStorage.getItem(EN_KEY) === '1');
+
 document.getElementById('search').addEventListener('keydown', (ev) => {
   if (ev.key !== 'Enter') return;
   const q = ev.target.value.trim().toLowerCase();
@@ -210,22 +234,37 @@ document.getElementById('search').addEventListener('keydown', (ev) => {
 
 
 def main():
-    if len(sys.argv) < 4:
-        print(__doc__)
-        sys.exit(1)
-    src, audio_path, out_path = sys.argv[1:4]
-    title = sys.argv[4] if len(sys.argv) > 4 else "Conversation"
-    with open(src, encoding="utf-8") as f:
+    p = argparse.ArgumentParser()
+    p.add_argument("transcript")
+    p.add_argument("audio_path")
+    p.add_argument("output")
+    p.add_argument("--title", default="Conversation")
+    p.add_argument("--translations", default=None, help="JSON file mapping entry idx -> English translation")
+    args = p.parse_args()
+
+    with open(args.transcript, encoding="utf-8") as f:
         raw = f.read()
     entries = parse(raw)
+
+    if args.translations:
+        with open(args.translations, encoding="utf-8") as f:
+            translations = json.load(f)
+        n_applied = 0
+        for i, e in enumerate(entries):
+            en = translations.get(str(i))
+            if en:
+                e["en"] = en
+                n_applied += 1
+        print(f"applied {n_applied} translations ({len(entries)} total entries)")
+
     html = (
-        PAGE.replace("__TITLE__", escape(title))
-        .replace("__AUDIO__", escape(audio_path))
+        PAGE.replace("__TITLE__", escape(args.title))
+        .replace("__AUDIO__", escape(args.audio_path))
         .replace("__DATA__", json.dumps(entries, ensure_ascii=False))
     )
-    with open(out_path, "w", encoding="utf-8") as f:
+    with open(args.output, "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"wrote {out_path}: {len(entries)} lines, audio={audio_path}")
+    print(f"wrote {args.output}: {len(entries)} lines, audio={args.audio_path}")
 
 
 if __name__ == "__main__":

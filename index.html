@@ -20,13 +20,28 @@
   a.card:hover { border-color:var(--accent); }
   a.card .name { font-weight:600; font-size:1rem; }
   a.card .meta { color:var(--muted); font-size:0.8rem; margin-top:3px; }
+  a.card.practice { display:flex; justify-content:space-between; align-items:center; }
+  a.card.practice .name { display:flex; align-items:center; gap:8px; }
+  h2.section { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted);
+    margin:28px 0 10px; }
+  h2.section:first-of-type { margin-top:0; }
   .empty { color:var(--muted); font-size:0.9rem; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>Learning Bahasa Indonesian</h1>
-  <p class="sub">Pick a conversation to listen and read along.</p>
+  <p class="sub">Listen and read along, then practice what stuck.</p>
+  <h2 class="section">Practice</h2>
+  <a class="card practice" href="flashcards.html">
+    <div class="name">Flashcards</div>
+    <div class="meta">vocab drill</div>
+  </a>
+  <a class="card practice" href="quiz.html">
+    <div class="name">Quiz</div>
+    <div class="meta">fill-in-the-blank from real lines</div>
+  </a>
+  <h2 class="section">Conversations</h2>
   <a class="card" href="conversation-1-player.html">
     <div class="name">Conversation 1</div>
     <div class="meta">conversation-1-player.html</div>
