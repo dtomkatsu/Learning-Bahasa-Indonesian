@@ -31,24 +31,35 @@ particle-heavy, and specific to the people and places in your actual life. The g
 - The transcript auto-highlights and scrolls to follow playback.
 - A search box to jump straight to a phrase.
 
-**To open it:** just open the file directly in a browser —
+`scripts/build_index.py` regenerates `index.html`, a landing page linking to every `*-player.html` in the
+project — run it after adding a new conversation's player so it shows up there too.
 
+### The app (no terminal needed)
+
+**Bahasa Player.app** lives in `~/Applications` — double-click it (or find it in Spotlight/Launchpad) and it
+opens `index.html` in a clean, tab-free Chrome window, like a real app. This is the everyday way to use this —
+no commands required.
+
+If it ever needs rebuilding (e.g. after moving the project folder), the source is a one-line AppleScript that
+shells out to `open -na 'Google Chrome' --args --app=file://<path to index.html>`, compiled with:
 ```
-open ~/Learning-Bahasa-Indonesian/conversation-1-player.html
+osacompile -o ~/Applications/"Bahasa Player.app" bahasa-player.applescript
 ```
 
-(or double-click it in Finder). The audio loads from the adjacent `audio/` folder via a relative path, so this
-works with zero setup.
+### Manual fallback
 
-If seeking feels broken in your browser (some browsers are picky about local-file media seeking), serve the
-folder over HTTP instead, which is guaranteed to support seeking:
+Opening the HTML directly also works, if you ever want it in a normal browser tab instead:
+```
+open ~/Learning-Bahasa-Indonesian/index.html
+```
 
+If seeking feels broken in a browser (some are picky about local-file media seeking), serve the folder over
+HTTP instead, which is guaranteed to support seeking:
 ```
 cd ~/Learning-Bahasa-Indonesian && npx --yes http-server -p 8770 --cors -c-1
 ```
-
-then open `http://localhost:8770/conversation-1-player.html`. (Plain `python3 -m http.server` does *not* work
-for this — it doesn't support the HTTP Range requests that audio seeking needs.)
+then open `http://localhost:8770/index.html`. (Plain `python3 -m http.server` does *not* work for this — it
+doesn't support the HTTP Range requests that audio seeking needs.)
 
 ## The four passes (per recording, or per meaty chunk of one)
 
