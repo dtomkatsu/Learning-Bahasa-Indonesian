@@ -63,12 +63,18 @@ soon). Neither needs a server or an account.
 
 - **`flashcards.html`** (`scripts/build_flashcards.py`) — flips through every `vocab/*.tsv` deck. Filter by tag
   (particle, food, family, etc.), rate "still learning" / "got it", `space` to flip, `1`/`2` to rate.
-- **`quiz.html`** (`scripts/build_quiz.py`) — cross-references vocab terms against real transcript lines. A term
-  used inside a longer sentence becomes a **cloze** card (blank it, guess from context, play the actual audio
-  of that line, then reveal). A term that basically *is* the whole line (most of the "phrase" tag entries)
-  becomes a **recall** card (listen first, then reveal). Terms with no match in any transcript are silently
-  skipped — not every vocab word needs its own exercise. Re-run this after adding a new conversation or vocab
-  deck; it re-scans everything from scratch.
+- **`quiz.html`** (`scripts/build_quiz.py`) — two modes, toggled at the top of the page:
+  - **Word** — cross-references vocab terms against real transcript lines. A term used inside a longer sentence
+    becomes a **cloze** card (blank it, guess from context, play the actual audio of that line, then reveal). A
+    term that basically *is* the whole line (most of the "phrase" tag entries) becomes a **recall** card (listen
+    first, then reveal). Terms with no match in any transcript are silently skipped.
+  - **Sentence** — tests whether you followed the *whole* line, not just one word in it. Every Indonesian line
+    with a translation and at least 4 words becomes a card: read (and optionally play) the real sentence, then
+    reveal the full English translation and self-rate. Filter switches to conversation source instead of vocab
+    tag in this mode.
+  
+  Both modes share the same 4-box mastery tracking (tracked separately per mode) and re-scan everything from
+  scratch — re-run after adding a new conversation or vocab deck.
 
 Both are linked from `index.html` under "Practice," so they're reachable from **Bahasa Player.app** like
 everything else — no separate app needed.

@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 """
-Build quiz.html — cloze (fill-in-the-blank) comprehension exercises generated
-from real transcript lines that contain a vocab-deck term, with inline audio
-playback of the source line.
+Build quiz.html — comprehension exercises generated from real transcript
+lines, with inline audio playback of the source line. Two modes:
+
+- Word (cloze/recall): cross-references every vocab/*.tsv term against each
+  conversation's Indonesian-language lines. A term that appears inside a
+  longer sentence becomes a cloze card (blank the term, guess it from
+  context); a term that IS basically the whole line becomes a "recall" card
+  (listen, then reveal). Terms with no match in any transcript are skipped.
+- Sentence: every Indonesian line with a translation and at least
+  MIN_SENTENCE_WORDS words becomes a whole-sentence comprehension check —
+  read/listen to the real line, then reveal the translation and self-rate.
+  Tests whether you followed the whole thought, not just one word in it.
 
 For each conversation (matched by transcripts/<name>.clean.txt +
-audio/<name>.<ext> + an optional transcripts/<name>.translations.json),
-cross-references every vocab/*.tsv term against that conversation's
-Indonesian-language lines. A term that appears inside a longer sentence
-becomes a cloze card (blank the term, guess it from context); a term that
-IS basically the whole line becomes a "recall" card (listen, then reveal).
-Terms with no match in any transcript are skipped — not every vocab word
-needs to have been said with extra context.
+audio/<name>.<ext> + an optional transcripts/<name>.translations.json).
 
 Progress persists in the browser via localStorage, using the same 4-box
-mastery system as flashcards.html.
+mastery system as flashcards.html (word and sentence modes track separately).
 
 Usage:
     python3 build_quiz.py
@@ -39,6 +42,8 @@ ENTRY_RE = re.compile(
 SKIP_TAGS = {"codeswitch"}
 
 AUDIO_EXTS = [".m4a", ".mp3", ".wav", ".mp4"]
+
+MIN_SENTENCE_WORDS = 4
 
 
 def ts_to_seconds(ts):
@@ -143,6 +148,8 @@ def build_quiz_items(vocab, convos):
             + html_escape(e["text"][m.end():])
         )
         items.append({
+            "id": f"word::{convo['name']}::{i}::{v['front']}",
+            "kind": "word",
             "term": v["front"],
             "hint": v["back"],
             "tag": v["tag"],
@@ -156,6 +163,36 @@ def build_quiz_items(vocab, convos):
             "audio": convo["audio"],
             "source": convo["label"],
         })
+    return items
+
+
+def build_sentence_items(convos, min_words=MIN_SENTENCE_WORDS):
+    """Whole-sentence comprehension items: every real Indonesian line with a
+    translation, tests whether the whole thought was understood, not just
+    one word in it. Filtered to a minimum length so trivial one-word
+    utterances ("Iya.", "Hah?") don't dilute the exercise."""
+    items = []
+    for convo in convos:
+        entries = convo["entries"]
+        for i, e in enumerate(entries):
+            if e["lang"] != "Indonesian":
+                continue
+            en = e.get("en")
+            if not en or len(e["text"].split()) < min_words:
+                continue
+            next_sec = entries[i + 1]["sec"] if i + 1 < len(entries) else e["sec"] + 6
+            items.append({
+                "id": f"sentence::{convo['name']}::{i}",
+                "kind": "sentence",
+                "tag": convo["label"],
+                "sentence": e["text"],
+                "sentenceHtml": html_escape(e["text"]),
+                "translation": en,
+                "sec": e["sec"],
+                "nextSec": min(next_sec, e["sec"] + 14),
+                "audio": convo["audio"],
+                "source": convo["label"],
+            })
     return items
 
 
@@ -182,6 +219,11 @@ PAGE = """<!doctype html>
   .stats { color:var(--muted); font-size:0.8rem; margin-bottom:16px; }
   select { font-size:0.8rem; padding:5px 7px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--fg); }
+  .modes { display:flex; gap:6px; margin-bottom:10px; }
+  button.modeBtn { font-size:0.82rem; padding:6px 12px; border-radius:7px; border:1px solid var(--line);
+    background:var(--bg); color:var(--fg); cursor:pointer; }
+  button.modeBtn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .modeHint { color:var(--muted); font-size:0.78rem; margin:-2px 0 14px; }
   #card { border:1px solid var(--line); border-radius:14px; background:var(--card);
     min-height:200px; padding:24px 22px; margin:18px 0; }
   .source { font-size:0.72rem; color:var(--muted); margin-bottom:10px; }
@@ -217,6 +259,11 @@ PAGE = """<!doctype html>
     <h1>Quiz</h1>
     <a class="back" href="index.html">&larr; all conversations</a>
   </div>
+  <div class="modes">
+    <button class="modeBtn active" data-mode="word">Word</button>
+    <button class="modeBtn" data-mode="sentence">Sentence</button>
+  </div>
+  <div class="modeHint" id="modeHint"></div>
   <div class="stats" id="stats"></div>
   <select id="tagFilter"></select>
   <div id="card"></div>
@@ -236,26 +283,55 @@ function loadProgress() {
 }
 function saveProgress(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
 let progress = loadProgress();
-function keyOf(item) { return item.source + '::' + item.term; }
+function keyOf(item) { return item.id; }
 function boxOf(item) { const k = keyOf(item); return (progress[k] && progress[k].box) || 0; }
 
-let pool = ITEMS.slice();
+let mode = 'word';
+let pool = [];
 let current = null;
 let revealed = false;
 let stopAt = null;
 
 const cardEl = document.getElementById('card');
 const tagFilter = document.getElementById('tagFilter');
+const modeHintEl = document.getElementById('modeHint');
 
-function uniqueTags() { return [...new Set(ITEMS.map(d => d.tag))].sort(); }
-tagFilter.innerHTML = '<option value="">All tags</option>' +
-  uniqueTags().map(t => `<option value="${t}">${t}</option>`).join('');
+const MODE_HINTS = {
+  word: 'One word blanked out of a real sentence — recall it from context.',
+  sentence: 'A whole real line — read or listen, then reveal the translation and rate yourself on the whole thing, not just one word.',
+};
+
+function itemsForMode(m) { return ITEMS.filter(d => d.kind === m); }
+
+function rebuildTagFilter() {
+  const modeItems = itemsForMode(mode);
+  const label = mode === 'word' ? 'All tags' : 'All conversations';
+  const tags = [...new Set(modeItems.map(d => d.tag))].sort();
+  tagFilter.innerHTML = `<option value="">${label}</option>` +
+    tags.map(t => `<option value="${t}">${t}</option>`).join('');
+}
+
 tagFilter.addEventListener('change', () => { applyFilter(); pickNext(); });
 
 function applyFilter() {
+  const modeItems = itemsForMode(mode);
   const t = tagFilter.value;
-  pool = t ? ITEMS.filter(d => d.tag === t) : ITEMS.slice();
+  pool = t ? modeItems.filter(d => d.tag === t) : modeItems;
 }
+
+document.querySelectorAll('.modeBtn').forEach(b => {
+  b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('active', x === b));
+    modeHintEl.textContent = MODE_HINTS[mode];
+    rebuildTagFilter();
+    applyFilter();
+    pickNext();
+  });
+});
+
+modeHintEl.textContent = MODE_HINTS[mode];
+rebuildTagFilter();
 applyFilter();
 
 function weightedPick(items) {
@@ -275,19 +351,31 @@ function escapeHtml(s) {
 
 function renderCard() {
   if (!current) { cardEl.innerHTML = '<div class="empty">No quiz items for this tag.</div>'; return; }
-  const promptText = current.mode === 'cloze'
-    ? escapeHtml(current.cloze).replace('_____', '<span class="blank">_____</span>')
-    : '🔊 Listen first, then reveal.';
-  cardEl.innerHTML = `
-    <div class="source">${current.source} · ${current.tag}</div>
-    <div class="prompt">${promptText}</div>
-    <div class="hint">clue: ${escapeHtml(current.hint)}</div>
-    <div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>
-    <button class="revealBtn" id="revealBtn">Reveal answer</button>
-    <div class="reveal" id="revealBox">
+
+  let promptText, hintLine, revealInner;
+  if (current.kind === 'sentence') {
+    promptText = current.sentenceHtml;
+    hintLine = '';
+    revealInner = `<div class="en">${escapeHtml(current.translation)}</div>`;
+  } else {
+    promptText = current.mode === 'cloze'
+      ? escapeHtml(current.cloze).replace('_____', '<span class="blank">_____</span>')
+      : '🔊 Listen first, then reveal.';
+    hintLine = `<div class="hint">clue: ${escapeHtml(current.hint)}</div>`;
+    revealInner = `
       <div class="id">${current.sentenceHtml}</div>
       <div class="en">${current.translation ? escapeHtml(current.translation) : ''}</div>
-    </div>
+    `;
+  }
+
+  const sourceLine = current.kind === 'sentence' ? current.source : `${current.source} · ${current.tag}`;
+  cardEl.innerHTML = `
+    <div class="source">${sourceLine}</div>
+    <div class="prompt">${promptText}</div>
+    ${hintLine}
+    <div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>
+    <button class="revealBtn" id="revealBtn">Reveal ${current.kind === 'sentence' ? 'translation' : 'answer'}</button>
+    <div class="reveal" id="revealBox">${revealInner}</div>
     <div class="rate" id="rateRow" hidden>
       <button class="rate-btn bad" id="btnBad">Missed it</button>
       <button class="rate-btn good" id="btnGood">Got it</button>
@@ -334,7 +422,7 @@ function rate(good) {
 function pickNext() {
   if (!pool.length) { current = null; renderCard(); renderStats(); return; }
   let next = weightedPick(pool);
-  if (pool.length > 1 && current && next.term === current.term && next.source === current.source) next = weightedPick(pool);
+  if (pool.length > 1 && current && next.id === current.id) next = weightedPick(pool);
   current = next;
   revealed = false;
   stopAt = null;
@@ -343,10 +431,12 @@ function pickNext() {
 }
 
 function renderStats() {
+  const modeItems = itemsForMode(mode);
   const boxes = [0,0,0,0];
-  ITEMS.forEach(d => boxes[boxOf(d)]++);
+  modeItems.forEach(d => boxes[boxOf(d)]++);
+  const label = mode === 'word' ? 'word items' : 'sentences';
   document.getElementById('stats').textContent =
-    `${ITEMS.length} quiz items — new ${boxes[0]}, learning ${boxes[1]+boxes[2]}, mastered ${boxes[3]}`;
+    `${modeItems.length} ${label} — new ${boxes[0]}, learning ${boxes[1]+boxes[2]}, mastered ${boxes[3]}`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 
@@ -364,12 +454,15 @@ pickNext();
 def main():
     vocab = load_vocab()
     convos = load_conversations()
-    items = build_quiz_items(vocab, convos)
+    word_items = build_quiz_items(vocab, convos)
+    sentence_items = build_sentence_items(convos)
+    items = word_items + sentence_items
     html = PAGE.replace("__DATA__", json.dumps(items, ensure_ascii=False))
     OUT.write_text(html, encoding="utf-8")
-    cloze_n = sum(1 for i in items if i["mode"] == "cloze")
-    print(f"wrote {OUT}: {len(items)} quiz items ({cloze_n} cloze, {len(items)-cloze_n} recall) "
-          f"from {len(vocab)} vocab terms across {len(convos)} conversation(s)")
+    cloze_n = sum(1 for i in word_items if i["mode"] == "cloze")
+    print(f"wrote {OUT}: {len(word_items)} word items ({cloze_n} cloze, {len(word_items)-cloze_n} recall) "
+          f"from {len(vocab)} vocab terms, {len(sentence_items)} sentence items, "
+          f"across {len(convos)} conversation(s)")
 
 
 if __name__ == "__main__":
