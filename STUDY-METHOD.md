@@ -62,9 +62,18 @@ up there too.
 
 ## Comprehension exercises
 
-Two practice modes, both self-contained HTML/JS with progress saved to the browser's `localStorage` (a simple
-4-box mastery system: get it right, it shows up less often; get it wrong, it resets to box 0 and comes back
-soon). Neither needs a server or an account.
+Two practice modes, both self-contained HTML/JS. Neither needs a server or an account — everything lives in the
+browser's `localStorage`.
+
+Both use real spaced repetition (`scripts/_srs_js.py`, shared by both build scripts) — a simplified SM-2, the
+same family Anki uses, not just a session-level shuffle. Each card tracks an ease factor, an interval (days),
+and a due date. Answer correctly and the interval grows (1 day → 3 days → interval × ease, ease inching up);
+miss it and the interval resets with a short 10-minute relearn step so it resurfaces the same session instead of
+vanishing for a day. **Only cards that are actually due get shown** — if you're caught up, the app says so
+("🎉 All caught up! Next review in Xh") rather than pretending there's more to do, with a "Practice ahead
+anyway" button if you want to review early regardless. Flashcards and quiz's Word/Sentence modes each schedule
+independently (separate `localStorage` keys), since knowing a word cold isn't the same signal as recognizing it
+in a cloze or following it in a full sentence.
 
 - **`flashcards.html`** (`scripts/build_flashcards.py`) — flips through every `vocab/*.tsv` deck. Filter by tag
   (particle, food, family, etc.), rate "still learning" / "got it", `space` to flip, `1`/`2` to rate.
@@ -77,12 +86,15 @@ soon). Neither needs a server or an account.
     with a translation and at least 4 words becomes a card: read (and optionally play) the real sentence, then
     reveal the full English translation and self-rate. Filter switches to conversation source instead of vocab
     tag in this mode.
-  
-  Both modes share the same 4-box mastery tracking (tracked separately per mode) and re-scan everything from
-  scratch — re-run after adding a new conversation or vocab deck. Each card also has a **"Not real content"**
-  button (same flagging system as the player) — use it if "Play line" is silent or the caption is ASR garbage;
-  it's excluded immediately and won't be regenerated on the next build since flags live in the browser, not the
-  transcript file. "Unflag lines (N)" clears everything if you flag something by mistake.
+
+  Re-run both build scripts after adding a new conversation or vocab deck — they re-scan everything from
+  scratch (existing review schedules aren't affected; only the item pool changes). Each card also has a
+  **"Not real content"** button (same flagging system as the player) — use it if "Play line" is silent or the
+  caption is ASR garbage; it's excluded immediately and won't be regenerated on the next build since flags live
+  in the browser, not the transcript file. "Unflag lines (N)" clears everything if you flag something by mistake.
+
+Old "box"-based progress (from before spaced repetition existed) is migrated automatically on first load into
+real interval/due-date state, then the legacy key is deleted — no action needed, and it only happens once.
 
 Both are linked from `index.html` under "Practice," so they're reachable from **Bahasa Player.app** like
 everything else — no separate app needed.

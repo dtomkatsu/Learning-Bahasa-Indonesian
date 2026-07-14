@@ -3,10 +3,11 @@
 Build flashcards.html — a self-contained flip-card vocab trainer over every
 vocab/*.tsv deck (Indonesian / English+notes / tag columns, no header).
 
-Progress persists in the browser's localStorage (per-browser, not synced),
-using a simple 4-box mastery system: wrong answers or "still learning"
-resets a card to box 0; "got it" advances it up to box 3. Lower-box cards
-are shown more often.
+Uses real spaced repetition (simplified SM-2, see scripts/_srs_js.py): each
+card has an interval/ease/due-date in localStorage, and only cards that are
+actually due get shown. Correct answers grow the interval; misses reset it
+with a short relearn step. If nothing's due, there's a "practice ahead"
+fallback rather than a dead end.
 
 Usage:
     python3 build_flashcards.py
@@ -14,6 +15,8 @@ Usage:
 import csv
 import json
 from pathlib import Path
+
+from _srs_js import SRS_JS
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -62,7 +65,9 @@ PAGE = """<!doctype html>
   .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
-  .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:60px; }
+  .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
+  .empty .sub { font-size:0.8rem; margin-top:6px; }
+  .empty button.plain { margin-top:14px; }
 </style>
 </head>
 <body>
@@ -85,25 +90,19 @@ PAGE = """<!doctype html>
   </div>
 </div>
 <script>
+__SRS_JS__
 const DECK = __DATA__;
-const STORE_KEY = 'bahasa:flashcards:v1';
+const SRS_KEY = 'bahasa:flashcards:srs:v1';
+const LEGACY_KEY = 'bahasa:flashcards:v1';
 
-function loadProgress() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
-}
-function saveProgress(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
-let progress = loadProgress();
-
-function boxOf(front) { return (progress[front] && progress[front].box) || 0; }
+let srs = srsMigrateFromBoxes(SRS_KEY, LEGACY_KEY);
 
 let pool = DECK.slice();
 let current = null;
 let flipped = false;
+let practiceAhead = false;
 
 const cardEl = document.getElementById('card');
-const frontEl = cardEl.querySelector('.front');
-const enEl = cardEl.querySelector('.en');
-const tagEl = cardEl.querySelector('.tag');
 const rateRow = document.getElementById('rateRow');
 const tagFilter = document.getElementById('tagFilter');
 
@@ -112,7 +111,7 @@ function uniqueTags() {
 }
 tagFilter.innerHTML = '<option value="">All tags</option>' +
   uniqueTags().map(t => `<option value="${t}">${t}</option>`).join('');
-tagFilter.addEventListener('change', () => { applyFilter(); pickNext(); });
+tagFilter.addEventListener('change', () => { practiceAhead = false; applyFilter(); pickNext(); });
 
 function applyFilter() {
   const t = tagFilter.value;
@@ -120,41 +119,47 @@ function applyFilter() {
 }
 applyFilter();
 
-function weightedPick(items) {
-  const weights = items.map(d => Math.max(1, 4 - boxOf(d.front)));
-  const total = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < items.length; i++) {
-    r -= weights[i];
-    if (r <= 0) return items[i];
-  }
-  return items[items.length - 1];
-}
+function dueIn(items) { return items.filter(d => srsIsDue(srs[d.front])); }
 
 function pickNext() {
-  if (!pool.length) { renderEmpty(); return; }
-  let next = weightedPick(pool);
-  if (pool.length > 1 && current && next.front === current.front) next = weightedPick(pool);
+  if (!pool.length) { renderEmpty('No cards for this tag.'); return; }
+  const due = practiceAhead ? pool : dueIn(pool);
+  if (!due.length) { renderAllCaughtUp(); return; }
+  let next = due[Math.floor(Math.random() * due.length)];
+  if (due.length > 1 && current && next.front === current.front) next = due[Math.floor(Math.random() * due.length)];
   current = next;
   flipped = false;
-  cardEl.classList.remove('flipped');
-  frontEl.textContent = current.front;
-  enEl.textContent = current.back;
-  tagEl.textContent = current.tag;
+  cardEl.className = '';
+  cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div>';
+  cardEl.querySelector('.front').textContent = current.front;
+  cardEl.querySelector('.en').textContent = current.back;
+  cardEl.querySelector('.tag').textContent = current.tag;
   rateRow.hidden = true;
   renderStats();
 }
 
-function renderEmpty() {
-  cardEl.innerHTML = '<div class="empty">No cards for this tag.</div>';
+function renderEmpty(msg) {
+  current = null;
+  cardEl.innerHTML = `<div class="empty">${msg}</div>`;
   rateRow.hidden = true;
 }
 
+function renderAllCaughtUp() {
+  current = null;
+  const dues = pool.map(d => (srs[d.front] && srs[d.front].due) || Infinity);
+  const nextDue = Math.min(...dues);
+  cardEl.innerHTML = `<div class="empty">🎉 All caught up!<div class="sub">Next review in ${srsFmtDue(nextDue)}.</div>` +
+    `<button class="plain" id="aheadBtn">Practice ahead anyway</button></div>`;
+  rateRow.hidden = true;
+  document.getElementById('aheadBtn').addEventListener('click', () => { practiceAhead = true; pickNext(); });
+  renderStats();
+}
+
 function renderStats() {
-  const boxes = [0,0,0,0];
-  DECK.forEach(d => boxes[boxOf(d.front)]++);
+  const due = dueIn(pool).length;
+  const mature = pool.filter(d => srsIsMature(srs[d.front])).length;
   document.getElementById('stats').textContent =
-    `${DECK.length} cards — new ${boxes[0]}, learning ${boxes[1]+boxes[2]}, mastered ${boxes[3]}`;
+    `${DECK.length} cards — ${due} due now, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 
@@ -167,10 +172,9 @@ function flip() {
 
 function rate(good) {
   if (!current) return;
-  const front = current.front;
-  const box = boxOf(front);
-  progress[front] = { box: good ? Math.min(3, box + 1) : 0 };
-  saveProgress(progress);
+  srs[current.front] = srsSchedule(srs[current.front], good);
+  srsSave(SRS_KEY, srs);
+  practiceAhead = false;
   pickNext();
 }
 
@@ -178,7 +182,7 @@ cardEl.addEventListener('click', flip);
 document.getElementById('btnBad').addEventListener('click', (e) => { e.stopPropagation(); rate(false); });
 document.getElementById('btnGood').addEventListener('click', (e) => { e.stopPropagation(); rate(true); });
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all flashcard progress?')) { progress = {}; saveProgress(progress); pickNext(); }
+  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === ' ') { e.preventDefault(); flip(); }
@@ -217,7 +221,10 @@ def load_decks():
 
 def main():
     deck = load_decks()
-    html = PAGE.replace("__DATA__", json.dumps(deck, ensure_ascii=False))
+    html = (
+        PAGE.replace("__SRS_JS__", SRS_JS)
+        .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
+    )
     OUT.write_text(html, encoding="utf-8")
     print(f"wrote {OUT} with {len(deck)} cards from {len(list(VOCAB_DIR.glob('*.tsv')))} deck(s)")
 

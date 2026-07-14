@@ -41,7 +41,9 @@
   .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
-  .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:60px; }
+  .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
+  .empty .sub { font-size:0.8rem; margin-top:6px; }
+  .empty button.plain { margin-top:14px; }
 </style>
 </head>
 <body>
@@ -64,25 +66,83 @@
   </div>
 </div>
 <script>
-const DECK = [{"front": "kan", "back": "tag question / seeking agreement — \"right?\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "sih", "back": "softener / mild emphasis or curiosity", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "dong", "back": "insistence — \"come on, obviously\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "loh / lho", "back": "mild surprise, \"you know\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "nih", "back": "here — draws attention to something close", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "kok", "back": "how come? — surprise or mild complaint", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "deh", "back": "softening a suggestion / conceding a point", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "gitu / begitu", "back": "like that — trails off a sentence", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "banget", "back": "very / so — intensifier", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "mendingan", "back": "better off, rather — for comparing options", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "entar", "back": "colloquial for \"nanti\" — later", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "makanya", "back": "that's why", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "atuh", "back": "Sundanese softener/emphasis particle, no direct translation", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "mah", "back": "Sundanese topic marker, roughly \"as for...\"", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "udah", "back": "colloquial \"sudah\" — already", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "belum", "back": "not yet", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "nggak / enggak", "back": "colloquial \"tidak\" — not, no", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "iya", "back": "yes / right (softer than \"ya\")", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kalau", "back": "if / when (conditional)", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "soalnya", "back": "because, the thing is...", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kayaknya", "back": "it seems like, I think", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "gimana", "back": "colloquial \"bagaimana\" — how", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "biar", "back": "so that / \"in order to\"", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "Mami", "back": "Mom (used directly, not \"Ibu\")", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Papi / Bapak", "back": "Dad", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Mbak", "back": "older sister / polite term for young woman", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Dek / Adek", "back": "younger sibling, term of endearment", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "sayangku", "back": "my love/darling — affectionate term", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "salim", "back": "hand-to-forehead greeting gesture for elders", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "assalamualaikum", "back": "Islamic greeting, \"peace be upon you\" — used casually arriving/leaving", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "tahu", "back": "tofu", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "lele", "back": "catfish", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "santan", "back": "coconut milk", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "bayam", "back": "spinach", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "ayam", "back": "chicken", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "nasi", "back": "rice", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "enak", "back": "tasty, delicious", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "kupingmu", "back": "your ear — used scoldingly re: earbuds/headphones", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "aplikasi", "back": "application, app", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "unduh / download", "back": "to download", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "ngecas", "back": "colloquial — to charge (a device)", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "kupas / patok", "back": "landmark / marker (for giving directions)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kanan", "back": "turn right", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kiri", "back": "turn left", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "lurus", "back": "straight (ahead)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "bensin", "back": "gasoline", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "gang", "back": "small alley/lane", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "jemput", "back": "to pick (someone) up", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "tiduran", "back": "to lie down", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "ganti baju", "back": "to change clothes", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "mati lampu", "back": "power outage", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "nyala", "back": "on / lit (of power, lights)", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "sedih", "back": "sad", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "takut", "back": "scared", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "bahaya", "back": "dangerous", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "seram", "back": "scary, creepy", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "aduh", "back": "ouch/oh no — general exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "astaga", "back": "oh my god — mild exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "manis", "back": "sweet (also: cute)", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "mantap", "back": "awesome, solid — approval", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "asik", "back": "fun, enjoyable", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "lumayan", "back": "decent, not bad, pretty good", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "gila", "back": "crazy — used as an intensifier exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "suku", "back": "ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "keturunan", "back": "descent, lineage", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "Ini dari sana?", "back": "Is this from there?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak apa-apa", "back": "It's okay / no worries / it doesn't matter", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ayo kita nonton", "back": "Let's go watch [something]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sudah semakin lancar", "back": "[You're] getting more fluent already", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Tahu kan berapa nih harganya?", "back": "You know how much this costs, right?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kalau tak dengar suaramu", "back": "If I don't hear your voice (song lyric quoted mid-conversation)", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Jangan ganggu", "back": "Don't disturb [me]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sabar", "back": "Be patient / hang on", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ya udah", "back": "Alright then / fine, okay — resigned agreement", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak seru", "back": "Not fun / that's no fun", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Apa namanya?", "back": "What's it called again? — filler while searching for a word", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kamu mau download di anu, di laptopmu?", "back": "Do you want to download it on your laptop?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ini di atas dia menunjukkan Indonesia", "back": "Up here it shows Indonesian [on screen]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak keaslian", "back": "It's not the real/original one", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Terlalu maksa", "back": "That's too forced / trying too hard", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kok aneh", "back": "That's weird, huh", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Can I ask a question?", "back": "code-switch: Dila asks permission mid-Indonesian-sentence in English", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "Reprimanded", "back": "code-switch: Devin supplies the English legal term Dila reaches for", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "sayangku's kids' ankle", "back": "running joke/mishearing during the recording — good example of ASR mangling affectionate teasing", "tag": "codeswitch", "deck": "conversation-1-vocab"}];
-const STORE_KEY = 'bahasa:flashcards:v1';
 
-function loadProgress() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RELEARN_MS = 10 * 60 * 1000;
+const MATURE_INTERVAL_DAYS = 21;
+
+function srsLoad(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; }
 }
-function saveProgress(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
-let progress = loadProgress();
+function srsSave(key, s) { localStorage.setItem(key, JSON.stringify(s)); }
 
-function boxOf(front) { return (progress[front] && progress[front].box) || 0; }
+// One-time migration from the old session-only "box" system (no due dates)
+// into real SRS state, then removes the legacy key so it isn't re-applied.
+function srsMigrateFromBoxes(srsKey, legacyKey) {
+  let srs = srsLoad(srsKey);
+  const legacy = srsLoad(legacyKey);
+  if (!Object.keys(legacy).length) return srs;
+  const stepIntervals = [0, 1, 3, 6];
+  for (const [id, v] of Object.entries(legacy)) {
+    if (srs[id]) continue;
+    const box = (v && v.box) || 0;
+    srs[id] = { ease: 2.3, interval: stepIntervals[Math.min(box, 3)], reps: box, due: Date.now() };
+  }
+  srsSave(srsKey, srs);
+  localStorage.removeItem(legacyKey);
+  return srs;
+}
+
+function srsIsDue(state) {
+  return !state || !state.due || state.due <= Date.now();
+}
+
+function srsIsMature(state) {
+  return !!(state && state.interval >= MATURE_INTERVAL_DAYS);
+}
+
+function srsSchedule(state, good) {
+  const s = state ? Object.assign({}, state) : { ease: 2.3, interval: 0, reps: 0, due: 0 };
+  if (good) {
+    s.reps = (s.reps || 0) + 1;
+    if (s.reps === 1) s.interval = 1;
+    else if (s.reps === 2) s.interval = 3;
+    else s.interval = Math.max(1, Math.round(s.interval * s.ease));
+    s.ease = Math.min(3.0, s.ease + 0.1);
+    s.due = Date.now() + s.interval * DAY_MS;
+  } else {
+    s.reps = 0;
+    s.interval = 0;
+    s.ease = Math.max(1.3, s.ease - 0.2);
+    s.due = Date.now() + RELEARN_MS;
+  }
+  return s;
+}
+
+function srsFmtDue(ts) {
+  if (!isFinite(ts)) return 'later';
+  const diff = ts - Date.now();
+  if (diff <= 0) return 'now';
+  const mins = Math.round(diff / 60000);
+  if (mins < 60) return mins + 'm';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + 'h';
+  const days = Math.round(hrs / 24);
+  return days + 'd';
+}
+
+const DECK = [{"front": "kan", "back": "tag question / seeking agreement — \"right?\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "sih", "back": "softener / mild emphasis or curiosity", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "dong", "back": "insistence — \"come on, obviously\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "loh / lho", "back": "mild surprise, \"you know\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "nih", "back": "here — draws attention to something close", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "kok", "back": "how come? — surprise or mild complaint", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "deh", "back": "softening a suggestion / conceding a point", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "gitu / begitu", "back": "like that — trails off a sentence", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "banget", "back": "very / so — intensifier", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "mendingan", "back": "better off, rather — for comparing options", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "entar", "back": "colloquial for \"nanti\" — later", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "makanya", "back": "that's why", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "atuh", "back": "Sundanese softener/emphasis particle, no direct translation", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "mah", "back": "Sundanese topic marker, roughly \"as for...\"", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "udah", "back": "colloquial \"sudah\" — already", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "belum", "back": "not yet", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "nggak / enggak", "back": "colloquial \"tidak\" — not, no", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "iya", "back": "yes / right (softer than \"ya\")", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kalau", "back": "if / when (conditional)", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "soalnya", "back": "because, the thing is...", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kayaknya", "back": "it seems like, I think", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "gimana", "back": "colloquial \"bagaimana\" — how", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "biar", "back": "so that / \"in order to\"", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "Mami", "back": "Mom (used directly, not \"Ibu\")", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Papi / Bapak", "back": "Dad", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Mbak", "back": "older sister / polite term for young woman", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Dek / Adek", "back": "younger sibling, term of endearment", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "sayangku", "back": "my love/darling — affectionate term", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "salim", "back": "hand-to-forehead greeting gesture for elders", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "assalamualaikum", "back": "Islamic greeting, \"peace be upon you\" — used casually arriving/leaving", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "tahu", "back": "tofu", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "lele", "back": "catfish", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "santan", "back": "coconut milk", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "bayam", "back": "spinach", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "ayam", "back": "chicken", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "nasi", "back": "rice", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "enak", "back": "tasty, delicious", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "kupingmu", "back": "your ear — used scoldingly re: earbuds/headphones", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "aplikasi", "back": "application, app", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "unduh / download", "back": "to download", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "ngecas", "back": "colloquial — to charge (a device)", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "kupas / patok", "back": "landmark / marker (for giving directions)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kanan", "back": "turn right", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kiri", "back": "turn left", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "lurus", "back": "straight (ahead)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "bensin", "back": "gasoline", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "gang", "back": "small alley/lane", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "jemput", "back": "to pick (someone) up", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "tiduran", "back": "to lie down", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "ganti baju", "back": "to change clothes", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "mati lampu", "back": "power outage", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "nyala", "back": "on / lit (of power, lights)", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "sedih", "back": "sad", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "takut", "back": "scared", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "bahaya", "back": "dangerous", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "seram", "back": "scary, creepy", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "aduh", "back": "ouch/oh no — general exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "astaga", "back": "oh my god — mild exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "manis", "back": "sweet (also: cute)", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "mantap", "back": "awesome, solid — approval", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "asik", "back": "fun, enjoyable", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "lumayan", "back": "decent, not bad, pretty good", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "gila", "back": "crazy — used as an intensifier exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "suku", "back": "ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "keturunan", "back": "descent, lineage", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "Ini dari sana?", "back": "Is this from there?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak apa-apa", "back": "It's okay / no worries / it doesn't matter", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ayo kita nonton", "back": "Let's go watch [something]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sudah semakin lancar", "back": "[You're] getting more fluent already", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Tahu kan berapa nih harganya?", "back": "You know how much this costs, right?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kalau tak dengar suaramu", "back": "If I don't hear your voice (song lyric quoted mid-conversation)", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Jangan ganggu", "back": "Don't disturb [me]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sabar", "back": "Be patient / hang on", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ya udah", "back": "Alright then / fine, okay — resigned agreement", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak seru", "back": "Not fun / that's no fun", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Apa namanya?", "back": "What's it called again? — filler while searching for a word", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kamu mau download di anu, di laptopmu?", "back": "Do you want to download it on your laptop?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ini di atas dia menunjukkan Indonesia", "back": "Up here it shows Indonesian [on screen]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak keaslian", "back": "It's not the real/original one", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Terlalu maksa", "back": "That's too forced / trying too hard", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kok aneh", "back": "That's weird, huh", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Can I ask a question?", "back": "code-switch: Dila asks permission mid-Indonesian-sentence in English", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "Reprimanded", "back": "code-switch: Devin supplies the English legal term Dila reaches for", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "sayangku's kids' ankle", "back": "running joke/mishearing during the recording — good example of ASR mangling affectionate teasing", "tag": "codeswitch", "deck": "conversation-1-vocab"}];
+const SRS_KEY = 'bahasa:flashcards:srs:v1';
+const LEGACY_KEY = 'bahasa:flashcards:v1';
+
+let srs = srsMigrateFromBoxes(SRS_KEY, LEGACY_KEY);
 
 let pool = DECK.slice();
 let current = null;
 let flipped = false;
+let practiceAhead = false;
 
 const cardEl = document.getElementById('card');
-const frontEl = cardEl.querySelector('.front');
-const enEl = cardEl.querySelector('.en');
-const tagEl = cardEl.querySelector('.tag');
 const rateRow = document.getElementById('rateRow');
 const tagFilter = document.getElementById('tagFilter');
 
@@ -91,7 +151,7 @@ function uniqueTags() {
 }
 tagFilter.innerHTML = '<option value="">All tags</option>' +
   uniqueTags().map(t => `<option value="${t}">${t}</option>`).join('');
-tagFilter.addEventListener('change', () => { applyFilter(); pickNext(); });
+tagFilter.addEventListener('change', () => { practiceAhead = false; applyFilter(); pickNext(); });
 
 function applyFilter() {
   const t = tagFilter.value;
@@ -99,41 +159,47 @@ function applyFilter() {
 }
 applyFilter();
 
-function weightedPick(items) {
-  const weights = items.map(d => Math.max(1, 4 - boxOf(d.front)));
-  const total = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < items.length; i++) {
-    r -= weights[i];
-    if (r <= 0) return items[i];
-  }
-  return items[items.length - 1];
-}
+function dueIn(items) { return items.filter(d => srsIsDue(srs[d.front])); }
 
 function pickNext() {
-  if (!pool.length) { renderEmpty(); return; }
-  let next = weightedPick(pool);
-  if (pool.length > 1 && current && next.front === current.front) next = weightedPick(pool);
+  if (!pool.length) { renderEmpty('No cards for this tag.'); return; }
+  const due = practiceAhead ? pool : dueIn(pool);
+  if (!due.length) { renderAllCaughtUp(); return; }
+  let next = due[Math.floor(Math.random() * due.length)];
+  if (due.length > 1 && current && next.front === current.front) next = due[Math.floor(Math.random() * due.length)];
   current = next;
   flipped = false;
-  cardEl.classList.remove('flipped');
-  frontEl.textContent = current.front;
-  enEl.textContent = current.back;
-  tagEl.textContent = current.tag;
+  cardEl.className = '';
+  cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div>';
+  cardEl.querySelector('.front').textContent = current.front;
+  cardEl.querySelector('.en').textContent = current.back;
+  cardEl.querySelector('.tag').textContent = current.tag;
   rateRow.hidden = true;
   renderStats();
 }
 
-function renderEmpty() {
-  cardEl.innerHTML = '<div class="empty">No cards for this tag.</div>';
+function renderEmpty(msg) {
+  current = null;
+  cardEl.innerHTML = `<div class="empty">${msg}</div>`;
   rateRow.hidden = true;
 }
 
+function renderAllCaughtUp() {
+  current = null;
+  const dues = pool.map(d => (srs[d.front] && srs[d.front].due) || Infinity);
+  const nextDue = Math.min(...dues);
+  cardEl.innerHTML = `<div class="empty">🎉 All caught up!<div class="sub">Next review in ${srsFmtDue(nextDue)}.</div>` +
+    `<button class="plain" id="aheadBtn">Practice ahead anyway</button></div>`;
+  rateRow.hidden = true;
+  document.getElementById('aheadBtn').addEventListener('click', () => { practiceAhead = true; pickNext(); });
+  renderStats();
+}
+
 function renderStats() {
-  const boxes = [0,0,0,0];
-  DECK.forEach(d => boxes[boxOf(d.front)]++);
+  const due = dueIn(pool).length;
+  const mature = pool.filter(d => srsIsMature(srs[d.front])).length;
   document.getElementById('stats').textContent =
-    `${DECK.length} cards — new ${boxes[0]}, learning ${boxes[1]+boxes[2]}, mastered ${boxes[3]}`;
+    `${DECK.length} cards — ${due} due now, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 
@@ -146,10 +212,9 @@ function flip() {
 
 function rate(good) {
   if (!current) return;
-  const front = current.front;
-  const box = boxOf(front);
-  progress[front] = { box: good ? Math.min(3, box + 1) : 0 };
-  saveProgress(progress);
+  srs[current.front] = srsSchedule(srs[current.front], good);
+  srsSave(SRS_KEY, srs);
+  practiceAhead = false;
   pickNext();
 }
 
@@ -157,7 +222,7 @@ cardEl.addEventListener('click', flip);
 document.getElementById('btnBad').addEventListener('click', (e) => { e.stopPropagation(); rate(false); });
 document.getElementById('btnGood').addEventListener('click', (e) => { e.stopPropagation(); rate(true); });
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all flashcard progress?')) { progress = {}; saveProgress(progress); pickNext(); }
+  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === ' ') { e.preventDefault(); flip(); }

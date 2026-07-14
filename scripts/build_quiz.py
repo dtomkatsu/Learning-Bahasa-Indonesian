@@ -16,8 +16,10 @@ lines, with inline audio playback of the source line. Two modes:
 For each conversation (matched by transcripts/<name>.clean.txt +
 audio/<name>.<ext> + an optional transcripts/<name>.translations.json).
 
-Progress persists in the browser via localStorage, using the same 4-box
-mastery system as flashcards.html (word and sentence modes track separately).
+Progress persists in the browser via localStorage using real spaced
+repetition (simplified SM-2, see scripts/_srs_js.py) — only cards that are
+actually due get shown, word and sentence modes scheduled independently
+(item ids are prefixed by kind so they never collide in the one store).
 
 Usage:
     python3 build_quiz.py
@@ -27,6 +29,8 @@ import json
 import re
 from html import escape as html_escape
 from pathlib import Path
+
+from _srs_js import SRS_JS
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -264,7 +268,9 @@ PAGE = """<!doctype html>
   .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
-  .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:60px; }
+  .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:40px; }
+  .empty .sub { font-size:0.8rem; margin-top:6px; }
+  .empty button.plain { margin-top:14px; }
 </style>
 </head>
 <body>
@@ -289,18 +295,15 @@ PAGE = """<!doctype html>
 </div>
 <audio id="qaudio" preload="none"></audio>
 <script>
+__SRS_JS__
 const ITEMS = __DATA__;
-const STORE_KEY = 'bahasa:quiz:v1';
+const SRS_KEY = 'bahasa:quiz:srs:v1';
+const LEGACY_KEY = 'bahasa:quiz:v1';
 const FLAG_KEY = 'bahasa:flaggedLines:v1';
 const audio = document.getElementById('qaudio');
 
-function loadProgress() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch (e) { return {}; }
-}
-function saveProgress(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
-let progress = loadProgress();
-function keyOf(item) { return item.id; }
-function boxOf(item) { const k = keyOf(item); return (progress[k] && progress[k].box) || 0; }
+let srs = srsMigrateFromBoxes(SRS_KEY, LEGACY_KEY);
+let practiceAhead = false;
 
 function loadFlags() {
   try { return JSON.parse(localStorage.getItem(FLAG_KEY)) || {}; } catch (e) { return {}; }
@@ -337,7 +340,7 @@ function rebuildTagFilter() {
     tags.map(t => `<option value="${t}">${t}</option>`).join('');
 }
 
-tagFilter.addEventListener('change', () => { applyFilter(); pickNext(); });
+tagFilter.addEventListener('change', () => { practiceAhead = false; applyFilter(); pickNext(); });
 
 function applyFilter() {
   const modeItems = itemsForMode(mode);
@@ -348,6 +351,7 @@ function applyFilter() {
 document.querySelectorAll('.modeBtn').forEach(b => {
   b.addEventListener('click', () => {
     mode = b.dataset.mode;
+    practiceAhead = false;
     document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('active', x === b));
     modeHintEl.textContent = MODE_HINTS[mode];
     rebuildTagFilter();
@@ -360,24 +364,25 @@ modeHintEl.textContent = MODE_HINTS[mode];
 rebuildTagFilter();
 applyFilter();
 
-function weightedPick(items) {
-  const weights = items.map(d => Math.max(1, 4 - boxOf(d)));
-  const total = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < items.length; i++) {
-    r -= weights[i];
-    if (r <= 0) return items[i];
-  }
-  return items[items.length - 1];
-}
-
 function escapeHtml(s) {
   return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 }
 
-function renderCard() {
-  if (!current) { cardEl.innerHTML = '<div class="empty">No quiz items for this tag.</div>'; return; }
+function renderEmpty(msg) {
+  current = null;
+  cardEl.innerHTML = `<div class="empty">${msg}</div>`;
+}
 
+function renderAllCaughtUp() {
+  current = null;
+  const dues = pool.map(d => (srs[d.id] && srs[d.id].due) || Infinity);
+  const nextDue = Math.min(...dues);
+  cardEl.innerHTML = `<div class="empty">🎉 All caught up!<div class="sub">Next review in ${srsFmtDue(nextDue)}.</div>` +
+    `<button class="plain" id="aheadBtn">Practice ahead anyway</button></div>`;
+  document.getElementById('aheadBtn').addEventListener('click', () => { practiceAhead = true; pickNext(); });
+}
+
+function renderCard() {
   let promptText, hintLine, revealInner;
   if (current.kind === 'sentence') {
     promptText = current.sentenceHtml;
@@ -449,17 +454,18 @@ function reveal() {
 
 function rate(good) {
   if (!current) return;
-  const k = keyOf(current);
-  const box = boxOf(current);
-  progress[k] = { box: good ? Math.min(3, box + 1) : 0 };
-  saveProgress(progress);
+  srs[current.id] = srsSchedule(srs[current.id], good);
+  srsSave(SRS_KEY, srs);
+  practiceAhead = false;
   pickNext();
 }
 
 function pickNext() {
-  if (!pool.length) { current = null; renderCard(); renderStats(); return; }
-  let next = weightedPick(pool);
-  if (pool.length > 1 && current && next.id === current.id) next = weightedPick(pool);
+  if (!pool.length) { renderEmpty('No quiz items for this tag.'); renderStats(); return; }
+  const due = practiceAhead ? pool : pool.filter(d => srsIsDue(srs[d.id]));
+  if (!due.length) { renderAllCaughtUp(); renderStats(); return; }
+  let next = due[Math.floor(Math.random() * due.length)];
+  if (due.length > 1 && current && next.id === current.id) next = due[Math.floor(Math.random() * due.length)];
   current = next;
   revealed = false;
   stopAt = null;
@@ -469,16 +475,16 @@ function pickNext() {
 
 function renderStats() {
   const modeItems = itemsForMode(mode);
-  const boxes = [0,0,0,0];
-  modeItems.forEach(d => boxes[boxOf(d)]++);
+  const due = modeItems.filter(d => srsIsDue(srs[d.id])).length;
+  const mature = modeItems.filter(d => srsIsMature(srs[d.id])).length;
   const label = mode === 'word' ? 'word items' : 'sentences';
   document.getElementById('stats').textContent =
-    `${modeItems.length} ${label} — new ${boxes[0]}, learning ${boxes[1]+boxes[2]}, mastered ${boxes[3]}`;
+    `${modeItems.length} ${label} — ${due} due now, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all quiz progress?')) { progress = {}; saveProgress(progress); pickNext(); }
+  if (confirm('Reset all quiz progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
 });
 
 unflagBtn.addEventListener('click', () => {
@@ -506,7 +512,10 @@ def main():
     word_items = build_quiz_items(vocab, convos)
     sentence_items = build_sentence_items(convos)
     items = word_items + sentence_items
-    html = PAGE.replace("__DATA__", json.dumps(items, ensure_ascii=False))
+    html = (
+        PAGE.replace("__SRS_JS__", SRS_JS)
+        .replace("__DATA__", json.dumps(items, ensure_ascii=False))
+    )
     OUT.write_text(html, encoding="utf-8")
     cloze_n = sum(1 for i in word_items if i["mode"] == "cloze")
     print(f"wrote {OUT}: {len(word_items)} word items ({cloze_n} cloze, {len(word_items)-cloze_n} recall) "
