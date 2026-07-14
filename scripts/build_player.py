@@ -20,6 +20,7 @@ import argparse
 import json
 import re
 from html import escape
+from pathlib import Path
 
 ENTRY_RE = re.compile(
     r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(Speaker \d+):\s*\n\[(\w+)\]\s*\"(.*)\"",
@@ -36,9 +37,9 @@ def ts_to_seconds(ts):
     return h * 3600 + m * 60 + s
 
 
-def parse(raw):
+def parse(raw, name):
     entries = []
-    for m in ENTRY_RE.finditer(raw):
+    for i, m in enumerate(ENTRY_RE.finditer(raw)):
         ts, speaker, lang, text = m.groups()
         entries.append({
             "ts": ts,
@@ -46,8 +47,16 @@ def parse(raw):
             "speaker": speaker,
             "lang": lang,
             "text": text.strip(),
+            "lineId": f"{name}::{i}",
         })
     return entries
+
+
+def derive_name(transcript_path):
+    base = Path(transcript_path).name
+    if base.endswith(".clean.txt"):
+        return base[: -len(".clean.txt")]
+    return Path(transcript_path).stem
 
 
 PAGE = """<!doctype html>
@@ -61,12 +70,12 @@ PAGE = """<!doctype html>
     color-scheme: light dark;
     --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --line: #e5e7eb;
     --accent: #2563eb; --accent-bg: #eff6ff; --id-tag: #b45309; --en-tag: #1d4ed8;
-    --btn-bg: #f3f4f6; --btn-fg: #1a1a1a;
+    --btn-bg: #f3f4f6; --btn-fg: #1a1a1a; --bad: #dc2626;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#111318; --fg:#e7e9ee; --muted:#9aa1ac; --line:#2a2e37;
       --accent:#5b9dff; --accent-bg:#152238; --id-tag:#e0a458; --en-tag:#7cb0ff;
-      --btn-bg:#1d2129; --btn-fg:#e7e9ee; }
+      --btn-bg:#1d2129; --btn-fg:#e7e9ee; --bad:#f87171; }
   }
   * { box-sizing: border-box; }
   html, body { margin:0; padding:0; background:var(--bg); color:var(--fg);
@@ -98,9 +107,15 @@ PAGE = """<!doctype html>
   .text { font-size:0.95rem; line-height:1.4; }
   .en { font-size:0.85rem; line-height:1.35; color:var(--muted); margin-top:2px; display:none; }
   body.show-en .en { display:block; }
-  .loopbtn { flex:0 0 auto; opacity:0; font-size:0.7rem; padding:3px 6px; }
-  .row:hover .loopbtn, .loopbtn.active { opacity:1; }
+  .rowbtns { flex:0 0 auto; display:flex; gap:4px; opacity:0; }
+  .row:hover .rowbtns, .loopbtn.active { opacity:1; }
+  .loopbtn, .flagbtn { font-size:0.7rem; padding:3px 6px; }
   .loopbtn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .flagbtn:hover { border-color:var(--bad); color:var(--bad); }
+  .row.flagged { display:none; }
+  body.show-flagged .row.flagged { display:flex; opacity:0.55; }
+  body.show-flagged .row.flagged .rowbtns { opacity:1; }
+  .row.flagged .flagbtn { background:var(--bad); color:#fff; border-color:var(--bad); }
   #hint { max-width:900px; margin:10px auto 0; padding:0 14px; font-size:0.78rem; color:var(--muted); }
 </style>
 </head>
@@ -117,10 +132,11 @@ PAGE = """<!doctype html>
   </div>
   <div class="tools">
     <button id="toggleEn">Show translations</button>
+    <button id="toggleFlagged">Show flagged (0)</button>
     <input id="search" placeholder="jump to phrase…">
   </div>
 </div>
-<div id="hint">Click any line to jump the audio there. Hover a line for a "loop" button to repeat just that line (great for shadowing). Speed buttons apply immediately. "Show translations" reveals an English gloss under each Indonesian line.</div>
+<div id="hint">Click any line to jump the audio there. Hover a line for a "loop" button to repeat just that line (great for shadowing), or a "flag" button to hide a line that's silent/mis-transcribed junk. Speed buttons apply immediately. "Show translations" reveals an English gloss under each Indonesian line.</div>
 <div id="list"></div>
 <script>
 const DATA = __DATA__;
@@ -136,10 +152,19 @@ function fmt(sec) {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+const FLAG_KEY = 'bahasa:flaggedLines:v1';
+const MIN_CLIP_SECONDS = 2;
+function loadFlags() {
+  try { return JSON.parse(localStorage.getItem(FLAG_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveFlags(f) { localStorage.setItem(FLAG_KEY, JSON.stringify(f)); }
+let flags = loadFlags();
+
 DATA.forEach((e, i) => {
   const row = document.createElement('div');
-  row.className = 'row';
+  row.className = 'row' + (flags[e.lineId] ? ' flagged' : '');
   row.dataset.idx = i;
+  row.dataset.lineId = e.lineId;
   row.innerHTML = `
     <div class="ts">${fmt(e.sec)}</div>
     <div class="body">
@@ -147,12 +172,15 @@ DATA.forEach((e, i) => {
       <div class="text"></div>
       <div class="en"></div>
     </div>
-    <button class="loopbtn">loop</button>
+    <div class="rowbtns">
+      <button class="loopbtn">loop</button>
+      <button class="flagbtn" title="Flag this line as silent/mis-transcribed junk">flag</button>
+    </div>
   `;
   row.querySelector('.text').textContent = e.text;
   row.querySelector('.en').textContent = e.en || '';
   row.addEventListener('click', (ev) => {
-    if (ev.target.classList.contains('loopbtn')) return;
+    if (ev.target.closest('.rowbtns')) return;
     loopIdx = null;
     document.querySelectorAll('.loopbtn.active').forEach(b => b.classList.remove('active'));
     audio.currentTime = e.sec;
@@ -170,16 +198,30 @@ DATA.forEach((e, i) => {
       audio.play();
     }
   });
+  row.querySelector('.flagbtn').addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    const nowFlagged = !flags[e.lineId];
+    if (nowFlagged) flags[e.lineId] = true; else delete flags[e.lineId];
+    saveFlags(flags);
+    row.classList.toggle('flagged', nowFlagged);
+    updateFlagCount();
+  });
   list.appendChild(row);
 });
 
 const rows = [...list.children];
 
+function updateFlagCount() {
+  const n = rows.filter(r => r.classList.contains('flagged')).length;
+  toggleFlaggedBtn.textContent = (showFlagged ? 'Hide flagged' : 'Show flagged') + ` (${n})`;
+}
+
 audio.addEventListener('timeupdate', () => {
   const t = audio.currentTime;
   if (loopIdx !== null) {
     const start = DATA[loopIdx].sec;
-    const end = DATA[loopIdx+1] ? DATA[loopIdx+1].sec : start + 6;
+    const rawEnd = DATA[loopIdx+1] ? DATA[loopIdx+1].sec : start + 6;
+    const end = Math.max(rawEnd, start + MIN_CLIP_SECONDS);
     if (t >= end || t < start) audio.currentTime = start;
   }
   let cur = -1;
@@ -216,6 +258,15 @@ function setShowEn(on) {
 toggleEnBtn.addEventListener('click', () => setShowEn(!document.body.classList.contains('show-en')));
 setShowEn(localStorage.getItem(EN_KEY) === '1');
 
+const toggleFlaggedBtn = document.getElementById('toggleFlagged');
+let showFlagged = false;
+toggleFlaggedBtn.addEventListener('click', () => {
+  showFlagged = !showFlagged;
+  document.body.classList.toggle('show-flagged', showFlagged);
+  updateFlagCount();
+});
+updateFlagCount();
+
 document.getElementById('search').addEventListener('keydown', (ev) => {
   if (ev.key !== 'Enter') return;
   const q = ev.target.value.trim().toLowerCase();
@@ -240,11 +291,13 @@ def main():
     p.add_argument("output")
     p.add_argument("--title", default="Conversation")
     p.add_argument("--translations", default=None, help="JSON file mapping entry idx -> English translation")
+    p.add_argument("--name", default=None, help="Conversation slug used for flag/quiz line IDs (default: derived from transcript filename)")
     args = p.parse_args()
 
+    name = args.name or derive_name(args.transcript)
     with open(args.transcript, encoding="utf-8") as f:
         raw = f.read()
-    entries = parse(raw)
+    entries = parse(raw, name)
 
     if args.translations:
         with open(args.translations, encoding="utf-8") as f:

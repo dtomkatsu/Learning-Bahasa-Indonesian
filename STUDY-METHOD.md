@@ -50,6 +50,11 @@ time (extract Indonesian lines → chunk → translate with context → merge by
 - A search box to jump straight to a phrase.
 - **Show translations** toggle (top right) reveals an English gloss under every Indonesian line, if a
   `--translations` file was supplied at build time. Off by default — the point is to try comprehension first.
+- **Flagging bad lines**: Soniox sometimes transcribes silence/noise as garbled text, or two lines round to the
+  same timestamp so "play just this line" can't isolate one from the other. Hover a line for a **flag** button —
+  flagging hides it from the transcript (there's a "Show flagged (N)" toggle to review/undo) and also excludes
+  any quiz cards built from that same line, since flags are shared across pages via `localStorage`. This is a
+  manual, ongoing curation step, not something the build scripts can detect on their own.
 
 `scripts/build_index.py` regenerates `index.html`, a landing page linking to every `*-player.html` in the
 project, plus the Flashcards/Quiz practice modes — run it after adding a new conversation's player so it shows
@@ -74,7 +79,10 @@ soon). Neither needs a server or an account.
     tag in this mode.
   
   Both modes share the same 4-box mastery tracking (tracked separately per mode) and re-scan everything from
-  scratch — re-run after adding a new conversation or vocab deck.
+  scratch — re-run after adding a new conversation or vocab deck. Each card also has a **"Not real content"**
+  button (same flagging system as the player) — use it if "Play line" is silent or the caption is ASR garbage;
+  it's excluded immediately and won't be regenerated on the next build since flags live in the browser, not the
+  transcript file. "Unflag lines (N)" clears everything if you flag something by mistake.
 
 Both are linked from `index.html` under "Practice," so they're reachable from **Bahasa Player.app** like
 everything else — no separate app needed.

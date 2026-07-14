@@ -44,6 +44,15 @@ SKIP_TAGS = {"codeswitch"}
 AUDIO_EXTS = [".m4a", ".mp3", ".wav", ".mp4"]
 
 MIN_SENTENCE_WORDS = 4
+MIN_CLIP_SECONDS = 2
+
+
+def clamp_next_sec(sec, next_sec, max_dur):
+    """Stop point for 'play just this line': at least MIN_CLIP_SECONDS long
+    (many consecutive transcript lines share the same rounded timestamp, or
+    sit under a second apart, which would otherwise produce an inaudible
+    zero-duration clip), capped at max_dur so long silences don't play out."""
+    return min(max(next_sec, sec + MIN_CLIP_SECONDS), sec + max_dur)
 
 
 def ts_to_seconds(ts):
@@ -149,6 +158,7 @@ def build_quiz_items(vocab, convos):
         )
         items.append({
             "id": f"word::{convo['name']}::{i}::{v['front']}",
+            "lineId": f"{convo['name']}::{i}",
             "kind": "word",
             "term": v["front"],
             "hint": v["back"],
@@ -159,7 +169,7 @@ def build_quiz_items(vocab, convos):
             "cloze": cloze_sentence,
             "translation": e.get("en"),
             "sec": e["sec"],
-            "nextSec": min(next_sec, e["sec"] + 8),
+            "nextSec": clamp_next_sec(e["sec"], next_sec, 8),
             "audio": convo["audio"],
             "source": convo["label"],
         })
@@ -183,13 +193,14 @@ def build_sentence_items(convos, min_words=MIN_SENTENCE_WORDS):
             next_sec = entries[i + 1]["sec"] if i + 1 < len(entries) else e["sec"] + 6
             items.append({
                 "id": f"sentence::{convo['name']}::{i}",
+                "lineId": f"{convo['name']}::{i}",
                 "kind": "sentence",
                 "tag": convo["label"],
                 "sentence": e["text"],
                 "sentenceHtml": html_escape(e["text"]),
                 "translation": en,
                 "sec": e["sec"],
-                "nextSec": min(next_sec, e["sec"] + 14),
+                "nextSec": clamp_next_sec(e["sec"], next_sec, 14),
                 "audio": convo["audio"],
                 "source": convo["label"],
             })
@@ -241,6 +252,9 @@ PAGE = """<!doctype html>
   .reveal .en { color:var(--muted); font-size:0.9rem; }
   button.revealBtn { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--line);
     background:var(--bg); color:var(--fg); cursor:pointer; }
+  button.flagLineBtn { font-size:0.78rem; padding:8px 14px; border-radius:8px; border:1px solid var(--line);
+    background:var(--bg); color:var(--muted); cursor:pointer; margin-left:8px; }
+  button.flagLineBtn:hover { border-color:var(--bad); color:var(--bad); }
   .rate { display:flex; gap:10px; margin-top:14px; }
   .rate[hidden] { display:none; }
   button.rate-btn { flex:1; padding:12px; border-radius:10px; border:1px solid var(--line);
@@ -269,6 +283,7 @@ PAGE = """<!doctype html>
   <div id="card"></div>
   <div class="tools">
     <button class="plain" id="resetBtn">Reset progress</button>
+    <button class="plain" id="unflagBtn">Unflag lines (0)</button>
     <span class="stats" id="deckInfo"></span>
   </div>
 </div>
@@ -276,6 +291,7 @@ PAGE = """<!doctype html>
 <script>
 const ITEMS = __DATA__;
 const STORE_KEY = 'bahasa:quiz:v1';
+const FLAG_KEY = 'bahasa:flaggedLines:v1';
 const audio = document.getElementById('qaudio');
 
 function loadProgress() {
@@ -285,6 +301,16 @@ function saveProgress(p) { localStorage.setItem(STORE_KEY, JSON.stringify(p)); }
 let progress = loadProgress();
 function keyOf(item) { return item.id; }
 function boxOf(item) { const k = keyOf(item); return (progress[k] && progress[k].box) || 0; }
+
+function loadFlags() {
+  try { return JSON.parse(localStorage.getItem(FLAG_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveFlags(f) { localStorage.setItem(FLAG_KEY, JSON.stringify(f)); }
+let flags = loadFlags();
+const unflagBtn = document.getElementById('unflagBtn');
+function updateUnflagCount() {
+  unflagBtn.textContent = `Unflag lines (${Object.keys(flags).length})`;
+}
 
 let mode = 'word';
 let pool = [];
@@ -301,7 +327,7 @@ const MODE_HINTS = {
   sentence: 'A whole real line — read or listen, then reveal the translation and rate yourself on the whole thing, not just one word.',
 };
 
-function itemsForMode(m) { return ITEMS.filter(d => d.kind === m); }
+function itemsForMode(m) { return ITEMS.filter(d => d.kind === m && !flags[d.lineId]); }
 
 function rebuildTagFilter() {
   const modeItems = itemsForMode(mode);
@@ -375,6 +401,7 @@ function renderCard() {
     ${hintLine}
     <div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>
     <button class="revealBtn" id="revealBtn">Reveal ${current.kind === 'sentence' ? 'translation' : 'answer'}</button>
+    <button class="flagLineBtn" id="flagLineBtn" title="Hide this line everywhere — silent clip or ASR junk">&#128681; Not real content</button>
     <div class="reveal" id="revealBox">${revealInner}</div>
     <div class="rate" id="rateRow" hidden>
       <button class="rate-btn bad" id="btnBad">Missed it</button>
@@ -383,8 +410,18 @@ function renderCard() {
   `;
   document.getElementById('playBtn').addEventListener('click', playLine);
   document.getElementById('revealBtn').addEventListener('click', reveal);
+  document.getElementById('flagLineBtn').addEventListener('click', flagCurrentLine);
   document.getElementById('btnBad').addEventListener('click', () => rate(false));
   document.getElementById('btnGood').addEventListener('click', () => rate(true));
+}
+
+function flagCurrentLine() {
+  if (!current) return;
+  flags[current.lineId] = true;
+  saveFlags(flags);
+  updateUnflagCount();
+  applyFilter();
+  pickNext();
 }
 
 function playLine() {
@@ -444,6 +481,18 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('Reset all quiz progress?')) { progress = {}; saveProgress(progress); pickNext(); }
 });
 
+unflagBtn.addEventListener('click', () => {
+  if (!Object.keys(flags).length) return;
+  if (confirm(`Unflag all ${Object.keys(flags).length} lines? They'll reappear in the player and quiz.`)) {
+    flags = {};
+    saveFlags(flags);
+    updateUnflagCount();
+    applyFilter();
+    pickNext();
+  }
+});
+
+updateUnflagCount();
 pickNext();
 </script>
 </body>
