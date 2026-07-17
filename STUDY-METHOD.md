@@ -112,8 +112,17 @@ no commands required.
 If it ever needs rebuilding (e.g. after moving the project folder), the source is a one-line AppleScript that
 shells out to `open -na 'Google Chrome' --args --app=file://<path to index.html>`, compiled with:
 ```
-osacompile -o ~/Applications/"Bahasa Player.app" bahasa-player.applescript
+osacompile -o ~/Applications/"Bahasa Player.app" scripts/bahasa-player.applescript
+./scripts/build_icon.sh        # re-apply the icon — osacompile resets it to the generic applet icon
 ```
+
+**The icon.** `scripts/icon.html` is the source art ("Bahasa" in Snell Roundhand script over "PLAYER" in
+letterspaced Didot, on an Indonesian-flag-red squircle). `scripts/build_icon.sh` renders it to a 1024px PNG via
+headless Chrome, packs every size macOS wants into `icon.icns`, installs it as the bundle's
+`Contents/Resources/applet.icns`, and re-signs the app — that last step matters, because osacompile ad-hoc signs
+the bundle and swapping a resource invalidates the signature. Edit `icon.html` and re-run the script to change
+it. Note the text is unreadable at 16–32px (true of any text-based icon); it reads as a solid red tile at those
+sizes and is fully legible from ~128px up, which covers the Dock and Spotlight.
 
 ### Manual fallback
 

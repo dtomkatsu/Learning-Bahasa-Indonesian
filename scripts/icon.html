@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  /* Source art for Bahasa Player.app's icon. Rendered to a 1024x1024 PNG by
+     scripts/build_icon.sh via headless Chrome, then packed into an .icns.
+     Transparent outside the tile so macOS gets a proper icon silhouette. */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1024px; height:1024px; background:transparent; }
+
+  .tile {
+    position:absolute; left:100px; top:100px; width:824px; height:824px;
+    border-radius:185px;                 /* ~macOS squircle proportions */
+    background:
+      radial-gradient(120% 90% at 50% -10%, #FF7A72 0%, rgba(255,122,114,0) 55%),
+      linear-gradient(163deg, #F0334A 0%, #D01228 45%, #8E0A1E 100%);
+    box-shadow:
+      inset 0 5px 0 rgba(255,255,255,0.34),
+      inset 0 -18px 44px rgba(80,0,10,0.42);
+    overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:22px;
+  }
+
+  .bahasa {
+    font-family:"Snell Roundhand", "Apple Chancery", cursive;
+    font-weight:900;
+    font-size:196px;
+    line-height:1.06;      /* room for the ascender/descender flourishes */
+    color:#fff;
+    white-space:nowrap;
+    text-shadow:0 10px 26px rgba(60,0,8,0.42);
+    padding-right:18px;   /* script fonts lean right; re-center optically */
+  }
+
+  .divider { display:flex; align-items:center; gap:18px; margin-top:4px; }
+  .divider .line {
+    width:132px; height:3px; border-radius:3px;
+    background:linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.72));
+  }
+  .divider .line.r { background:linear-gradient(90deg, rgba(255,255,255,0.72), rgba(255,255,255,0)); }
+  .divider .tri {
+    width:0; height:0;
+    border-left:24px solid rgba(255,255,255,0.92);
+    border-top:15px solid transparent;
+    border-bottom:15px solid transparent;
+    filter:drop-shadow(0 3px 6px rgba(60,0,8,0.35));
+  }
+
+  .player {
+    font-family:Didot, "Hoefler Text", Baskerville, serif;
+    font-size:74px;
+    letter-spacing:21px;
+    text-indent:21px;      /* offset trailing letter-space so it stays centered */
+    text-transform:uppercase;
+    color:rgba(255,255,255,0.96);
+    text-shadow:0 6px 16px rgba(60,0,8,0.35);
+  }
+</style>
+</head>
+<body>
+  <div class="tile">
+    <div class="bahasa">Bahasa</div>
+    <div class="divider"><span class="line"></span><span class="tri"></span><span class="line r"></span></div>
+    <div class="player">Player</div>
+  </div>
+</body>
+</html>
