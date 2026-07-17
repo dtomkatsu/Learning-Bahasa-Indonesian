@@ -14,8 +14,16 @@ particle-heavy, and specific to the people and places in your actual life. The g
 3. Skim the clean transcript once and write a `notes/<name>-notes.md` like the one for Conversation 1: speaker
    map, topic timeline with timestamps, anything culturally/grammatically notable.
 4. Mine vocab into `vocab/<name>-vocab.tsv` (three columns: Indonesian, English/notes, tag) — only add things you
-   didn't already know cold. Don't re-log particles you've already logged once; cross-check against
-   `vocab/conversation-1-vocab.tsv` first.
+   didn't already know cold. Don't re-log particles you've already logged once; cross-check against every
+   existing `vocab/*.tsv` first (`build_flashcards.py` dedupes by front, first file read wins alphabetically, so
+   a genuine collision silently keeps whichever file sorts first — check, don't rely on that).
+
+   Vocab decks don't have to come from a conversation at all — `vocab/common-adjectives.tsv` is a standalone
+   reference deck (97 common adjectives, tagged `adjective`) with no transcript behind it. `build_flashcards.py`
+   picks up any `vocab/*.tsv`, conversation-derived or not; `build_quiz.py`'s Word mode still only generates
+   cards for terms it can find inside a real transcript line, so a reference-deck term with no match in any
+   conversation just doesn't get a quiz card (silently skipped, same as always) — it's still fully usable as a
+   flashcard.
 5. (Optional but recommended) Translate the Indonesian lines to English — see **Translations** below.
 6. Build a synced player: `python3 scripts/build_player.py transcripts/<name>.clean.txt audio/<name>.<ext>
    <name>-player.html --title "Conversation N" --translations transcripts/<name>.translations.json`

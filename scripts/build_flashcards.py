@@ -251,8 +251,11 @@ function renderAllCaughtUp() {
 }
 
 function renderStats() {
-  const due = dueIn(pool).length;
-  const mature = pool.filter(d => srsIsMature(srs[d.front])).length;
+  // Deliberately whole-deck, ignoring the tag filter (matches quiz.html's
+  // pattern) — deckInfo below is where the filtered count lives, so these
+  // three numbers stay internally consistent regardless of what's selected.
+  const due = dueIn(DECK).length;
+  const mature = DECK.filter(d => srsIsMature(srs[d.front])).length;
   document.getElementById('stats').textContent =
     `${DECK.length} cards — ${due} due now, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';

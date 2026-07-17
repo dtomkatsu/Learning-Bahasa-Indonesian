@@ -67,7 +67,8 @@ macOS's `iconutil`, but that's only for the optional desktop-app wrapper.
 scripts/          build scripts (all stdlib Python) + FSRS engine + icon art
 transcripts/      raw Soniox export, cleaned transcript, translations
 audio/            source recording
-vocab/            TSV decks (Indonesian / English+notes / tag) — Anki-importable as-is
+vocab/            TSV decks (Indonesian / English+notes / tag) — Anki-importable as-is; not all decks need to
+                  come from a conversation (common-adjectives.tsv is a standalone 97-word reference deck)
 notes/            speaker map, timestamped topic index, particle glossary, cultural notes
 *.html            generated: player, flashcards, quiz, landing page
 ```
