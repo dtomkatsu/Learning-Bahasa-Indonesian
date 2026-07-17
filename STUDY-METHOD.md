@@ -78,7 +78,14 @@ if you want to review early regardless. Flashcards and quiz's Word/Sentence mode
 following it in a full sentence.
 
 - **`flashcards.html`** (`scripts/build_flashcards.py`) — flips through every `vocab/*.tsv` deck. Filter by tag
-  (particle, food, family, etc.), `space` to flip, `1`/`2`/`3`/`4` to rate Again/Hard/Good/Easy.
+  (particle, food, family, etc.), `space` to flip, `1`/`2`/`3`/`4` to rate Again/Hard/Good/Easy. The deck isn't
+  fixed at build time: **+ Add card** lets you type in new vocab on the fly (front/back/tag — re-adding an
+  existing term edits it in place), and **Remove this card from my deck** (under the rating row, once flipped)
+  hides a card you don't want without touching the TSV source. Removed built-in cards are tombstoned, not
+  deleted — **Restore removed (N)** brings them all back; a *custom* card you added is gone for good if you
+  remove it, since there's no source copy to restore from. Both are layered on top of the TSV deck in
+  `localStorage`, not written back to it, and are included in the sync payload below, so add/remove decisions
+  follow you to your other device the same way review progress does.
 - **`quiz.html`** (`scripts/build_quiz.py`) — two modes, toggled at the top of the page:
   - **Word** — cross-references vocab terms against real transcript lines. A term used inside a longer sentence
     becomes a **cloze** card (blank it, guess from context, play the actual audio of that line, then reveal). A
@@ -123,14 +130,15 @@ gists. "Disconnect" stops syncing on that device without deleting anything.
 across (AirDrop Mac↔iPhone) and **Import progress…** on the other device — or "Paste instead" if file handling
 is awkward. Same merge, just hand-carried.
 
-Both paths use the same merge and it **never overwrites**: per card, whichever side has the later `lastReview`
-wins, so a stale source can't roll back newer work, and direction never matters. Imports/pulls are validated
-(app id + format version) before touching anything, and report exactly what changed ("flashcards: 1 new, 4
-updated, 12 already newer here").
+Both paths use the same merge, covering FSRS review state (flashcards + quiz), flagged transcript lines, and now
+**deck edits** — removed and custom flashcards — and it **never overwrites**: per card, whichever side has the
+later timestamp wins (`lastReview` for a review, `updatedAt` for a card edit), so a stale source can't roll back
+newer work, and direction never matters. Imports/pulls are validated (app id + format version) before touching
+anything, and report exactly what changed ("flashcards: 1 new, 4 updated, 12 already newer here").
 
-One asymmetry to know: **flags merge as a union**, since a flag is a deliberate "this line is ASR junk"
-judgement worth keeping from both sides. The consequence is that *unflagging* doesn't propagate — if you change
-your mind, unflag on both devices, or the flag returns on the next sync.
+Two asymmetries to know, both the same shape: **flags and removed-cards merge as a union**, since both are a
+deliberate "get this out of my way" judgement worth keeping from either side. The consequence is that
+*un*flagging and *restoring* a removed card don't propagate — do it on both devices, or it comes back next sync.
 
 All of it lives in `scripts/_sync_js.py`, shared into `index.html`, `flashcards.html`, and `quiz.html` by their
 build scripts.

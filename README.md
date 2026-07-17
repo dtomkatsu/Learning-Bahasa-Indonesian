@@ -16,7 +16,7 @@ handful of Python scripts, and runs as plain HTML/JS with no server, no build st
 | | |
 |---|---|
 | **Synced player** | Full transcript beside the audio. Click any line to jump there; hover for a **loop** button to repeat one line while shadowing; 0.6x–1.25x speed; toggle an English gloss under every Indonesian line. |
-| **Flashcards** | ~84 vocab cards mined from the conversation, filterable by tag. |
+| **Flashcards** | ~84 vocab cards mined from the conversation, filterable by tag — plus add/remove your own from the UI, no file editing needed. |
 | **Quiz** | **Word** mode blanks a vocab term out of a real sentence (cloze) and plays that exact moment of audio. **Sentence** mode checks you followed a whole line, not just one word in it. |
 | **Spaced repetition** | Real **FSRS-5** — the algorithm Anki itself now recommends over SM-2 — with Again/Hard/Good/Easy and live interval previews on each button. Progress lives in `localStorage`. |
 | **Progress sync** | Auto-sync between devices via a **private GitHub gist** (paste a gist-scoped token once per device; pages pull on load, ratings push automatically) — plus manual JSON export/import as a fallback. Either way it merges rather than overwrites: per card, the more recent review wins. |

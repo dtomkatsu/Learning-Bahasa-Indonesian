@@ -16,13 +16,19 @@ schedule. Two sync layers, both built on the same merge:
      site with no server of our own.
 
 Merge rules (shared by both layers):
-  * FSRS items  — per item id, the entry with the later `lastReview` wins. So
-                  reviewing on your phone all week and then importing an older
-                  laptop export won't roll your phone back.
-  * Flags       — union. A flag is a "this line is ASR junk" judgement, so
-                  merging keeps flags from both sides. Consequence: UNflagging
-                  does not propagate; if you unflag on one device, unflag on
-                  the other too (or it'll come back on the next sync).
+  * FSRS items    — per item id, the entry with the later `lastReview` wins.
+                    So reviewing on your phone all week and then importing an
+                    older laptop export won't roll your phone back.
+  * Flags         — union. A flag is a "this line is ASR junk" judgement, so
+                    merging keeps flags from both sides. Consequence:
+                    UNflagging does not propagate; if you unflag on one
+                    device, unflag on the other too (or it comes back next
+                    sync).
+  * Removed cards — union, same reasoning/consequence as flags (it's the same
+                    kind of deliberate, rarely-reversed judgement).
+  * Custom cards  — per front, the entry with the later `updatedAt` wins
+                    (same shape as the FSRS rule, applied to a card *edit*
+                    instead of a *review*).
 """
 
 SYNC_JS = """
@@ -30,7 +36,9 @@ const SYNC_FORMAT = 1;
 const SYNC_APP_ID = 'learning-bahasa-indonesian';
 const FSRS_KEYS = ['bahasa:flashcards:fsrs:v1', 'bahasa:quiz:fsrs:v1'];
 const FLAG_KEY = 'bahasa:flaggedLines:v1';
-const SYNC_KEYS = [...FSRS_KEYS, FLAG_KEY];
+const REMOVED_CARDS_KEY = 'bahasa:flashcards:removed:v1';
+const CUSTOM_CARDS_KEY = 'bahasa:flashcards:custom:v1';
+const SYNC_KEYS = [...FSRS_KEYS, FLAG_KEY, REMOVED_CARDS_KEY, CUSTOM_CARDS_KEY];
 
 function syncRead(key) {
   try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; }
@@ -71,6 +79,21 @@ function syncMergeFlags(local, incoming) {
   return { out, added };
 }
 
+// Generic version of syncMergeFsrs's rule (later `field` wins) for any
+// id -> {..., [field]: timestamp} map — used for custom flashcards, keyed by
+// `updatedAt` instead of `lastReview`.
+function syncMergeByField(local, incoming, field) {
+  const out = Object.assign({}, local);
+  let added = 0, updated = 0, kept = 0;
+  for (const [id, inc] of Object.entries(incoming || {})) {
+    const cur = out[id];
+    if (!cur) { out[id] = inc; added++; continue; }
+    if ((inc[field] || 0) > (cur[field] || 0)) { out[id] = inc; updated++; }
+    else kept++;
+  }
+  return { out, added, updated, kept };
+}
+
 // Returns a human-readable summary, or throws with a useful message.
 function syncApplyImport(payload) {
   if (!payload || typeof payload !== 'object') throw new Error('That file isn\\'t valid JSON.');
@@ -93,6 +116,16 @@ function syncApplyImport(payload) {
   syncWrite(FLAG_KEY, f.out);
   touched += f.added;
   bits.push(`flagged lines: ${f.added} new`);
+
+  const rm = syncMergeFlags(syncRead(REMOVED_CARDS_KEY), (payload.data || {})[REMOVED_CARDS_KEY]);
+  syncWrite(REMOVED_CARDS_KEY, rm.out);
+  touched += rm.added;
+  bits.push(`removed flashcards: ${rm.added} new`);
+
+  const cc = syncMergeByField(syncRead(CUSTOM_CARDS_KEY), (payload.data || {})[CUSTOM_CARDS_KEY], 'updatedAt');
+  syncWrite(CUSTOM_CARDS_KEY, cc.out);
+  touched += cc.added + cc.updated;
+  bits.push(`custom flashcards: ${cc.added} new, ${cc.updated} updated, ${cc.kept} already newer here`);
 
   const when = payload.exportedAtISO ? new Date(payload.exportedAtISO).toLocaleString() : 'unknown date';
   return { touched, text: `Merged export from ${when}.\\n` + bits.join('\\n') };
