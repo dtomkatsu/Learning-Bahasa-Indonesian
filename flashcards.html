@@ -69,6 +69,7 @@
   </div>
   <div class="tools">
     <button class="plain" id="resetBtn">Reset progress</button>
+    <span class="stats" id="syncState"></span>
     <span class="stats" id="deckInfo"></span>
   </div>
 </div>
@@ -222,6 +223,216 @@ function srsMigrateLegacy(srsKey, legacyKeys) {
   return srs;
 }
 
+
+const SYNC_FORMAT = 1;
+const SYNC_APP_ID = 'learning-bahasa-indonesian';
+const FSRS_KEYS = ['bahasa:flashcards:fsrs:v1', 'bahasa:quiz:fsrs:v1'];
+const FLAG_KEY = 'bahasa:flaggedLines:v1';
+const SYNC_KEYS = [...FSRS_KEYS, FLAG_KEY];
+
+function syncRead(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; }
+}
+function syncWrite(key, v) { localStorage.setItem(key, JSON.stringify(v)); }
+
+function syncBuildExport() {
+  const data = {};
+  SYNC_KEYS.forEach(k => { data[k] = syncRead(k); });
+  return {
+    app: SYNC_APP_ID,
+    formatVersion: SYNC_FORMAT,
+    exportedAt: Date.now(),
+    exportedAtISO: new Date().toISOString(),
+    data,
+  };
+}
+
+// Per item id, keep whichever side was reviewed more recently.
+function syncMergeFsrs(local, incoming) {
+  const out = Object.assign({}, local);
+  let added = 0, updated = 0, kept = 0;
+  for (const [id, inc] of Object.entries(incoming || {})) {
+    const cur = out[id];
+    if (!cur) { out[id] = inc; added++; continue; }
+    if ((inc.lastReview || 0) > (cur.lastReview || 0)) { out[id] = inc; updated++; }
+    else kept++;
+  }
+  return { out, added, updated, kept };
+}
+
+function syncMergeFlags(local, incoming) {
+  const out = Object.assign({}, local);
+  let added = 0;
+  for (const id of Object.keys(incoming || {})) {
+    if (!out[id]) { out[id] = incoming[id]; added++; }
+  }
+  return { out, added };
+}
+
+// Returns a human-readable summary, or throws with a useful message.
+function syncApplyImport(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('That file isn\'t valid JSON.');
+  if (payload.app !== SYNC_APP_ID) {
+    throw new Error('That file isn\'t a Bahasa Player progress export.');
+  }
+  if ((payload.formatVersion || 0) > SYNC_FORMAT) {
+    throw new Error('That export came from a newer version of the app than this one.');
+  }
+  const bits = [];
+  let touched = 0;
+  for (const key of FSRS_KEYS) {
+    const r = syncMergeFsrs(syncRead(key), (payload.data || {})[key]);
+    syncWrite(key, r.out);
+    touched += r.added + r.updated;
+    const label = key.includes('flashcards') ? 'flashcards' : 'quiz items';
+    bits.push(`${label}: ${r.added} new, ${r.updated} updated, ${r.kept} already newer here`);
+  }
+  const f = syncMergeFlags(syncRead(FLAG_KEY), (payload.data || {})[FLAG_KEY]);
+  syncWrite(FLAG_KEY, f.out);
+  touched += f.added;
+  bits.push(`flagged lines: ${f.added} new`);
+
+  const when = payload.exportedAtISO ? new Date(payload.exportedAtISO).toLocaleString() : 'unknown date';
+  return { touched, text: `Merged export from ${when}.\n` + bits.join('\n') };
+}
+
+function syncCounts() {
+  const fc = Object.keys(syncRead('bahasa:flashcards:fsrs:v1')).length;
+  const qz = Object.keys(syncRead('bahasa:quiz:fsrs:v1')).length;
+  const fl = Object.keys(syncRead(FLAG_KEY)).length;
+  return { fc, qz, fl };
+}
+
+// ---- Remote auto-sync via a private GitHub Gist ----------------------------
+// The gist holds exactly one file (SYNC_FILENAME) whose content is the same
+// payload syncBuildExport() produces, so pull can reuse syncApplyImport().
+// Token requirement: a CLASSIC personal-access token with only the `gist`
+// scope (fine-grained tokens can't access the gist API). Stored in this
+// browser's localStorage only.
+
+const SYNC_TOKEN_KEY = 'bahasa:sync:token';
+const SYNC_GIST_KEY = 'bahasa:sync:gistId';
+const SYNC_LAST_KEY = 'bahasa:sync:lastSync';
+const SYNC_FILENAME = 'bahasa-progress.json';
+const GH_API = 'https://api.github.com';
+
+function syncRemoteConfigured() {
+  return !!(localStorage.getItem(SYNC_TOKEN_KEY) && localStorage.getItem(SYNC_GIST_KEY));
+}
+function syncGhHeaders() {
+  return {
+    'Authorization': 'Bearer ' + localStorage.getItem(SYNC_TOKEN_KEY),
+    'Accept': 'application/vnd.github+json',
+  };
+}
+
+// Find this browser's user's progress gist, or create it. Stores token+id.
+async function syncRemoteSetup(token) {
+  const headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' };
+  let resp = await fetch(GH_API + '/gists?per_page=100', { headers });
+  if (resp.status === 401) throw new Error('GitHub rejected that token. Is it a classic token with the gist scope?');
+  if (!resp.ok) throw new Error('GitHub error ' + resp.status + ' while listing gists.');
+  const gists = await resp.json();
+  let gist = gists.find(g => g.files && g.files[SYNC_FILENAME]);
+  if (!gist) {
+    resp = await fetch(GH_API + '/gists', {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        description: 'Bahasa Player progress sync (created automatically)',
+        public: false,
+        files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } },
+      }),
+    });
+    if (!resp.ok) throw new Error('Could not create the sync gist (HTTP ' + resp.status + '). Does the token have the gist scope?');
+    gist = await resp.json();
+  }
+  localStorage.setItem(SYNC_TOKEN_KEY, token);
+  localStorage.setItem(SYNC_GIST_KEY, gist.id);
+  return gist.id;
+}
+
+async function syncRemotePull() {
+  const id = localStorage.getItem(SYNC_GIST_KEY);
+  const resp = await fetch(GH_API + '/gists/' + id, { headers: syncGhHeaders() });
+  if (resp.status === 404) throw new Error('Sync gist not found — it may have been deleted. Disconnect and reconnect.');
+  if (!resp.ok) throw new Error('Pull failed (HTTP ' + resp.status + ').');
+  const gist = await resp.json();
+  const file = gist.files && gist.files[SYNC_FILENAME];
+  if (!file) return { touched: 0, text: 'Remote gist has no progress file yet.' };
+  let content = file.content;
+  if (file.truncated) content = await (await fetch(file.raw_url)).text();
+  let payload;
+  try { payload = JSON.parse(content); } catch (e) { return { touched: 0, text: 'Remote progress file was unreadable; it will be overwritten on next push.' }; }
+  const r = syncApplyImport(payload);
+  localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+  return r;
+}
+
+// Pull-merge first so this device's push can never clobber another device's
+// newer reviews, then upload the merged state.
+async function syncRemotePush() {
+  try { await syncRemotePull(); } catch (e) { /* offline pull is fine; push may still work */ }
+  const id = localStorage.getItem(SYNC_GIST_KEY);
+  const resp = await fetch(GH_API + '/gists/' + id, {
+    method: 'PATCH', headers: syncGhHeaders(),
+    body: JSON.stringify({ files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } } }),
+  });
+  if (!resp.ok) throw new Error('Push failed (HTTP ' + resp.status + ').');
+  localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+}
+
+let _syncPushTimer = null;
+function syncRemoteQueuePush(statusCb) {
+  if (!syncRemoteConfigured()) return;
+  if (_syncPushTimer) clearTimeout(_syncPushTimer);
+  statusCb && statusCb('pending');
+  _syncPushTimer = setTimeout(async () => {
+    _syncPushTimer = null;
+    try { await syncRemotePush(); statusCb && statusCb('ok'); }
+    catch (e) { statusCb && statusCb('err'); }
+  }, 2500);
+}
+
+// Best-effort flush if the tab is backgrounded while a push is still queued.
+// Skips the pre-pull; keepalive bodies are size-capped (~64KB) so this can
+// silently no-op on very large state — the next normal push covers it.
+async function syncRemoteFlush() {
+  const id = localStorage.getItem(SYNC_GIST_KEY);
+  if (!id) return;
+  try {
+    await fetch(GH_API + '/gists/' + id, {
+      method: 'PATCH', headers: syncGhHeaders(), keepalive: true,
+      body: JSON.stringify({ files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } } }),
+    });
+    localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+  } catch (e) { /* best effort */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && _syncPushTimer) {
+    clearTimeout(_syncPushTimer);
+    _syncPushTimer = null;
+    syncRemoteFlush();
+  }
+});
+
+// Page-load hook: pull, merge, and let the page refresh its UI if anything
+// actually changed.
+async function syncRemoteAutoPull(onMerged, statusCb) {
+  if (!syncRemoteConfigured()) return;
+  statusCb && statusCb('pending');
+  try {
+    const r = await syncRemotePull();
+    statusCb && statusCb('ok');
+    if (r.touched && onMerged) onMerged(r);
+  } catch (e) { statusCb && statusCb('err'); }
+}
+
+function syncRemoteDisconnect() {
+  localStorage.removeItem(SYNC_TOKEN_KEY);
+  localStorage.removeItem(SYNC_GIST_KEY);
+  localStorage.removeItem(SYNC_LAST_KEY);
+}
+
 const DECK = [{"front": "kan", "back": "tag question / seeking agreement — \"right?\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "sih", "back": "softener / mild emphasis or curiosity", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "dong", "back": "insistence — \"come on, obviously\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "loh / lho", "back": "mild surprise, \"you know\"", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "nih", "back": "here — draws attention to something close", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "kok", "back": "how come? — surprise or mild complaint", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "deh", "back": "softening a suggestion / conceding a point", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "gitu / begitu", "back": "like that — trails off a sentence", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "banget", "back": "very / so — intensifier", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "mendingan", "back": "better off, rather — for comparing options", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "entar", "back": "colloquial for \"nanti\" — later", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "makanya", "back": "that's why", "tag": "particle", "deck": "conversation-1-vocab"}, {"front": "atuh", "back": "Sundanese softener/emphasis particle, no direct translation", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "mah", "back": "Sundanese topic marker, roughly \"as for...\"", "tag": "particle_sundanese", "deck": "conversation-1-vocab"}, {"front": "udah", "back": "colloquial \"sudah\" — already", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "belum", "back": "not yet", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "nggak / enggak", "back": "colloquial \"tidak\" — not, no", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "iya", "back": "yes / right (softer than \"ya\")", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kalau", "back": "if / when (conditional)", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "soalnya", "back": "because, the thing is...", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "kayaknya", "back": "it seems like, I think", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "gimana", "back": "colloquial \"bagaimana\" — how", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "biar", "back": "so that / \"in order to\"", "tag": "grammar", "deck": "conversation-1-vocab"}, {"front": "Mami", "back": "Mom (used directly, not \"Ibu\")", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Papi / Bapak", "back": "Dad", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Mbak", "back": "older sister / polite term for young woman", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "Dek / Adek", "back": "younger sibling, term of endearment", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "sayangku", "back": "my love/darling — affectionate term", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "salim", "back": "hand-to-forehead greeting gesture for elders", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "assalamualaikum", "back": "Islamic greeting, \"peace be upon you\" — used casually arriving/leaving", "tag": "family", "deck": "conversation-1-vocab"}, {"front": "tahu", "back": "tofu", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "lele", "back": "catfish", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "santan", "back": "coconut milk", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "bayam", "back": "spinach", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "ayam", "back": "chicken", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "nasi", "back": "rice", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "enak", "back": "tasty, delicious", "tag": "food", "deck": "conversation-1-vocab"}, {"front": "kupingmu", "back": "your ear — used scoldingly re: earbuds/headphones", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "aplikasi", "back": "application, app", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "unduh / download", "back": "to download", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "ngecas", "back": "colloquial — to charge (a device)", "tag": "tech", "deck": "conversation-1-vocab"}, {"front": "kupas / patok", "back": "landmark / marker (for giving directions)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kanan", "back": "turn right", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "belok kiri", "back": "turn left", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "lurus", "back": "straight (ahead)", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "bensin", "back": "gasoline", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "gang", "back": "small alley/lane", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "jemput", "back": "to pick (someone) up", "tag": "errands", "deck": "conversation-1-vocab"}, {"front": "tiduran", "back": "to lie down", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "ganti baju", "back": "to change clothes", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "mati lampu", "back": "power outage", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "nyala", "back": "on / lit (of power, lights)", "tag": "home", "deck": "conversation-1-vocab"}, {"front": "sedih", "back": "sad", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "takut", "back": "scared", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "bahaya", "back": "dangerous", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "seram", "back": "scary, creepy", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "aduh", "back": "ouch/oh no — general exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "astaga", "back": "oh my god — mild exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "manis", "back": "sweet (also: cute)", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "mantap", "back": "awesome, solid — approval", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "asik", "back": "fun, enjoyable", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "lumayan", "back": "decent, not bad, pretty good", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "gila", "back": "crazy — used as an intensifier exclamation", "tag": "emotion", "deck": "conversation-1-vocab"}, {"front": "suku", "back": "ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "keturunan", "back": "descent, lineage", "tag": "culture", "deck": "conversation-1-vocab"}, {"front": "Ini dari sana?", "back": "Is this from there?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak apa-apa", "back": "It's okay / no worries / it doesn't matter", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ayo kita nonton", "back": "Let's go watch [something]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sudah semakin lancar", "back": "[You're] getting more fluent already", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Tahu kan berapa nih harganya?", "back": "You know how much this costs, right?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kalau tak dengar suaramu", "back": "If I don't hear your voice (song lyric quoted mid-conversation)", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Jangan ganggu", "back": "Don't disturb [me]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Sabar", "back": "Be patient / hang on", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ya udah", "back": "Alright then / fine, okay — resigned agreement", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak seru", "back": "Not fun / that's no fun", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Apa namanya?", "back": "What's it called again? — filler while searching for a word", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kamu mau download di anu, di laptopmu?", "back": "Do you want to download it on your laptop?", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Ini di atas dia menunjukkan Indonesia", "back": "Up here it shows Indonesian [on screen]", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Nggak keaslian", "back": "It's not the real/original one", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Terlalu maksa", "back": "That's too forced / trying too hard", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Kok aneh", "back": "That's weird, huh", "tag": "phrase", "deck": "conversation-1-vocab"}, {"front": "Can I ask a question?", "back": "code-switch: Dila asks permission mid-Indonesian-sentence in English", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "Reprimanded", "back": "code-switch: Devin supplies the English legal term Dila reaches for", "tag": "codeswitch", "deck": "conversation-1-vocab"}, {"front": "sayangku's kids' ankle", "back": "running joke/mishearing during the recording — good example of ASR mangling affectionate teasing", "tag": "codeswitch", "deck": "conversation-1-vocab"}];
 const SRS_KEY = 'bahasa:flashcards:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:flashcards:v1', 'bahasa:flashcards:srs:v1'];
@@ -232,6 +443,18 @@ let pool = DECK.slice();
 let current = null;
 let flipped = false;
 let practiceAhead = false;
+
+function setSyncState(s) {
+  const el = document.getElementById('syncState');
+  if (!syncRemoteConfigured()) { el.textContent = ''; return; }
+  el.textContent = s === 'pending' ? 'syncing…' : s === 'err' ? 'sync failed' : 'synced ✓';
+}
+// Pull any progress made on another device, then refresh what's on screen.
+syncRemoteAutoPull(() => {
+  srs = srsLoad(SRS_KEY);
+  applyFilter();
+  pickNext();
+}, setSyncState);
 
 const cardEl = document.getElementById('card');
 const rateRow = document.getElementById('rateRow');
@@ -312,6 +535,7 @@ function rate(grade) {
   if (!current) return;
   srs[current.front] = fsrsNextState(srs[current.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
+  syncRemoteQueuePush(setSyncState);
   practiceAhead = false;
   pickNext();
 }

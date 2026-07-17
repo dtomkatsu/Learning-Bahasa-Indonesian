@@ -104,24 +104,36 @@ No action needed, and each migration only happens once.
 
 `localStorage` is per-browser *and* per-origin, so the desktop app (which loads over `file://`) and the phone
 (loading the published site over `https://`) each keep their own schedule — they can't see each other. The
-**Sync progress** panel at the bottom of `index.html` bridges them:
+**Sync progress** panel at the bottom of `index.html` bridges them, two ways:
 
-1. **Export progress** on the device you've been studying on — downloads `bahasa-progress-YYYY-MM-DD.json`
-   (flashcard schedules + quiz schedules + flagged lines).
-2. Move it across — AirDrop is the least friction Mac↔iPhone; on the phone it lands in Files.
-3. **Import progress…** on the other device (or **Paste instead** if handling the file is awkward).
+**Auto-sync (recommended).** Progress lives in a **private GitHub gist** on your own account — no server,
+nothing to deploy. One-time setup per device:
 
-The import **merges, it does not overwrite**: for every card, whichever side has the later `lastReview` wins, so
-importing a stale export can't roll back newer work, and you can sync in either direction without thinking about
-it. It reports exactly what happened ("flashcards: 1 new, 4 updated, 12 already newer here"). Imports are
-validated first — a file from another app, or from a newer format version, is rejected without touching your
-data.
+1. Create a token at [github.com/settings/tokens/new?scopes=gist](https://github.com/settings/tokens/new?scopes=gist&description=Bahasa+Player+sync)
+   — a **classic** token with only the `gist` box ticked (fine-grained tokens can't use the gist API).
+2. Paste it into "Connect auto-sync" on each device. The first device creates the gist; the others find it.
+
+After that it's hands-off: every page pulls-and-merges on load, and every rating (or line-flag) pushes a couple
+of seconds later — the practice pages show a small `synced ✓` indicator. A push always re-pulls and merges
+first, so a device that's been offline for a week can't clobber fresh reviews when it comes back. The token is
+stored only in that browser's `localStorage`; scope-wise the worst a leaked one could do is read/write your
+gists. "Disconnect" stops syncing on that device without deleting anything.
+
+**Manual export/import (fallback).** **Export progress** downloads `bahasa-progress-YYYY-MM-DD.json`; move it
+across (AirDrop Mac↔iPhone) and **Import progress…** on the other device — or "Paste instead" if file handling
+is awkward. Same merge, just hand-carried.
+
+Both paths use the same merge and it **never overwrites**: per card, whichever side has the later `lastReview`
+wins, so a stale source can't roll back newer work, and direction never matters. Imports/pulls are validated
+(app id + format version) before touching anything, and report exactly what changed ("flashcards: 1 new, 4
+updated, 12 already newer here").
 
 One asymmetry to know: **flags merge as a union**, since a flag is a deliberate "this line is ASR junk"
 judgement worth keeping from both sides. The consequence is that *unflagging* doesn't propagate — if you change
-your mind, unflag on both devices, or the flag returns on the next import.
+your mind, unflag on both devices, or the flag returns on the next sync.
 
-The merge logic lives in `scripts/_sync_js.py` and is shared into `index.html` by `build_index.py`.
+All of it lives in `scripts/_sync_js.py`, shared into `index.html`, `flashcards.html`, and `quiz.html` by their
+build scripts.
 
 Both are linked from `index.html` under "Practice," so they're reachable from **Bahasa Player.app** like
 everything else — no separate app needed.

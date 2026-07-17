@@ -19,7 +19,7 @@ handful of Python scripts, and runs as plain HTML/JS with no server, no build st
 | **Flashcards** | ~84 vocab cards mined from the conversation, filterable by tag. |
 | **Quiz** | **Word** mode blanks a vocab term out of a real sentence (cloze) and plays that exact moment of audio. **Sentence** mode checks you followed a whole line, not just one word in it. |
 | **Spaced repetition** | Real **FSRS-5** — the algorithm Anki itself now recommends over SM-2 — with Again/Hard/Good/Easy and live interval previews on each button. Progress lives in `localStorage`. |
-| **Progress sync** | Export/import progress as a JSON file to move schedules between devices. Merges rather than overwrites: per card, the more recent review wins, so an older export can't roll back newer progress. |
+| **Progress sync** | Auto-sync between devices via a **private GitHub gist** (paste a gist-scoped token once per device; pages pull on load, ratings push automatically) — plus manual JSON export/import as a fallback. Either way it merges rather than overwrites: per card, the more recent review wins. |
 
 ## The idea
 

@@ -56,6 +56,12 @@ PAGE = """<!doctype html>
   .sync textarea { width:100%; margin-top:10px; min-height:90px; font-family:ui-monospace,Menlo,monospace;
     font-size:0.72rem; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--fg);
     padding:8px; }
+  .sync input[type="password"] { width:100%; margin-bottom:10px; font-size:0.85rem; border-radius:8px;
+    border:1px solid var(--line); background:var(--bg); color:var(--fg); padding:9px 10px; }
+  .sync a { color:var(--accent); }
+  .sync .subhead { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted);
+    margin:0 0 10px; }
+  .sync hr { border:0; border-top:1px solid var(--line); margin:16px 0 14px; }
   #syncMsg { margin-top:10px; font-size:0.8rem; white-space:pre-line; line-height:1.5; }
   #syncMsg.ok { color:var(--good); }
   #syncMsg.err { color:var(--bad); }
@@ -81,8 +87,12 @@ PAGE = """<!doctype html>
   <h2 class="section">Sync progress</h2>
   <div class="sync">
     <div class="counts" id="syncCounts"></div>
+    <div class="subhead">Auto-sync (GitHub gist)</div>
+    <div id="remoteBox"></div>
+    <hr>
+    <div class="subhead">Manual export / import</div>
     <div class="row">
-      <button class="primary" id="exportBtn">Export progress</button>
+      <button id="exportBtn">Export progress</button>
       <button id="importBtn">Import progress…</button>
       <button id="pasteToggle">Paste instead</button>
     </div>
@@ -165,6 +175,64 @@ document.getElementById('pasteMerge').addEventListener('click', () => {
   if (!t) { say('Paste an export first.', 'err'); return; }
   doImport(t);
 });
+
+// ---- auto-sync panel ----
+const remoteBox = document.getElementById('remoteBox');
+
+function renderRemote() {
+  if (syncRemoteConfigured()) {
+    const last = parseInt(localStorage.getItem('bahasa:sync:lastSync') || '0', 10);
+    const gid = localStorage.getItem('bahasa:sync:gistId');
+    remoteBox.innerHTML = `
+      <div class="row">
+        <button class="primary" id="syncNowBtn">Sync now</button>
+        <button id="disconnectBtn">Disconnect</button>
+      </div>
+      <div class="note">Auto-sync is <b>on</b> (private gist ${gid.slice(0,8)}…). Last synced:
+      ${last ? new Date(last).toLocaleString() : 'never'}. Every page pulls on load; ratings push a few seconds
+      after you answer. Connect the other device with the same token and it stays in step automatically.</div>`;
+    document.getElementById('syncNowBtn').addEventListener('click', async () => {
+      say('Syncing…');
+      try {
+        await syncRemotePush();
+        renderCounts(); renderRemote();
+        say('Synced.', 'ok');
+      } catch (e) { say(e.message, 'err'); }
+    });
+    document.getElementById('disconnectBtn').addEventListener('click', () => {
+      if (!confirm('Disconnect auto-sync on this device? Your progress here and the gist are both kept — this only stops syncing.')) return;
+      syncRemoteDisconnect();
+      renderRemote();
+      say('Auto-sync disconnected on this device.', 'ok');
+    });
+  } else {
+    remoteBox.innerHTML = `
+      <input type="password" id="tokenInput" autocomplete="off"
+        placeholder="GitHub classic token with only the gist scope">
+      <div class="row"><button class="primary" id="connectBtn">Connect auto-sync</button></div>
+      <div class="note">Stores progress in a <b>private gist</b> on your GitHub account — no server, nothing
+      new to run. Create a token at
+      <a href="https://github.com/settings/tokens/new?scopes=gist&description=Bahasa+Player+sync"
+         target="_blank" rel="noopener">github.com/settings/tokens/new</a>
+      (classic token, tick only <b>gist</b> — fine-grained tokens don't work with the gist API), paste it here,
+      then do the same once on your other device. The token stays in this browser's local storage.</div>`;
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+      const token = document.getElementById('tokenInput').value.trim();
+      if (!token) { say('Paste a token first.', 'err'); return; }
+      say('Connecting…');
+      try {
+        await syncRemoteSetup(token);
+        const r = await syncRemotePull();
+        renderCounts(); renderRemote();
+        say('Connected. ' + (r.touched ? r.text : 'No remote progress to merge yet — this device is the starting point.'), 'ok');
+      } catch (e) { say(e.message, 'err'); }
+    });
+  }
+}
+renderRemote();
+
+// If already connected, do a background pull on load like the practice pages do.
+syncRemoteAutoPull(() => { renderCounts(); renderRemote(); }, null);
 </script>
 </body>
 </html>

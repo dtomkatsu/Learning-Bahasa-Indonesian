@@ -34,6 +34,7 @@ from html import escape as html_escape
 from pathlib import Path
 
 from _srs_js import SRS_JS
+from _sync_js import SYNC_JS
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -300,20 +301,38 @@ PAGE = """<!doctype html>
   <div class="tools">
     <button class="plain" id="resetBtn">Reset progress</button>
     <button class="plain" id="unflagBtn">Unflag lines (0)</button>
+    <span class="stats" id="syncState"></span>
     <span class="stats" id="deckInfo"></span>
   </div>
 </div>
 <audio id="qaudio" preload="none"></audio>
 <script>
 __SRS_JS__
+__SYNC_JS__
 const ITEMS = __DATA__;
 const SRS_KEY = 'bahasa:quiz:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:quiz:v1', 'bahasa:quiz:srs:v1'];
-const FLAG_KEY = 'bahasa:flaggedLines:v1';
+// FLAG_KEY comes from the shared sync module above.
 const audio = document.getElementById('qaudio');
 
 let srs = srsMigrateLegacy(SRS_KEY, LEGACY_KEYS);
 let practiceAhead = false;
+
+function setSyncState(s) {
+  const el = document.getElementById('syncState');
+  if (!syncRemoteConfigured()) { el.textContent = ''; return; }
+  el.textContent = s === 'pending' ? 'syncing…' : s === 'err' ? 'sync failed' : 'synced ✓';
+}
+// Pull any progress made on another device, then refresh what's on screen.
+// (Deferred a tick so it runs after the initial render below.)
+setTimeout(() => syncRemoteAutoPull(() => {
+  srs = srsLoad(SRS_KEY);
+  flags = loadFlags();
+  updateUnflagCount();
+  rebuildTagFilter();
+  applyFilter();
+  pickNext();
+}, setSyncState), 0);
 
 function loadFlags() {
   try { return JSON.parse(localStorage.getItem(FLAG_KEY)) || {}; } catch (e) { return {}; }
@@ -444,6 +463,7 @@ function flagCurrentLine() {
   if (!current) return;
   flags[current.lineId] = true;
   saveFlags(flags);
+  syncRemoteQueuePush(setSyncState);
   updateUnflagCount();
   applyFilter();
   pickNext();
@@ -495,6 +515,7 @@ function rate(grade) {
   if (!current) return;
   srs[current.id] = fsrsNextState(srs[current.id], grade, Date.now());
   srsSave(SRS_KEY, srs);
+  syncRemoteQueuePush(setSyncState);
   practiceAhead = false;
   pickNext();
 }
@@ -558,6 +579,7 @@ def main():
     items = word_items + sentence_items
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
+        .replace("__SYNC_JS__", SYNC_JS)
         .replace("__DATA__", json.dumps(items, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")

@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 
 from _srs_js import SRS_JS
+from _sync_js import SYNC_JS
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -94,11 +95,13 @@ PAGE = """<!doctype html>
   </div>
   <div class="tools">
     <button class="plain" id="resetBtn">Reset progress</button>
+    <span class="stats" id="syncState"></span>
     <span class="stats" id="deckInfo"></span>
   </div>
 </div>
 <script>
 __SRS_JS__
+__SYNC_JS__
 const DECK = __DATA__;
 const SRS_KEY = 'bahasa:flashcards:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:flashcards:v1', 'bahasa:flashcards:srs:v1'];
@@ -109,6 +112,18 @@ let pool = DECK.slice();
 let current = null;
 let flipped = false;
 let practiceAhead = false;
+
+function setSyncState(s) {
+  const el = document.getElementById('syncState');
+  if (!syncRemoteConfigured()) { el.textContent = ''; return; }
+  el.textContent = s === 'pending' ? 'syncing…' : s === 'err' ? 'sync failed' : 'synced ✓';
+}
+// Pull any progress made on another device, then refresh what's on screen.
+syncRemoteAutoPull(() => {
+  srs = srsLoad(SRS_KEY);
+  applyFilter();
+  pickNext();
+}, setSyncState);
 
 const cardEl = document.getElementById('card');
 const rateRow = document.getElementById('rateRow');
@@ -189,6 +204,7 @@ function rate(grade) {
   if (!current) return;
   srs[current.front] = fsrsNextState(srs[current.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
+  syncRemoteQueuePush(setSyncState);
   practiceAhead = false;
   pickNext();
 }
@@ -238,6 +254,7 @@ def main():
     deck = load_decks()
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
+        .replace("__SYNC_JS__", SYNC_JS)
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")
