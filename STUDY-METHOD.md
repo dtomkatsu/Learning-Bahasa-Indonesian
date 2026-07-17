@@ -100,6 +100,29 @@ that preceded FSRS) migrates automatically on first load — reviewed items are 
 and a stability floor, due immediately for their first real FSRS review — then the legacy key is deleted.
 No action needed, and each migration only happens once.
 
+### Syncing progress between devices
+
+`localStorage` is per-browser *and* per-origin, so the desktop app (which loads over `file://`) and the phone
+(loading the published site over `https://`) each keep their own schedule — they can't see each other. The
+**Sync progress** panel at the bottom of `index.html` bridges them:
+
+1. **Export progress** on the device you've been studying on — downloads `bahasa-progress-YYYY-MM-DD.json`
+   (flashcard schedules + quiz schedules + flagged lines).
+2. Move it across — AirDrop is the least friction Mac↔iPhone; on the phone it lands in Files.
+3. **Import progress…** on the other device (or **Paste instead** if handling the file is awkward).
+
+The import **merges, it does not overwrite**: for every card, whichever side has the later `lastReview` wins, so
+importing a stale export can't roll back newer work, and you can sync in either direction without thinking about
+it. It reports exactly what happened ("flashcards: 1 new, 4 updated, 12 already newer here"). Imports are
+validated first — a file from another app, or from a newer format version, is rejected without touching your
+data.
+
+One asymmetry to know: **flags merge as a union**, since a flag is a deliberate "this line is ASR junk"
+judgement worth keeping from both sides. The consequence is that *unflagging* doesn't propagate — if you change
+your mind, unflag on both devices, or the flag returns on the next import.
+
+The merge logic lives in `scripts/_sync_js.py` and is shared into `index.html` by `build_index.py`.
+
 Both are linked from `index.html` under "Practice," so they're reachable from **Bahasa Player.app** like
 everything else — no separate app needed.
 
