@@ -222,6 +222,18 @@ def build_sentence_items(convos, min_words=MIN_SENTENCE_WORDS):
     return items
 
 
+def build_listening_items(sentence_items):
+    """Audio-first comprehension over the same source lines as sentence mode:
+    the prompt is the CLIP with the text hidden — understand by ear, then
+    reveal transcript + translation. Separate FSRS ids (listening::) because
+    recognizing a line by ear is a different skill, and a different memory,
+    than reading it."""
+    return [
+        {**s, "id": s["id"].replace("sentence::", "listening::", 1), "kind": "listening"}
+        for s in sentence_items
+    ]
+
+
 PAGE = """<!doctype html>
 <html lang="en">
 <head>
@@ -300,6 +312,7 @@ PAGE = """<!doctype html>
   <div class="modes">
     <button class="modeBtn active" data-mode="word">Word</button>
     <button class="modeBtn" data-mode="sentence">Sentence</button>
+    <button class="modeBtn" data-mode="listening">Listening</button>
   </div>
   <div class="modeHint" id="modeHint"></div>
   <div class="stats" id="stats"></div>
@@ -364,6 +377,7 @@ const modeHintEl = document.getElementById('modeHint');
 const MODE_HINTS = {
   word: 'One word blanked out of a real sentence — recall it from context.',
   sentence: 'A whole real line — read or listen, then reveal the translation and rate yourself on the whole thing, not just one word.',
+  listening: 'Ears only: the clip plays with the text hidden. Understand it by ear, then reveal and rate. This is the actual target skill.',
 };
 
 function itemsForMode(m) { return ITEMS.filter(d => d.kind === m && !flags[d.lineId]); }
@@ -409,18 +423,28 @@ function renderEmpty(msg) {
   cardEl.innerHTML = `<div class="empty">${msg}</div>`;
 }
 
-function renderAllCaughtUp() {
+function renderAllCaughtUp(capReached) {
   current = null;
+  const now = Date.now();
   const dues = pool.map(d => (srs[d.id] && srs[d.id].due) || Infinity);
   const nextDue = Math.min(...dues);
-  cardEl.innerHTML = `<div class="empty">🎉 All caught up!<div class="sub">Next review in ${srsFmtDue(nextDue)}.</div>` +
+  const in24h = pool.filter(d => srs[d.id] && srs[d.id].due > now && srs[d.id].due <= now + 86400000).length;
+  const head = capReached ? `Daily new-card limit (${NEW_PER_DAY}) reached — good stopping point!` : '🎉 All caught up!';
+  cardEl.innerHTML = `<div class="empty">${head}<div class="sub">Next review in ${srsFmtDue(nextDue)}${in24h ? ` · ${in24h} due within 24h` : ''}.</div>` +
     `<button class="plain" id="aheadBtn">Practice ahead anyway</button></div>`;
   document.getElementById('aheadBtn').addEventListener('click', () => { practiceAhead = true; pickNext(); });
 }
 
 function renderCard() {
   let promptText, hintLine, revealInner;
-  if (current.kind === 'sentence') {
+  if (current.kind === 'listening') {
+    promptText = '🎧 Listen — no peeking. Press play (or "p") and try to catch the whole line.';
+    hintLine = '';
+    revealInner = `
+      <div class="id">${current.sentenceHtml}</div>
+      <div class="en">${escapeHtml(current.translation)}</div>
+    `;
+  } else if (current.kind === 'sentence') {
     promptText = current.sentenceHtml;
     hintLine = '';
     revealInner = `<div class="en">${escapeHtml(current.translation)}</div>`;
@@ -435,13 +459,13 @@ function renderCard() {
     `;
   }
 
-  const sourceLine = current.kind === 'sentence' ? current.source : `${current.source} · ${current.tags.join(' · ')}`;
+  const sourceLine = current.kind === 'word' ? `${current.source} · ${current.tags.join(' · ')}` : current.source;
   cardEl.innerHTML = `
     <div class="source">${sourceLine}</div>
     <div class="prompt">${promptText}</div>
     ${hintLine}
     <div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>
-    <button class="revealBtn" id="revealBtn">Reveal ${current.kind === 'sentence' ? 'translation' : 'answer'}</button>
+    <button class="revealBtn" id="revealBtn">Reveal ${current.kind === 'word' ? 'answer' : 'transcript + translation'}</button>
     <button class="flagLineBtn" id="flagLineBtn" title="Hide this line everywhere — silent clip or ASR junk">&#128681; Not real content</button>
     <div class="reveal" id="revealBox">${revealInner}</div>
     <div class="rate" id="rateRow" hidden>
@@ -520,6 +544,9 @@ function reveal() {
 
 function rate(grade) {
   if (!current) return;
+  const isNew = !srs[current.id];
+  if (isNew) srsNoteNewIntroduced();
+  srsLogReview(current.kind, grade, isNew);
   srs[current.id] = fsrsNextState(srs[current.id], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
@@ -531,23 +558,32 @@ function pickNext() {
   audio.pause();
   stopAt = null;
   if (!pool.length) { renderEmpty('No quiz items for this tag.'); renderStats(); return; }
-  const due = practiceAhead ? pool : pool.filter(d => srsIsDue(srs[d.id]));
-  if (!due.length) { renderAllCaughtUp(); renderStats(); return; }
+  // Reviews first; brand-new items only while today's shared new-card quota
+  // lasts (practice-ahead ignores both the schedule and the quota).
+  const reviews = pool.filter(d => srs[d.id] && srsIsDue(srs[d.id]));
+  const freshAll = pool.filter(d => !srs[d.id]);
+  const quota = srsNewQuotaLeft();
+  let due = reviews.length ? reviews : (practiceAhead ? freshAll : freshAll.slice(0, quota));
+  if (practiceAhead && !due.length) due = pool;
+  if (!due.length) { renderAllCaughtUp(freshAll.length > 0 && quota === 0); renderStats(); return; }
   let next = due[Math.floor(Math.random() * due.length)];
   if (due.length > 1 && current && next.id === current.id) next = due[Math.floor(Math.random() * due.length)];
   current = next;
   revealed = false;
   renderCard();
   renderStats();
+  if (current.kind === 'listening' && userInteracted) playLine();
 }
 
 function renderStats() {
   const modeItems = itemsForMode(mode);
-  const due = modeItems.filter(d => srsIsDue(srs[d.id])).length;
+  const dueReviews = modeItems.filter(d => srs[d.id] && srsIsDue(srs[d.id])).length;
+  const fresh = modeItems.filter(d => !srs[d.id]).length;
+  const newToday = Math.min(fresh, srsNewQuotaLeft());
   const mature = modeItems.filter(d => srsIsMature(srs[d.id])).length;
-  const label = mode === 'word' ? 'word items' : 'sentences';
+  const label = { word: 'word items', sentence: 'sentences', listening: 'listening clips' }[mode];
   document.getElementById('stats').textContent =
-    `${modeItems.length} ${label} — ${due} due now, ${mature} mastered (21d+)`;
+    `${modeItems.length} ${label} — ${dueReviews} to review, ${newToday} new today, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 
@@ -566,7 +602,11 @@ unflagBtn.addEventListener('click', () => {
   }
 });
 
+let userInteracted = false;
+document.addEventListener('pointerdown', () => { userInteracted = true; }, { capture: true });
 document.addEventListener('keydown', (e) => {
+  userInteracted = true;
+  if (e.key === 'p') { playLine(); return; }
   if (revealed && ['1','2','3','4'].includes(e.key)) rate(parseInt(e.key, 10));
 });
 
@@ -583,7 +623,8 @@ def main():
     convos = load_conversations()
     word_items = build_quiz_items(vocab, convos)
     sentence_items = build_sentence_items(convos)
-    items = word_items + sentence_items
+    listening_items = build_listening_items(sentence_items)
+    items = word_items + sentence_items + listening_items
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
@@ -593,7 +634,7 @@ def main():
     cloze_n = sum(1 for i in word_items if i["mode"] == "cloze")
     print(f"wrote {OUT}: {len(word_items)} word items ({cloze_n} cloze, {len(word_items)-cloze_n} recall) "
           f"from {len(vocab)} vocab terms, {len(sentence_items)} sentence items, "
-          f"across {len(convos)} conversation(s)")
+          f"{len(listening_items)} listening items, across {len(convos)} conversation(s)")
 
 
 if __name__ == "__main__":

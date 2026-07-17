@@ -121,6 +121,47 @@ function srsIsMature(state) {
   return !!(state && state.stability >= MATURE_STABILITY_DAYS);
 }
 
+// ---- Daily new-card cap ----------------------------------------------------
+// FSRS only stays sustainable if new cards trickle in; without a cap, adding
+// a 97-card deck floods the next week with reviews. The counter is shared
+// across flashcards/quiz/study so "15 new per day" means 15 total.
+const NEW_CAP_KEY = 'bahasa:newToday:v1';
+const NEW_PER_DAY = 15;
+
+function srsTodayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function srsNewQuotaLeft() {
+  const rec = srsLoad(NEW_CAP_KEY);
+  if (rec.date !== srsTodayStr()) return NEW_PER_DAY;
+  return Math.max(0, NEW_PER_DAY - (rec.n || 0));
+}
+function srsNoteNewIntroduced() {
+  const rec = srsLoad(NEW_CAP_KEY);
+  if (rec.date !== srsTodayStr()) { srsSave(NEW_CAP_KEY, { date: srsTodayStr(), n: 1 }); return; }
+  srsSave(NEW_CAP_KEY, { date: rec.date, n: (rec.n || 0) + 1 });
+}
+
+// ---- Review log (feeds streak/heatmap/retention stats) ---------------------
+// Map keyed by ms-timestamp -> {g: grade 1-4, k: kind, n: 1 if first-ever
+// review of that item}. Capped to the newest LOG_CAP entries; synced across
+// devices as a union (see _sync_js.py) so streaks survive switching devices.
+const REVIEWLOG_KEY = 'bahasa:reviewLog:v1';
+const REVIEWLOG_CAP = 2000;
+
+function srsLogReview(kind, grade, isNew) {
+  const log = srsLoad(REVIEWLOG_KEY);
+  let t = Date.now();
+  while (log[t]) t++;
+  log[t] = { g: grade, k: kind, n: isNew ? 1 : 0 };
+  const keys = Object.keys(log).map(Number).sort((a, b) => b - a);
+  if (keys.length > REVIEWLOG_CAP) {
+    for (const k of keys.slice(REVIEWLOG_CAP)) delete log[k];
+  }
+  srsSave(REVIEWLOG_KEY, log);
+}
+
 function srsFmtDue(ts) {
   if (!isFinite(ts)) return 'later';
   return srsFmtInterval(ts - Date.now());

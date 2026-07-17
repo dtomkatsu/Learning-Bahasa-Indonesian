@@ -38,7 +38,11 @@ const FSRS_KEYS = ['bahasa:flashcards:fsrs:v1', 'bahasa:quiz:fsrs:v1'];
 const FLAG_KEY = 'bahasa:flaggedLines:v1';
 const REMOVED_CARDS_KEY = 'bahasa:flashcards:removed:v1';
 const CUSTOM_CARDS_KEY = 'bahasa:flashcards:custom:v1';
-const SYNC_KEYS = [...FSRS_KEYS, FLAG_KEY, REMOVED_CARDS_KEY, CUSTOM_CARDS_KEY];
+// REVIEWLOG_KEY is declared in the SRS module, which is always embedded
+// before this one on pages that have both; index.html embeds only this
+// module, so declare a local fallback name instead of referencing it.
+const SYNC_REVIEWLOG_KEY = 'bahasa:reviewLog:v1';
+const SYNC_KEYS = [...FSRS_KEYS, FLAG_KEY, REMOVED_CARDS_KEY, CUSTOM_CARDS_KEY, SYNC_REVIEWLOG_KEY];
 
 function syncRead(key) {
   try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; }
@@ -126,6 +130,14 @@ function syncApplyImport(payload) {
   syncWrite(CUSTOM_CARDS_KEY, cc.out);
   touched += cc.added + cc.updated;
   bits.push(`custom flashcards: ${cc.added} new, ${cc.updated} updated, ${cc.kept} already newer here`);
+
+  // Review log: union by timestamp key, then trim to the newest 2000 so the
+  // payload can't grow without bound.
+  const lg = syncMergeFlags(syncRead(SYNC_REVIEWLOG_KEY), (payload.data || {})[SYNC_REVIEWLOG_KEY]);
+  const lgKeys = Object.keys(lg.out).map(Number).sort((a, b) => b - a);
+  for (const k of lgKeys.slice(2000)) delete lg.out[k];
+  syncWrite(SYNC_REVIEWLOG_KEY, lg.out);
+  touched += lg.added;
 
   const when = payload.exportedAtISO ? new Date(payload.exportedAtISO).toLocaleString() : 'unknown date';
   return { touched, text: `Merged export from ${when}.\\n` + bits.join('\\n') };

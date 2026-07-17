@@ -32,8 +32,9 @@ particle-heavy, and specific to the people and places in your actual life. The g
    <name>-player.html --title "Conversation N" --translations transcripts/<name>.translations.json`
    (drop `--translations` if you skipped step 5). See **Playing the audio** below.
 7. Regenerate `flashcards.html` (`python3 scripts/build_flashcards.py`), `quiz.html`
-   (`python3 scripts/build_quiz.py`), and `index.html` (`python3 scripts/build_index.py`) — flashcards/quiz pull
-   from *all* vocab decks and transcripts automatically, so re-running them picks up the new conversation.
+   (`python3 scripts/build_quiz.py`), `study.html` (`python3 scripts/build_study.py`), and `index.html`
+   (`python3 scripts/build_index.py`) — all of them pull from *all* vocab decks and transcripts automatically,
+   so re-running them picks up the new conversation.
 8. Run the four listening passes below against the audio + clean transcript.
 
 ## Translations
@@ -61,6 +62,12 @@ time (extract Indonesian lines → chunk → translate with context → merge by
 - A search box to jump straight to a phrase.
 - **Show translations** toggle (top right) reveals an English gloss under every Indonesian line, if a
   `--translations` file was supplied at build time. Off by default — the point is to try comprehension first.
+- **Shadow mode**: auto-pauses after every line for roughly the line's own length so you can repeat it aloud,
+  then resumes — hands-free listen-and-repeat over the whole recording. (Turns itself off if you use per-line
+  loop, which wins.)
+- **"+ card" capture**: hover any line for a **+ card** button — opens a small prefilled form (the line and its
+  translation shown for reference) so vocab you notice while listening lands in the flashcard deck immediately
+  instead of being mentally noted and lost. Saved cards sync like any other custom card.
 - **Flagging bad lines**: Soniox sometimes transcribes silence/noise as garbled text, or two lines round to the
   same timestamp so "play just this line" can't isolate one from the other. Hover a line for a **flag** button —
   flagging hides it from the transcript (there's a "Show flagged (N)" toggle to review/undo) and also excludes
@@ -70,6 +77,25 @@ time (extract Indonesian lines → chunk → translate with context → merge by
 `scripts/build_index.py` regenerates `index.html`, a landing page linking to every `*-player.html` in the
 project, plus the Flashcards/Quiz practice modes — run it after adding a new conversation's player so it shows
 up there too.
+
+## The daily session
+
+**Study now** on the landing page is the intended daily entry point: one mixed session of everything due —
+flashcards and all three quiz modes interleaved (interleaving item types measurably beats studying them in
+blocks), with an end-of-session summary and a next-due forecast. It reads and writes the same schedules as the
+individual pages, so it doesn't matter where you review.
+
+Two pacing rules are built in, both standard spaced-repetition practice:
+
+- **New cards are capped at 15/day**, shared across every page — so adding a 97-card deck trickles in over a
+  week instead of avalanching 100+ reviews onto day three. When the cap is hit, the pages say so ("good
+  stopping point") rather than silently continuing; "Practice ahead" overrides it deliberately.
+- **Reviews always run in full** — they're the part that actually schedules memory, and skipping them is what
+  creates backlog spirals.
+
+Every rating is also logged (timestamped, synced across devices), which feeds the **Stats** panel on the landing
+page: streak, a 28-day heatmap, and a measured recall rate. The recall number is worth glancing at monthly —
+FSRS targets 90%; if you're consistently way above it, you can afford more new cards per day.
 
 ## Comprehension exercises
 
@@ -108,6 +134,10 @@ following it in a full sentence.
     with a translation and at least 4 words becomes a card: read (and optionally play) the real sentence, then
     reveal the full English translation and self-rate. Filter switches to conversation source instead of vocab
     tag in this mode.
+  - **Listening** — the same lines as Sentence mode, but **ears only**: the clip plays with the text hidden
+    (auto-plays as you advance; "p" replays), you try to catch it by ear, then reveal transcript + translation
+    and rate. Scheduled separately from Sentence mode, because recognizing a line by ear is a different skill —
+    and it's the one this whole project exists to train.
 
   Re-run both build scripts after adding a new conversation or vocab deck — they re-scan everything from
   scratch (existing review schedules aren't affected; only the item pool changes). Each card also has a
@@ -179,6 +209,12 @@ headless Chrome, packs every size macOS wants into `icon.icns`, installs it as t
 the bundle and swapping a resource invalidates the signature. Edit `icon.html` and re-run the script to change
 it. Note the text is unreadable at 16–32px (true of any text-based icon); it reads as a solid red tile at those
 sizes and is fully legible from ~128px up, which covers the Dock and Spotlight.
+
+### On the phone
+
+The published site is a **PWA**: on iPhone, open it in Safari → Share → **Add to Home Screen** and it launches
+full-screen with the app icon, and the pages (not necessarily the 24MB audio) keep working offline. Rating
+cards works by swipe too — once the answer is revealed, **swipe right for Good, left for Again**.
 
 ### Manual fallback
 

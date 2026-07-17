@@ -7,10 +7,17 @@ Run this after build_player.py adds a new conversation.
 Usage:
     python3 build_index.py
 """
+import json
 import re
 from pathlib import Path
 
+from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
+from build_flashcards import load_decks
+from build_quiz import (
+    load_vocab, load_conversations,
+    build_quiz_items, build_sentence_items, build_listening_items,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -19,6 +26,8 @@ PAGE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#D01228">
 <title>Learning Bahasa Indonesian</title>
 <style>
   :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; --card:#f9fafb;
@@ -42,6 +51,17 @@ PAGE = """<!doctype html>
   a.card.practice .name { display:flex; align-items:center; gap:8px; }
   h2.section { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--muted);
     margin:28px 0 10px; }
+  a.card.study { border-color:var(--accent); }
+  a.card.study .name { color:var(--accent); font-size:1.05rem; }
+  .statsCard { padding:16px 18px; border-radius:10px; border:1px solid var(--line); background:var(--card);
+    font-size:0.85rem; }
+  .statsCard .line { margin-bottom:8px; }
+  .statsCard .big { font-weight:700; }
+  .heat { display:flex; gap:3px; margin:10px 0 4px; }
+  .heat div { width:14px; height:14px; border-radius:3px; background:var(--accent); }
+  .heat .h0 { background:var(--line); }
+  .heat .h1 { opacity:0.3; } .heat .h2 { opacity:0.55; } .heat .h3 { opacity:0.8; } .heat .h4 { opacity:1; }
+  .statsCard .sub { color:var(--muted); font-size:0.76rem; }
   h2.section:first-of-type { margin-top:0; }
   .empty { color:var(--muted); font-size:0.9rem; }
 
@@ -73,6 +93,10 @@ PAGE = """<!doctype html>
   <h1>Learning Bahasa Indonesian</h1>
   <p class="sub">Listen and read along, then practice what stuck.</p>
   <h2 class="section">Practice</h2>
+  <a class="card practice study" href="study.html">
+    <div class="name">&#9654; Study now</div>
+    <div class="meta" id="studyMeta">one mixed session of everything due</div>
+  </a>
   <a class="card practice" href="flashcards.html">
     <div class="name">Flashcards</div>
     <div class="meta">vocab drill</div>
@@ -83,6 +107,9 @@ PAGE = """<!doctype html>
   </a>
   <h2 class="section">Conversations</h2>
   __ITEMS__
+
+  <h2 class="section">Stats</h2>
+  <div class="statsCard" id="statsCard">No reviews yet — hit Study now to start the streak.</div>
 
   <h2 class="section">Sync progress</h2>
   <div class="sync">
@@ -111,7 +138,9 @@ PAGE = """<!doctype html>
   </div>
 </div>
 <script>
+__SRS_JS__
 __SYNC_JS__
+const STUDY_META = __STUDY_META__;
 
 const msg = document.getElementById('syncMsg');
 function say(text, cls) { msg.textContent = text; msg.className = cls || ''; }
@@ -231,8 +260,72 @@ function renderRemote() {
 }
 renderRemote();
 
+// ---- Study-now due counts ----
+function renderStudyMeta() {
+  const srsF = syncRead('bahasa:flashcards:fsrs:v1');
+  const srsQ = syncRead('bahasa:quiz:fsrs:v1');
+  const removed = syncRead(REMOVED_CARDS_KEY);
+  const custom = syncRead(CUSTOM_CARDS_KEY);
+  const flags = syncRead(FLAG_KEY);
+  const now = Date.now();
+  const fronts = new Set(STUDY_META.flashFronts.filter(f => !removed[f]));
+  Object.keys(custom).forEach(f => fronts.add(f));
+  let reviews = 0, fresh = 0;
+  fronts.forEach(f => { const s = srsF[f]; if (!s) fresh++; else if (s.due <= now) reviews++; });
+  STUDY_META.quiz.forEach(q => {
+    if (flags[q.lineId]) return;
+    const s = srsQ[q.id];
+    if (!s) fresh++; else if (s.due <= now) reviews++;
+  });
+  const newToday = Math.min(fresh, srsNewQuotaLeft());
+  const el = document.getElementById('studyMeta');
+  if (!reviews && !newToday) el.textContent = 'all caught up ✓';
+  else el.textContent = `${reviews} to review · ${newToday} new today`;
+}
+renderStudyMeta();
+
+// ---- Stats panel: streak, 28-day heatmap, recall rate ----
+function dayKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function renderStatsPanel() {
+  const log = syncRead(SYNC_REVIEWLOG_KEY);
+  const entries = Object.entries(log).map(([t, v]) => ({ t: +t, g: v.g, n: v.n }));
+  if (!entries.length) return;
+  const byDay = {};
+  entries.forEach(e => { const k = dayKey(new Date(e.t)); byDay[k] = (byDay[k] || 0) + 1; });
+  const DAY = 86400000;
+  let streak = 0;
+  for (let i = 0; ; i++) {
+    const k = dayKey(new Date(Date.now() - i * DAY));
+    if (byDay[k]) streak++;
+    else if (i === 0) continue;   // an empty today doesn't break yesterday's streak
+    else break;
+  }
+  let heat = '';
+  for (let i = 27; i >= 0; i--) {
+    const n = byDay[dayKey(new Date(Date.now() - i * DAY))] || 0;
+    const lvl = n === 0 ? 'h0' : n < 5 ? 'h1' : n < 10 ? 'h2' : n < 20 ? 'h3' : 'h4';
+    heat += `<div class="${lvl}" title="${n} reviews"></div>`;
+  }
+  const reviewsOnly = entries.filter(e => !e.n).sort((a, b) => b.t - a.t).slice(0, 200);
+  const recall = reviewsOnly.length
+    ? Math.round(100 * reviewsOnly.filter(e => e.g > 1).length / reviewsOnly.length) : null;
+  const today = byDay[dayKey(new Date())] || 0;
+  document.getElementById('statsCard').innerHTML = `
+    <div class="line"><span class="big">${streak}</span>-day streak · <span class="big">${today}</span> reviews today · <span class="big">${entries.length}</span> logged</div>
+    <div class="heat">${heat}</div>
+    <div class="sub">last 28 days${recall !== null ? ` · recall rate ${recall}% (target 90% — much higher means you can afford more new cards)` : ''}</div>`;
+}
+renderStatsPanel();
+
 // If already connected, do a background pull on load like the practice pages do.
-syncRemoteAutoPull(() => { renderCounts(); renderRemote(); }, null);
+syncRemoteAutoPull(() => { renderCounts(); renderRemote(); renderStudyMeta(); renderStatsPanel(); }, null);
+
+// ---- PWA: offline caching + installability (no-op over file://) ----
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
@@ -242,6 +335,17 @@ ITEM = """<a class="card" href="{href}">
     <div class="name">{name}</div>
     <div class="meta">{href}</div>
   </a>"""
+
+
+def build_study_meta():
+    flash = load_decks()
+    vocab = load_vocab()
+    convos = load_conversations()
+    word_items = build_quiz_items(vocab, convos)
+    sentence_items = build_sentence_items(convos)
+    listening_items = build_listening_items(sentence_items)
+    quiz = [{"id": i["id"], "lineId": i["lineId"]} for i in word_items + sentence_items + listening_items]
+    return {"flashFronts": [d["front"] for d in flash], "quiz": quiz}
 
 
 def main():
@@ -256,7 +360,12 @@ def main():
         )
     else:
         items = '<p class="empty">No conversations yet — run build_player.py first.</p>'
-    html = PAGE.replace("__SYNC_JS__", SYNC_JS).replace("__ITEMS__", items)
+    html = (
+        PAGE.replace("__SRS_JS__", SRS_JS)
+        .replace("__SYNC_JS__", SYNC_JS)
+        .replace("__STUDY_META__", json.dumps(build_study_meta(), ensure_ascii=False))
+        .replace("__ITEMS__", items)
+    )
     out = ROOT / "index.html"
     out.write_text(html, encoding="utf-8")
     print(f"wrote {out} with {len(players)} conversation(s) + sync panel")

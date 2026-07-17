@@ -22,6 +22,8 @@ import re
 from html import escape
 from pathlib import Path
 
+from _sync_js import SYNC_JS
+
 ENTRY_RE = re.compile(
     r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(Speaker \d+):\s*\n\[(\w+)\]\s*\"(.*)\"",
     re.MULTILINE,
@@ -109,7 +111,14 @@ PAGE = """<!doctype html>
   body.show-en .en { display:block; }
   .rowbtns { flex:0 0 auto; display:flex; gap:4px; opacity:0; }
   .row:hover .rowbtns, .loopbtn.active { opacity:1; }
-  .loopbtn, .flagbtn { font-size:0.7rem; padding:3px 6px; }
+  .loopbtn, .flagbtn, .cardbtn { font-size:0.7rem; padding:3px 6px; }
+  .cardbtn:hover { border-color: var(--accent); color: var(--accent); }
+  .capture { margin:6px 0 4px 62px; padding:10px; border:1px solid var(--line); border-radius:8px;
+    background:var(--btn-bg); max-width:480px; }
+  .capture input { width:100%; margin-bottom:6px; font-size:0.82rem; border-radius:6px;
+    border:1px solid var(--line); background:var(--bg); color:var(--fg); padding:6px 8px; }
+  .capture .row2 { display:flex; gap:6px; }
+  #toggleShadow.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .loopbtn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .flagbtn:hover { border-color:var(--bad); color:var(--bad); }
   .row.flagged { display:none; }
@@ -132,13 +141,15 @@ PAGE = """<!doctype html>
   </div>
   <div class="tools">
     <button id="toggleEn">Show translations</button>
+    <button id="toggleShadow" title="Auto-pause after each line so you can repeat it aloud">Shadow</button>
     <button id="toggleFlagged">Show flagged (0)</button>
     <input id="search" placeholder="jump to phrase…">
   </div>
 </div>
-<div id="hint">Click any line to jump the audio there. Hover a line for a "loop" button to repeat just that line (great for shadowing), or a "flag" button to hide a line that's silent/mis-transcribed junk. Speed buttons apply immediately. "Show translations" reveals an English gloss under each Indonesian line.</div>
+<div id="hint">Click any line to jump the audio there. Hover a line for "loop" (repeat one line), "+ card" (turn this line's vocab into a flashcard), or "flag" (hide silent/garbled junk). "Shadow" auto-pauses after every line so you can repeat it aloud. "Show translations" reveals an English gloss under each Indonesian line.</div>
 <div id="list"></div>
 <script>
+__SYNC_JS__
 const DATA = __DATA__;
 const audio = document.getElementById('audio');
 const list = document.getElementById('list');
@@ -152,7 +163,7 @@ function fmt(sec) {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-const FLAG_KEY = 'bahasa:flaggedLines:v1';
+// FLAG_KEY comes from the shared sync module above.
 const MIN_CLIP_SECONDS = 2;
 function loadFlags() {
   try { return JSON.parse(localStorage.getItem(FLAG_KEY)) || {}; } catch (e) { return {}; }
@@ -174,6 +185,7 @@ DATA.forEach((e, i) => {
     </div>
     <div class="rowbtns">
       <button class="loopbtn">loop</button>
+      <button class="cardbtn" title="Add a flashcard from this line">+ card</button>
       <button class="flagbtn" title="Flag this line as silent/mis-transcribed junk">flag</button>
     </div>
   `;
@@ -206,8 +218,49 @@ DATA.forEach((e, i) => {
     row.classList.toggle('flagged', nowFlagged);
     updateFlagCount();
   });
+  row.querySelector('.cardbtn').addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    openCapture(row, e);
+  });
   list.appendChild(row);
 });
+
+// ---- capture-to-flashcard: vocab you notice while listening lands in the
+// deck now, instead of being remembered ("I'll add it later") and lost.
+function openCapture(row, e) {
+  document.querySelectorAll('.capture').forEach(el => el.remove());
+  const form = document.createElement('div');
+  form.className = 'capture';
+  form.innerHTML = `
+    <div style="font-size:0.75rem;color:var(--muted);margin-bottom:6px;">from: “${e.text.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}”</div>
+    <input class="capFront" placeholder="Indonesian word/phrase to learn">
+    <input class="capBack" placeholder="English / notes">
+    <input class="capTags" placeholder="tags, comma-separated" value="custom">
+    <div class="row2">
+      <button class="capSave">Add to flashcards</button>
+      <button class="capCancel">Cancel</button>
+    </div>`;
+  form.addEventListener('click', ev => ev.stopPropagation());
+  form.querySelector('.capBack').value = e.en || '';
+  row.insertAdjacentElement('afterend', form);
+  form.querySelector('.capFront').focus();
+  form.querySelector('.capCancel').addEventListener('click', () => form.remove());
+  form.querySelector('.capSave').addEventListener('click', () => {
+    const front = form.querySelector('.capFront').value.trim();
+    const back = form.querySelector('.capBack').value.trim();
+    const tags = form.querySelector('.capTags').value.split(',').map(s => s.trim()).filter(Boolean);
+    if (!tags.length) tags.push('custom');
+    if (!front || !back) { form.querySelector('.capFront').focus(); return; }
+    const custom = syncRead(CUSTOM_CARDS_KEY);
+    custom[front] = { front, back, tags, updatedAt: Date.now() };
+    syncWrite(CUSTOM_CARDS_KEY, custom);
+    const removed = syncRead(REMOVED_CARDS_KEY);
+    if (removed[front]) { delete removed[front]; syncWrite(REMOVED_CARDS_KEY, removed); }
+    syncRemoteQueuePush(null);
+    form.innerHTML = '<div style="font-size:0.8rem;">✓ added to flashcards</div>';
+    setTimeout(() => form.remove(), 1200);
+  });
+}
 
 const rows = [...list.children];
 
@@ -216,8 +269,39 @@ function updateFlagCount() {
   toggleFlaggedBtn.textContent = (showFlagged ? 'Hide flagged' : 'Show flagged') + ` (${n})`;
 }
 
+// ---- shadow mode: after each line, pause for about the line's own length
+// so you can repeat it aloud, then continue. Lines sharing a rounded
+// timestamp are treated as one segment (a 0s pause would be useless).
+let shadowOn = false, shadowStopAt = null, shadowLineStart = 0, shadowTimer = null;
+function shadowRecalc() {
+  const t = audio.currentTime;
+  shadowLineStart = t;
+  const nxt = DATA.find(d => d.sec > t + 0.6);
+  shadowStopAt = nxt ? nxt.sec : null;
+}
+const toggleShadowBtn = document.getElementById('toggleShadow');
+toggleShadowBtn.addEventListener('click', () => {
+  shadowOn = !shadowOn;
+  toggleShadowBtn.classList.toggle('active', shadowOn);
+  clearTimeout(shadowTimer);
+  if (shadowOn) {
+    loopIdx = null;
+    document.querySelectorAll('.loopbtn.active').forEach(b => b.classList.remove('active'));
+    shadowRecalc();
+    if (audio.paused) audio.play();
+  }
+});
+audio.addEventListener('play', () => { if (shadowOn) shadowRecalc(); });
+audio.addEventListener('seeked', () => { clearTimeout(shadowTimer); if (shadowOn) shadowRecalc(); });
+
 audio.addEventListener('timeupdate', () => {
   const t = audio.currentTime;
+  if (shadowOn && loopIdx === null && !audio.paused && shadowStopAt !== null && t >= shadowStopAt) {
+    const gap = Math.min(8000, Math.max(1500, (shadowStopAt - shadowLineStart) * 1000));
+    shadowStopAt = null;
+    audio.pause();
+    shadowTimer = setTimeout(() => { if (shadowOn) audio.play(); }, gap);
+  }
   if (loopIdx !== null) {
     const start = DATA[loopIdx].sec;
     const rawEnd = DATA[loopIdx+1] ? DATA[loopIdx+1].sec : start + 6;
@@ -311,7 +395,8 @@ def main():
         print(f"applied {n_applied} translations ({len(entries)} total entries)")
 
     html = (
-        PAGE.replace("__TITLE__", escape(args.title))
+        PAGE.replace("__SYNC_JS__", SYNC_JS)
+        .replace("__TITLE__", escape(args.title))
         .replace("__AUDIO__", escape(args.audio_path))
         .replace("__DATA__", json.dumps(entries, ensure_ascii=False))
     )

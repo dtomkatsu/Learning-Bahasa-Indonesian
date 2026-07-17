@@ -242,8 +242,14 @@ function dueIn(items) { return items.filter(d => srsIsDue(srs[d.front])); }
 
 function pickNext() {
   if (!pool.length) { renderEmpty('No cards for this tag.'); return; }
-  const due = practiceAhead ? pool : dueIn(pool);
-  if (!due.length) { renderAllCaughtUp(); return; }
+  // Reviews first; brand-new cards only while today's shared new-card quota
+  // lasts (practice-ahead ignores both the schedule and the quota).
+  const reviews = pool.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
+  const freshAll = pool.filter(d => !srs[d.front]);
+  const quota = srsNewQuotaLeft();
+  let due = reviews.length ? reviews : (practiceAhead ? freshAll : freshAll.slice(0, quota));
+  if (practiceAhead && !due.length) due = pool;
+  if (!due.length) { renderAllCaughtUp(freshAll.length > 0 && quota === 0); return; }
   let next = due[Math.floor(Math.random() * due.length)];
   if (due.length > 1 && current && next.front === current.front) next = due[Math.floor(Math.random() * due.length)];
   current = next;
@@ -263,13 +269,17 @@ function renderEmpty(msg) {
   rateRow.hidden = true;
 }
 
-function renderAllCaughtUp() {
+function renderAllCaughtUp(capReached) {
   current = null;
+  const now = Date.now();
   const dues = pool.map(d => (srs[d.front] && srs[d.front].due) || Infinity);
   const nextDue = Math.min(...dues);
-  cardEl.innerHTML = `<div class="empty">🎉 All caught up!<div class="sub">Next review in ${srsFmtDue(nextDue)}.</div>` +
+  const in24h = pool.filter(d => srs[d.front] && srs[d.front].due > now && srs[d.front].due <= now + 86400000).length;
+  const head = capReached ? `Daily new-card limit (${NEW_PER_DAY}) reached — good stopping point!` : '🎉 All caught up!';
+  cardEl.innerHTML = `<div class="empty">${head}<div class="sub">Next review in ${srsFmtDue(nextDue)}${in24h ? ` · ${in24h} due within 24h` : ''}.</div>` +
     `<button class="plain" id="aheadBtn">Practice ahead anyway</button></div>`;
   rateRow.hidden = true;
+  cardMeta.hidden = true;
   document.getElementById('aheadBtn').addEventListener('click', () => { practiceAhead = true; pickNext(); });
   renderStats();
 }
@@ -277,11 +287,13 @@ function renderAllCaughtUp() {
 function renderStats() {
   // Deliberately whole-deck, ignoring the tag filter (matches quiz.html's
   // pattern) — deckInfo below is where the filtered count lives, so these
-  // three numbers stay internally consistent regardless of what's selected.
-  const due = dueIn(DECK).length;
+  // numbers stay internally consistent regardless of what's selected.
+  const dueReviews = DECK.filter(d => srs[d.front] && srsIsDue(srs[d.front])).length;
+  const fresh = DECK.filter(d => !srs[d.front]).length;
+  const newToday = Math.min(fresh, srsNewQuotaLeft());
   const mature = DECK.filter(d => srsIsMature(srs[d.front])).length;
   document.getElementById('stats').textContent =
-    `${DECK.length} cards — ${due} due now, ${mature} mastered (21d+)`;
+    `${DECK.length} cards — ${dueReviews} to review, ${newToday} new today, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 
@@ -302,6 +314,9 @@ function flip() {
 
 function rate(grade) {
   if (!current) return;
+  const isNew = !srs[current.front];
+  if (isNew) srsNoteNewIntroduced();
+  srsLogReview('flash', grade, isNew);
   srs[current.front] = fsrsNextState(srs[current.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
@@ -395,6 +410,20 @@ document.addEventListener('keydown', (e) => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if (e.key === ' ') { e.preventDefault(); flip(); }
   else if (flipped && ['1','2','3','4'].includes(e.key)) rate(parseInt(e.key, 10));
+});
+
+// Swipe-to-rate on touch devices: once flipped, swipe the card right for
+// Good, left for Again (the two ratings that cover ~95% of real answers).
+let touchX = null, touchY = null;
+cardEl.addEventListener('touchstart', (e) => {
+  touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
+}, { passive: true });
+cardEl.addEventListener('touchend', (e) => {
+  if (touchX === null || !flipped || !current) { touchX = null; return; }
+  const dx = e.changedTouches[0].clientX - touchX;
+  const dy = e.changedTouches[0].clientY - touchY;
+  touchX = null;
+  if (Math.abs(dx) > 60 && Math.abs(dy) < 40) rate(dx > 0 ? 3 : 1);
 });
 
 updateRestoreCount();
