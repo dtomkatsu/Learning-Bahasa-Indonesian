@@ -53,10 +53,13 @@ PAGE = """<!doctype html>
   h1 { font-size:1.15rem; margin:0; }
   a.back { color:var(--muted); font-size:0.8rem; text-decoration:none; }
   .stats { color:var(--muted); font-size:0.8rem; margin-bottom:16px; }
-  select { font-size:0.8rem; padding:5px 7px; border-radius:6px; border:1px solid var(--line);
-    background:var(--bg); color:var(--fg); }
-  .topRow { display:flex; gap:8px; align-items:center; margin-bottom:16px; }
-  .topRow select { flex:1 1 auto; margin-bottom:0; }
+  .topRow { display:flex; gap:8px; align-items:flex-start; margin-bottom:16px; }
+  .topRow #addToggleBtn { flex:0 0 auto; white-space:nowrap; }
+  .chips { flex:1 1 auto; display:flex; flex-wrap:wrap; gap:6px; }
+  button.chip { font-size:0.75rem; padding:5px 10px; border-radius:999px; border:1px solid var(--line);
+    background:var(--bg); color:var(--muted); cursor:pointer; }
+  button.chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.chip:hover { border-color:var(--accent); }
   #card { border:1px solid var(--line); border-radius:14px; background:var(--card);
     min-height:220px; display:flex; align-items:center; justify-content:center; text-align:center;
     padding:28px 20px; cursor:pointer; margin:18px 0; user-select:none; }
@@ -108,13 +111,13 @@ PAGE = """<!doctype html>
   </div>
   <div class="stats" id="stats"></div>
   <div class="topRow">
-    <select id="tagFilter"></select>
+    <div class="chips" id="tagChips"></div>
     <button class="plain" id="addToggleBtn">+ Add card</button>
   </div>
   <div id="addForm" hidden>
     <input id="addFront" placeholder="Indonesian (e.g. kayaknya)">
     <input id="addBack" placeholder="English / notes">
-    <input id="addTag" placeholder="tag (optional — defaults to “custom”)">
+    <input id="addTag" placeholder="tags, comma-separated (optional — defaults to “custom”)">
     <div class="row">
       <button class="plain" id="addSaveBtn">Save card</button>
       <button class="plain" id="addCancelBtn">Cancel</button>
@@ -154,12 +157,18 @@ let srs = srsMigrateLegacy(SRS_KEY, LEGACY_KEYS);
 // built-in one edits it in place, since it wins the Map merge below).
 function loadRemovedCards() { return syncRead(REMOVED_CARDS_KEY); }
 function loadCustomCards() { return syncRead(CUSTOM_CARDS_KEY); }
+// Cards carry a `tags` array; older custom cards (and imports from an older
+// device) may still have a single `tag` string — normalize on read.
+function normalizeCard(d) {
+  if (Array.isArray(d.tags) && d.tags.length) return d;
+  return Object.assign({}, d, { tags: d.tag ? [d.tag] : ['custom'] });
+}
 function computeDeck() {
   const removed = loadRemovedCards();
   const custom = loadCustomCards();
   const byFront = new Map();
   BUILTIN_DECK.forEach(d => { if (!removed[d.front]) byFront.set(d.front, d); });
-  Object.values(custom).forEach(d => byFront.set(d.front, d));
+  Object.values(custom).forEach(d => byFront.set(d.front, normalizeCard(d)));
   return [...byFront.values()];
 }
 let DECK = computeDeck();
@@ -178,23 +187,38 @@ function setSyncState(s) {
 const cardEl = document.getElementById('card');
 const rateRow = document.getElementById('rateRow');
 const cardMeta = document.getElementById('cardMeta');
-const tagFilter = document.getElementById('tagFilter');
+const chipsEl = document.getElementById('tagChips');
+
+// Multi-select category chips. None selected = whole deck; any selected =
+// union of those categories (a card matches if it carries ANY active tag,
+// so cross-tagged cards let categories mix).
+let activeTags = new Set();
 
 function uniqueTags() {
-  return [...new Set(DECK.map(d => d.tag))].sort();
+  return [...new Set(DECK.flatMap(d => d.tags))].sort();
 }
-function rebuildTagFilter() {
-  const prev = tagFilter.value;
-  tagFilter.innerHTML = '<option value="">All tags</option>' +
-    uniqueTags().map(t => `<option value="${t}">${t}</option>`).join('');
-  if ([...tagFilter.options].some(o => o.value === prev)) tagFilter.value = prev;
+function renderChips() {
+  const tags = uniqueTags();
+  activeTags = new Set([...activeTags].filter(t => tags.includes(t)));
+  chipsEl.innerHTML = tags.map(t =>
+    `<button class="chip${activeTags.has(t) ? ' active' : ''}" data-tag="${t}">${t}</button>`).join('');
+  chipsEl.querySelectorAll('.chip').forEach(b => {
+    b.addEventListener('click', () => {
+      const t = b.dataset.tag;
+      if (activeTags.has(t)) activeTags.delete(t); else activeTags.add(t);
+      b.classList.toggle('active');
+      practiceAhead = false;
+      applyFilter();
+      pickNext();
+    });
+  });
 }
-rebuildTagFilter();
-tagFilter.addEventListener('change', () => { practiceAhead = false; applyFilter(); pickNext(); });
+renderChips();
 
 function applyFilter() {
-  const t = tagFilter.value;
-  pool = t ? DECK.filter(d => d.tag === t) : DECK.slice();
+  pool = activeTags.size
+    ? DECK.filter(d => d.tags.some(t => activeTags.has(t)))
+    : DECK.slice();
 }
 applyFilter();
 
@@ -202,7 +226,7 @@ applyFilter();
 // that may have brought in edits made on another device.
 function refreshDeck() {
   DECK = computeDeck();
-  rebuildTagFilter();
+  renderChips();
   updateRestoreCount();
   applyFilter();
   pickNext();
@@ -228,7 +252,7 @@ function pickNext() {
   cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div>';
   cardEl.querySelector('.front').textContent = current.front;
   cardEl.querySelector('.en').textContent = current.back;
-  cardEl.querySelector('.tag').textContent = current.tag;
+  cardEl.querySelector('.tag').textContent = current.tags.join(' · ');
   rateRow.hidden = true;
   renderStats();
 }
@@ -313,11 +337,13 @@ function removeCurrentCard() {
   refreshDeck();
 }
 
-function addCustomCard(front, back, tag) {
-  front = front.trim(); back = back.trim(); tag = (tag || '').trim() || 'custom';
+function addCustomCard(front, back, tagsRaw) {
+  front = front.trim(); back = back.trim();
+  const tags = (tagsRaw || '').split(',').map(t => t.trim()).filter(Boolean);
+  if (!tags.length) tags.push('custom');
   if (!front || !back) return false;
   const custom = loadCustomCards();
-  custom[front] = { front, back, tag, updatedAt: Date.now() };
+  custom[front] = { front, back, tags, updatedAt: Date.now() };
   syncWrite(CUSTOM_CARDS_KEY, custom);
   // If this front was previously removed (a built-in card), un-tombstone it —
   // saving a card with that name is an explicit signal to bring it back.
@@ -379,6 +405,13 @@ pickNext();
 """
 
 
+def parse_tags(raw):
+    """Tag column is a comma-separated list ("emotion,adjective"); a plain
+    single tag is just the one-element case."""
+    tags = [t.strip() for t in raw.split(",") if t.strip()]
+    return tags or ["untagged"]
+
+
 def load_decks():
     rows = []
     for tsv in sorted(VOCAB_DIR.glob("*.tsv")):
@@ -387,9 +420,9 @@ def load_decks():
             for row in reader:
                 if len(row) < 3:
                     continue
-                front, back, tag = row[0].strip(), row[1].strip(), row[2].strip()
+                front, back, tags = row[0].strip(), row[1].strip(), parse_tags(row[2])
                 if front:
-                    rows.append({"front": front, "back": back, "tag": tag, "deck": tsv.stem})
+                    rows.append({"front": front, "back": back, "tags": tags, "deck": tsv.stem})
     # dedupe by front, first occurrence wins
     seen = set()
     deduped = []

@@ -113,6 +113,13 @@ def load_conversations():
     return convos
 
 
+def parse_tags(raw):
+    """Tag column is a comma-separated list ("emotion,adjective"); a plain
+    single tag is just the one-element case."""
+    tags = [t.strip() for t in raw.split(",") if t.strip()]
+    return tags or ["untagged"]
+
+
 def load_vocab():
     rows = []
     seen = set()
@@ -121,11 +128,11 @@ def load_vocab():
             for row in csv.reader(f, delimiter="\t"):
                 if len(row) < 3:
                     continue
-                front, back, tag = row[0].strip(), row[1].strip(), row[2].strip()
-                if not front or front in seen or tag in SKIP_TAGS:
+                front, back, tags = row[0].strip(), row[1].strip(), parse_tags(row[2])
+                if not front or front in seen or any(t in SKIP_TAGS for t in tags):
                     continue
                 seen.add(front)
-                rows.append({"front": front, "back": back, "tag": tag})
+                rows.append({"front": front, "back": back, "tags": tags})
     return rows
 
 
@@ -170,7 +177,7 @@ def build_quiz_items(vocab, convos):
             "kind": "word",
             "term": v["front"],
             "hint": v["back"],
-            "tag": v["tag"],
+            "tags": v["tags"],
             "mode": mode,
             "sentence": e["text"],
             "sentenceHtml": sentence_html,
@@ -203,7 +210,7 @@ def build_sentence_items(convos, min_words=MIN_SENTENCE_WORDS):
                 "id": f"sentence::{convo['name']}::{i}",
                 "lineId": f"{convo['name']}::{i}",
                 "kind": "sentence",
-                "tag": convo["label"],
+                "tags": [convo["label"]],
                 "sentence": e["text"],
                 "sentenceHtml": html_escape(e["text"]),
                 "translation": en,
@@ -364,7 +371,7 @@ function itemsForMode(m) { return ITEMS.filter(d => d.kind === m && !flags[d.lin
 function rebuildTagFilter() {
   const modeItems = itemsForMode(mode);
   const label = mode === 'word' ? 'All tags' : 'All conversations';
-  const tags = [...new Set(modeItems.map(d => d.tag))].sort();
+  const tags = [...new Set(modeItems.flatMap(d => d.tags))].sort();
   tagFilter.innerHTML = `<option value="">${label}</option>` +
     tags.map(t => `<option value="${t}">${t}</option>`).join('');
 }
@@ -374,7 +381,7 @@ tagFilter.addEventListener('change', () => { practiceAhead = false; applyFilter(
 function applyFilter() {
   const modeItems = itemsForMode(mode);
   const t = tagFilter.value;
-  pool = t ? modeItems.filter(d => d.tag === t) : modeItems;
+  pool = t ? modeItems.filter(d => d.tags.includes(t)) : modeItems;
 }
 
 document.querySelectorAll('.modeBtn').forEach(b => {
@@ -428,7 +435,7 @@ function renderCard() {
     `;
   }
 
-  const sourceLine = current.kind === 'sentence' ? current.source : `${current.source} · ${current.tag}`;
+  const sourceLine = current.kind === 'sentence' ? current.source : `${current.source} · ${current.tags.join(' · ')}`;
   cardEl.innerHTML = `
     <div class="source">${sourceLine}</div>
     <div class="prompt">${promptText}</div>

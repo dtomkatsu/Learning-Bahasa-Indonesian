@@ -34,7 +34,7 @@ santan	coconut milk	food
 bayam	spinach	food
 ayam	chicken	food
 nasi	rice	food
-enak	tasty, delicious	food
+enak	tasty, delicious	food,adjective
 kupingmu	"your ear" — used scoldingly re: earbuds/headphones	tech
 aplikasi	application, app	tech
 unduh / download	to download	tech
@@ -50,13 +50,13 @@ tiduran	to lie down	home
 ganti baju	to change clothes	home
 mati lampu	power outage	home
 nyala	on / lit (of power, lights)	home
-sedih	sad	emotion
-takut	scared	emotion
+sedih	sad	emotion,adjective
+takut	scared	emotion,adjective
 bahaya	dangerous	emotion
 seram	scary, creepy	emotion
 aduh	"ouch/oh no" — general exclamation	emotion
 astaga	"oh my god" — mild exclamation	emotion
-manis	sweet (also: cute)	emotion
+manis	sweet (also: cute)	emotion,adjective
 mantap	"awesome, solid" — approval	emotion
 asik	fun, enjoyable	emotion
 lumayan	"decent, not bad, pretty good"	emotion

@@ -13,10 +13,13 @@ particle-heavy, and specific to the people and places in your actual life. The g
    everything, the audio quality/heuristic needs a look.
 3. Skim the clean transcript once and write a `notes/<name>-notes.md` like the one for Conversation 1: speaker
    map, topic timeline with timestamps, anything culturally/grammatically notable.
-4. Mine vocab into `vocab/<name>-vocab.tsv` (three columns: Indonesian, English/notes, tag) — only add things you
-   didn't already know cold. Don't re-log particles you've already logged once; cross-check against every
-   existing `vocab/*.tsv` first (`build_flashcards.py` dedupes by front, first file read wins alphabetically, so
-   a genuine collision silently keeps whichever file sorts first — check, don't rely on that).
+4. Mine vocab into `vocab/<name>-vocab.tsv` (three columns: Indonesian, English/notes, tags) — only add things you
+   didn't already know cold. The tags column is a **comma-separated list** (`emotion,adjective`), so one card can
+   live in several categories; a plain single tag is just the one-element case. Don't re-log particles you've
+   already logged once; cross-check against every existing `vocab/*.tsv` first (`build_flashcards.py` dedupes by
+   front, first file read wins alphabetically, so a genuine collision silently keeps whichever file sorts first —
+   check, don't rely on that; if a word genuinely belongs to a new deck's theme too, add the new tag to its
+   *existing* row instead of duplicating it).
 
    Vocab decks don't have to come from a conversation at all — `vocab/common-adjectives.tsv` is a standalone
    reference deck (97 common adjectives, tagged `adjective`) with no transcript behind it. `build_flashcards.py`
@@ -85,11 +88,13 @@ if you want to review early regardless. Flashcards and quiz's Word/Sentence mode
 (separate `localStorage` keys), since knowing a word cold isn't the same signal as recognizing it in a cloze or
 following it in a full sentence.
 
-- **`flashcards.html`** (`scripts/build_flashcards.py`) — flips through every `vocab/*.tsv` deck. Filter by tag
-  (particle, food, family, etc.), `space` to flip, `1`/`2`/`3`/`4` to rate Again/Hard/Good/Easy. The deck isn't
-  fixed at build time: **+ Add card** lets you type in new vocab on the fly (front/back/tag — re-adding an
-  existing term edits it in place), and **Remove this card from my deck** (under the rating row, once flipped)
-  hides a card you don't want without touching the TSV source. Removed built-in cards are tombstoned, not
+- **`flashcards.html`** (`scripts/build_flashcards.py`) — flips through every `vocab/*.tsv` deck. The category
+  filter is a row of **toggle chips**: tap one to drill into a category, tap several to study their union (a
+  cross-tagged card like `manis` — `emotion,adjective` — shows up under either, counted once), tap them off for
+  the whole deck. `space` to flip, `1`/`2`/`3`/`4` to rate Again/Hard/Good/Easy. The deck isn't
+  fixed at build time: **+ Add card** lets you type in new vocab on the fly (front/back/comma-separated tags —
+  re-adding an existing term edits it in place), and **Remove this card from my deck** (under the rating row,
+  once flipped) hides a card you don't want without touching the TSV source. Removed built-in cards are tombstoned, not
   deleted — **Restore removed (N)** brings them all back; a *custom* card you added is gone for good if you
   remove it, since there's no source copy to restore from. Both are layered on top of the TSV deck in
   `localStorage`, not written back to it, and are included in the sync payload below, so add/remove decisions
