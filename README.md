@@ -16,7 +16,7 @@ handful of Python scripts, and runs as plain HTML/JS with no server, no build st
 | | |
 |---|---|
 | **Synced player** | Full transcript beside the audio. Click any line to jump there; hover for **loop** (repeat one line), **+ card** (capture that line's vocab straight into the flashcard deck); **Shadow mode** auto-pauses after every line so you can repeat it aloud; 0.6x–1.25x speed; toggle an English gloss under every Indonesian line. |
-| **Flashcards** | ~180 cards (conversation-mined vocab + a common-adjectives reference deck). Cards can carry multiple tags, and the category filter is toggle chips — mix categories (union) or drill into one. Add/remove your own cards from the UI, no file editing needed. |
+| **Flashcards** | ~274 cards (conversation-mined vocab + common-adjectives, comparisons, and connectors reference decks). Cards can carry multiple tags, and the category filter is toggle chips — mix categories (union) or drill into one. Add/remove your own cards from the UI, no file editing needed. |
 | **Quiz** | **Word** mode blanks a vocab term out of a real sentence (cloze) and plays that exact moment of audio. **Sentence** mode checks you followed a whole line. **Listening** mode is ears-only: the clip plays with text hidden — the actual target skill. |
 | **Spaced repetition** | Real **FSRS-5** — the algorithm Anki itself now recommends over SM-2 — with Again/Hard/Good/Easy and live interval previews on each button. A **Study now** mixed session interleaves everything due; new cards are capped at 15/day; streak/heatmap/recall stats on the landing page. Installable as a **PWA** on the phone. |
 | **Progress sync** | Auto-sync between devices via a **private GitHub gist** (paste a gist-scoped token once per device; pages pull on load, ratings push automatically) — plus manual JSON export/import as a fallback. Either way it merges rather than overwrites: per card, the more recent review wins. |
@@ -69,7 +69,8 @@ scripts/          build scripts (all stdlib Python) + FSRS engine + icon art
 transcripts/      raw Soniox export, cleaned transcript, translations
 audio/            source recording
 vocab/            TSV decks (Indonesian / English+notes / tag) — Anki-importable as-is; not all decks need to
-                  come from a conversation (common-adjectives.tsv is a standalone 97-word reference deck)
+                  come from a conversation (common-adjectives.tsv, comparisons.tsv, connectors.tsv are standalone
+                  reference decks)
 notes/            speaker map, timestamped topic index, particle glossary, cultural notes
 *.html            generated: player, flashcards, quiz, landing page
 ```

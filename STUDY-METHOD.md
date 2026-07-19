@@ -26,7 +26,10 @@ particle-heavy, and specific to the people and places in your actual life. The g
    picks up any `vocab/*.tsv`, conversation-derived or not; `build_quiz.py`'s Word mode still only generates
    cards for terms it can find inside a real transcript line, so a reference-deck term with no match in any
    conversation just doesn't get a quiz card (silently skipped, same as always) — it's still fully usable as a
-   flashcard.
+   flashcard. Same pattern for `vocab/comparisons.tsv` (46 words, tag `comparison`: degree/comparative words like
+   lebih/kurang/paling and the lebih-X family) and `vocab/connectors.tsv` (47 words, tag `connector`: conjunctions
+   and discourse markers like dan/karena/walaupun/akhirnya) — two collisions (`kalau`, `makanya`) already existed
+   in `conversation-1-vocab.tsv`, so those two rows were retagged to also carry `connector` instead of duplicating.
 5. (Optional but recommended) Translate the Indonesian lines to English — see **Translations** below.
 6. Build a synced player: `python3 scripts/build_player.py transcripts/<name>.clean.txt audio/<name>.<ext>
    <name>-player.html --title "Conversation N" --translations transcripts/<name>.translations.json`
