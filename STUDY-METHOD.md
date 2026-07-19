@@ -88,13 +88,15 @@ flashcards and all three quiz modes interleaved (interleaving item types measura
 blocks), with an end-of-session summary and a next-due forecast. It reads and writes the same schedules as the
 individual pages, so it doesn't matter where you review.
 
-Two pacing rules are built in, both standard spaced-repetition practice:
+One pacing rule is built in, standard spaced-repetition practice:
 
-- **New cards are capped at 15/day**, shared across every page — so adding a 97-card deck trickles in over a
-  week instead of avalanching 100+ reviews onto day three. When the cap is hit, the pages say so ("good
-  stopping point") rather than silently continuing; "Practice ahead" overrides it deliberately.
 - **Reviews always run in full** — they're the part that actually schedules memory, and skipping them is what
   creates backlog spirals.
+
+New cards are *not* capped (removed 2026-07-19, was 15/day). That trades away the "trickle a big deck in over a
+week" safety net: introducing a lot of new cards in one sitting means FSRS schedules their first reviews at
+roughly the same time (day ~1, then ~3, then ~10...), so they'll bunch up on the review queue for a few weeks
+afterward. Self-pace instead — nothing in the UI stops you from rating through the whole deck in one sitting.
 
 Every rating is also logged (timestamped, synced across devices), which feeds the **Stats** panel on the landing
 page: streak, a 28-day heatmap, and a measured recall rate. The recall number is worth glancing at monthly —

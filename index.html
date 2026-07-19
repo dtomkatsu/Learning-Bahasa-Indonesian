@@ -222,26 +222,14 @@ function srsIsMature(state) {
 }
 
 // ---- Daily new-card cap ----------------------------------------------------
-// FSRS only stays sustainable if new cards trickle in; without a cap, adding
-// a 97-card deck floods the next week with reviews. The counter is shared
-// across flashcards/quiz/study so "15 new per day" means 15 total.
-const NEW_CAP_KEY = 'bahasa:newToday:v1';
-const NEW_PER_DAY = 15;
-
-function srsTodayStr() {
-  const d = new Date();
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
+// Removed (2026-07-19) — new cards are no longer rationed. srsNewQuotaLeft()
+// stays as a no-op returning Infinity so every caller (flashcards/quiz/study
+// all do `.slice(0, srsNewQuotaLeft())` or `quota === 0` checks) keeps
+// working unchanged without gating on it.
 function srsNewQuotaLeft() {
-  const rec = srsLoad(NEW_CAP_KEY);
-  if (rec.date !== srsTodayStr()) return NEW_PER_DAY;
-  return Math.max(0, NEW_PER_DAY - (rec.n || 0));
+  return Infinity;
 }
-function srsNoteNewIntroduced() {
-  const rec = srsLoad(NEW_CAP_KEY);
-  if (rec.date !== srsTodayStr()) { srsSave(NEW_CAP_KEY, { date: srsTodayStr(), n: 1 }); return; }
-  srsSave(NEW_CAP_KEY, { date: rec.date, n: (rec.n || 0) + 1 });
-}
+function srsNoteNewIntroduced() {}
 
 // ---- Review log (feeds streak/heatmap/retention stats) ---------------------
 // Map keyed by ms-timestamp -> {g: grade 1-4, k: kind, n: 1 if first-ever
@@ -694,10 +682,9 @@ function renderStudyMeta() {
     const s = srsQ[q.id];
     if (!s) fresh++; else if (s.due <= now) reviews++;
   });
-  const newToday = Math.min(fresh, srsNewQuotaLeft());
   const el = document.getElementById('studyMeta');
-  if (!reviews && !newToday) el.textContent = 'all caught up ✓';
-  else el.textContent = `${reviews} to review · ${newToday} new today`;
+  if (!reviews && !fresh) el.textContent = 'all caught up ✓';
+  else el.textContent = `${reviews} to review · ${fresh} new`;
 }
 renderStudyMeta();
 

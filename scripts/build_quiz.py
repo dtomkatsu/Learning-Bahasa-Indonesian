@@ -423,14 +423,13 @@ function renderEmpty(msg) {
   cardEl.innerHTML = `<div class="empty">${msg}</div>`;
 }
 
-function renderAllCaughtUp(capReached) {
+function renderAllCaughtUp() {
   current = null;
   const now = Date.now();
   const dues = pool.map(d => (srs[d.id] && srs[d.id].due) || Infinity);
   const nextDue = Math.min(...dues);
   const in24h = pool.filter(d => srs[d.id] && srs[d.id].due > now && srs[d.id].due <= now + 86400000).length;
-  const head = capReached ? `Daily new-card limit (${NEW_PER_DAY}) reached — good stopping point!` : '🎉 All caught up!';
-  cardEl.innerHTML = `<div class="empty">${head}<div class="sub">Next review in ${srsFmtDue(nextDue)}${in24h ? ` · ${in24h} due within 24h` : ''}.</div>` +
+  cardEl.innerHTML = `<div class="empty">🎉 All caught up!<div class="sub">Next review in ${srsFmtDue(nextDue)}${in24h ? ` · ${in24h} due within 24h` : ''}.</div>` +
     `<button class="plain" id="aheadBtn">Practice ahead anyway</button></div>`;
   document.getElementById('aheadBtn').addEventListener('click', () => { practiceAhead = true; pickNext(); });
 }
@@ -558,14 +557,13 @@ function pickNext() {
   audio.pause();
   stopAt = null;
   if (!pool.length) { renderEmpty('No quiz items for this tag.'); renderStats(); return; }
-  // Reviews first; brand-new items only while today's shared new-card quota
-  // lasts (practice-ahead ignores both the schedule and the quota).
+  // Reviews first, then any brand-new item; practice-ahead ignores the
+  // schedule entirely once even that pool is exhausted.
   const reviews = pool.filter(d => srs[d.id] && srsIsDue(srs[d.id]));
   const freshAll = pool.filter(d => !srs[d.id]);
-  const quota = srsNewQuotaLeft();
-  let due = reviews.length ? reviews : (practiceAhead ? freshAll : freshAll.slice(0, quota));
+  let due = reviews.length ? reviews : freshAll;
   if (practiceAhead && !due.length) due = pool;
-  if (!due.length) { renderAllCaughtUp(freshAll.length > 0 && quota === 0); renderStats(); return; }
+  if (!due.length) { renderAllCaughtUp(); renderStats(); return; }
   let next = due[Math.floor(Math.random() * due.length)];
   if (due.length > 1 && current && next.id === current.id) next = due[Math.floor(Math.random() * due.length)];
   current = next;
@@ -579,11 +577,10 @@ function renderStats() {
   const modeItems = itemsForMode(mode);
   const dueReviews = modeItems.filter(d => srs[d.id] && srsIsDue(srs[d.id])).length;
   const fresh = modeItems.filter(d => !srs[d.id]).length;
-  const newToday = Math.min(fresh, srsNewQuotaLeft());
   const mature = modeItems.filter(d => srsIsMature(srs[d.id])).length;
   const label = { word: 'word items', sentence: 'sentences', listening: 'listening clips' }[mode];
   document.getElementById('stats').textContent =
-    `${modeItems.length} ${label} — ${dueReviews} to review, ${newToday} new today, ${mature} mastered (21d+)`;
+    `${modeItems.length} ${label} — ${dueReviews} to review, ${fresh} new, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 

@@ -171,7 +171,9 @@ function shuffle(a) {
 }
 
 // Session = every due review (shuffled, so kinds interleave naturally) with
-// today's remaining new-card quota sprinkled in one per few reviews.
+// every not-yet-studied item sprinkled in one per few reviews. No daily cap,
+// so on a big vocab dump (or a first-ever session) this can be large — that's
+// intentional per-request, but worth knowing before hitting "Study now".
 let session = [], idx = 0, tallies = { 1: 0, 2: 0, 3: 0, 4: 0 }, startedAt = null;
 let practiceRun = false;
 

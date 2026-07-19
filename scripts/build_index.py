@@ -277,10 +277,9 @@ function renderStudyMeta() {
     const s = srsQ[q.id];
     if (!s) fresh++; else if (s.due <= now) reviews++;
   });
-  const newToday = Math.min(fresh, srsNewQuotaLeft());
   const el = document.getElementById('studyMeta');
-  if (!reviews && !newToday) el.textContent = 'all caught up ✓';
-  else el.textContent = `${reviews} to review · ${newToday} new today`;
+  if (!reviews && !fresh) el.textContent = 'all caught up ✓';
+  else el.textContent = `${reviews} to review · ${fresh} new`;
 }
 renderStudyMeta();
 

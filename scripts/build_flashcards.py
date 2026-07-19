@@ -242,14 +242,13 @@ function dueIn(items) { return items.filter(d => srsIsDue(srs[d.front])); }
 
 function pickNext() {
   if (!pool.length) { renderEmpty('No cards for this tag.'); return; }
-  // Reviews first; brand-new cards only while today's shared new-card quota
-  // lasts (practice-ahead ignores both the schedule and the quota).
+  // Reviews first, then any brand-new card; practice-ahead ignores the
+  // schedule entirely once even that pool is exhausted.
   const reviews = pool.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
   const freshAll = pool.filter(d => !srs[d.front]);
-  const quota = srsNewQuotaLeft();
-  let due = reviews.length ? reviews : (practiceAhead ? freshAll : freshAll.slice(0, quota));
+  let due = reviews.length ? reviews : freshAll;
   if (practiceAhead && !due.length) due = pool;
-  if (!due.length) { renderAllCaughtUp(freshAll.length > 0 && quota === 0); return; }
+  if (!due.length) { renderAllCaughtUp(); return; }
   let next = due[Math.floor(Math.random() * due.length)];
   if (due.length > 1 && current && next.front === current.front) next = due[Math.floor(Math.random() * due.length)];
   current = next;
@@ -269,14 +268,13 @@ function renderEmpty(msg) {
   rateRow.hidden = true;
 }
 
-function renderAllCaughtUp(capReached) {
+function renderAllCaughtUp() {
   current = null;
   const now = Date.now();
   const dues = pool.map(d => (srs[d.front] && srs[d.front].due) || Infinity);
   const nextDue = Math.min(...dues);
   const in24h = pool.filter(d => srs[d.front] && srs[d.front].due > now && srs[d.front].due <= now + 86400000).length;
-  const head = capReached ? `Daily new-card limit (${NEW_PER_DAY}) reached — good stopping point!` : '🎉 All caught up!';
-  cardEl.innerHTML = `<div class="empty">${head}<div class="sub">Next review in ${srsFmtDue(nextDue)}${in24h ? ` · ${in24h} due within 24h` : ''}.</div>` +
+  cardEl.innerHTML = `<div class="empty">🎉 All caught up!<div class="sub">Next review in ${srsFmtDue(nextDue)}${in24h ? ` · ${in24h} due within 24h` : ''}.</div>` +
     `<button class="plain" id="aheadBtn">Practice ahead anyway</button></div>`;
   rateRow.hidden = true;
   cardMeta.hidden = true;
@@ -290,10 +288,9 @@ function renderStats() {
   // numbers stay internally consistent regardless of what's selected.
   const dueReviews = DECK.filter(d => srs[d.front] && srsIsDue(srs[d.front])).length;
   const fresh = DECK.filter(d => !srs[d.front]).length;
-  const newToday = Math.min(fresh, srsNewQuotaLeft());
   const mature = DECK.filter(d => srsIsMature(srs[d.front])).length;
   document.getElementById('stats').textContent =
-    `${DECK.length} cards — ${dueReviews} to review, ${newToday} new today, ${mature} mastered (21d+)`;
+    `${DECK.length} cards — ${dueReviews} to review, ${fresh} new, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
 }
 
