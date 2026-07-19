@@ -9,14 +9,14 @@ gitu / begitu	"like that" — trails off a sentence	particle
 banget	"very / so" — intensifier	particle
 mendingan	"better off, rather" — for comparing options	particle
 entar	colloquial for "nanti" — later	particle
-makanya	"that's why"	particle
+makanya	"that's why"	particle,connector
 atuh	Sundanese softener/emphasis particle, no direct translation	particle_sundanese
 mah	Sundanese topic marker, roughly "as for..."	particle_sundanese
 udah	colloquial "sudah" — already	grammar
 belum	not yet	grammar
 nggak / enggak	colloquial "tidak" — not, no	grammar
 iya	yes / right (softer than "ya")	grammar
-kalau	if / when (conditional)	grammar
+kalau	if / when (conditional)	grammar,connector
 soalnya	"because, the thing is..."	grammar
 kayaknya	"it seems like, I think"	grammar
 gimana	colloquial "bagaimana" — how	grammar
