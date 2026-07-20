@@ -30,6 +30,14 @@ particle-heavy, and specific to the people and places in your actual life. The g
    lebih/kurang/paling and the lebih-X family) and `vocab/connectors.tsv` (47 words, tag `connector`: conjunctions
    and discourse markers like dan/karena/walaupun/akhirnya) — two collisions (`kalau`, `makanya`) already existed
    in `conversation-1-vocab.tsv`, so those two rows were retagged to also carry `connector` instead of duplicating.
+
+   You don't have to go through a TSV + rebuild for a quick vocab dump, either: flashcards.html's **"+ Add
+   list"** button (next to "+ Add card") takes a paste in the exact same `front – back` format used above, one
+   entry per line. Start a block with a `(tag)` line to categorize everything below it until the next blank line
+   or `(tag)`; blocks with no header default to `custom`. It runs the same collision check as the manual TSV
+   process — a front that already exists anywhere in the deck gets the new tag merged onto it instead of being
+   duplicated or having its translation overwritten. Good for a quick list on your phone; still edit the TSVs
+   directly for anything that should ship as a real reference deck in the repo.
 5. (Optional but recommended) Translate the Indonesian lines to English — see **Translations** below.
 6. Build a synced player: `python3 scripts/build_player.py transcripts/<name>.clean.txt audio/<name>.<ext>
    <name>-player.html --title "Conversation N" --translations transcripts/<name>.translations.json`

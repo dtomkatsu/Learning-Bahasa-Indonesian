@@ -11,11 +11,13 @@ get shown. If nothing's due, there's a "practice ahead" fallback rather than
 a dead end.
 
 The deck isn't fixed at build time: a "Remove this card" link on the back of
-each card hides it (tombstoned in localStorage, restorable), and "+ Add card"
-lets you type in new vocab on the fly. Both are layered on top of the
-TSV-sourced deck rather than editing it, and both are included in the sync
-payload (scripts/_sync_js.py) so deck edits propagate to other devices the
-same way review progress does.
+each card hides it (tombstoned in localStorage, restorable), "+ Add card"
+lets you type in a single new vocab entry on the fly, and "+ Add list" takes
+a pasted block of "front – back" lines (same format as the vocab/*.tsv
+source files), optionally grouped into "(tag)"-headed blocks. All of these
+are layered on top of the TSV-sourced deck rather than editing it, and all
+are included in the sync payload (scripts/_sync_js.py) so deck edits
+propagate to other devices the same way review progress does.
 
 Usage:
     python3 build_flashcards.py
@@ -95,12 +97,14 @@ PAGE = """<!doctype html>
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
 
-  #addForm { border:1px solid var(--line); border-radius:10px; background:var(--card);
+  #addForm, #bulkForm { border:1px solid var(--line); border-radius:10px; background:var(--card);
     padding:14px; margin:0 0 16px; }
-  #addForm[hidden] { display:none; }
-  #addForm input { width:100%; margin-bottom:8px; font-size:0.85rem; border-radius:8px;
+  #addForm[hidden], #bulkForm[hidden] { display:none; }
+  #addForm input, #bulkForm textarea { width:100%; margin-bottom:8px; font-size:0.85rem; border-radius:8px;
     border:1px solid var(--line); background:var(--bg); color:var(--fg); padding:8px 10px; }
-  #addForm .row { display:flex; gap:8px; }
+  #bulkForm textarea { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; min-height:160px; resize:vertical; }
+  #bulkForm .hint2 { font-size:0.75rem; color:var(--muted); margin:-4px 0 8px; }
+  #addForm .row, #bulkForm .row { display:flex; gap:8px; }
 </style>
 </head>
 <body>
@@ -113,6 +117,7 @@ PAGE = """<!doctype html>
   <div class="topRow">
     <div class="chips" id="tagChips"></div>
     <button class="plain" id="addToggleBtn">+ Add card</button>
+    <button class="plain" id="bulkToggleBtn">+ Add list</button>
   </div>
   <div id="addForm" hidden>
     <input id="addFront" placeholder="Indonesian (e.g. kayaknya)">
@@ -121,6 +126,23 @@ PAGE = """<!doctype html>
     <div class="row">
       <button class="plain" id="addSaveBtn">Save card</button>
       <button class="plain" id="addCancelBtn">Cancel</button>
+    </div>
+  </div>
+  <div id="bulkForm" hidden>
+    <div class="hint2">One per line: <code>front – back</code>. Start a block with <code>(tag)</code> to
+      tag everything below it until the next blank line or <code>(tag)</code> — blocks without one default
+      to “custom”. Words that already exist in the deck get the new tag added rather than duplicated.</div>
+    <textarea id="bulkText" placeholder="(comparison)
+lebih – more
+kurang – less / not enough
+paling – most
+
+(connector)
+dan – and
+atau – or"></textarea>
+    <div class="row">
+      <button class="plain" id="bulkSaveBtn">Import list</button>
+      <button class="plain" id="bulkCancelBtn">Cancel</button>
     </div>
   </div>
   <div id="card"><div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div></div>
@@ -365,6 +387,62 @@ function addCustomCard(front, back, tagsRaw) {
   return true;
 }
 
+// Parses the same "front – back" paste format used to build the vocab/*.tsv
+// decks: blank-line-separated blocks, each optionally starting with a
+// "(tag[,tag2])" line that applies to every entry in that block. Accepts
+// en dash / em dash / hyphen as the separator, as long as it's space-padded
+// (so hyphenated words like "kira-kira" inside a term are left alone).
+function parseBulkVocab(text) {
+  const entries = [];
+  const blocks = text.split(/\\n\\s*\\n/);
+  for (const block of blocks) {
+    const lines = block.split('\\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) continue;
+    let tags = ['custom'];
+    let start = 0;
+    const tagMatch = lines[0].match(/^\\(([^)]+)\\)$/);
+    if (tagMatch) {
+      tags = tagMatch[1].split(',').map(t => t.trim()).filter(Boolean);
+      if (!tags.length) tags = ['custom'];
+      start = 1;
+    }
+    for (let i = start; i < lines.length; i++) {
+      const sep = lines[i].match(/\\s[–—-]\\s/);
+      if (!sep) continue;
+      const front = lines[i].slice(0, sep.index).trim();
+      const back = lines[i].slice(sep.index + sep[0].length).trim();
+      if (front && back) entries.push({ front, back, tags });
+    }
+  }
+  return entries;
+}
+
+// Same collision rule as manual TSV edits: a front that already exists
+// anywhere in the deck (built-in or custom) gets the new tag(s) merged onto
+// its existing row instead of being duplicated or having its back overwritten.
+function addBulkCards(entries) {
+  if (!entries.length) return { added: 0, retagged: 0 };
+  const custom = loadCustomCards();
+  const removed = loadRemovedCards();
+  let added = 0, retagged = 0;
+  for (const e of entries) {
+    const existing = DECK.find(d => d.front === e.front);
+    if (existing) {
+      const mergedTags = [...new Set([...existing.tags, ...e.tags])];
+      custom[e.front] = { front: e.front, back: existing.back, tags: mergedTags, updatedAt: Date.now() };
+      retagged++;
+    } else {
+      custom[e.front] = { front: e.front, back: e.back, tags: e.tags, updatedAt: Date.now() };
+      added++;
+    }
+    if (removed[e.front]) delete removed[e.front];
+  }
+  syncWrite(CUSTOM_CARDS_KEY, custom);
+  syncWrite(REMOVED_CARDS_KEY, removed);
+  syncRemoteQueuePush(setSyncState);
+  return { added, retagged };
+}
+
 cardEl.addEventListener('click', flip);
 [1, 2, 3, 4].forEach(g => {
   document.getElementById('btn' + g).addEventListener('click', (e) => { e.stopPropagation(); rate(g); });
@@ -384,6 +462,7 @@ document.getElementById('restoreBtn').addEventListener('click', () => {
 
 const addForm = document.getElementById('addForm');
 document.getElementById('addToggleBtn').addEventListener('click', () => {
+  bulkForm.hidden = true;
   addForm.hidden = !addForm.hidden;
   if (!addForm.hidden) document.getElementById('addFront').focus();
 });
@@ -401,6 +480,26 @@ document.getElementById('addSaveBtn').addEventListener('click', () => {
   document.getElementById('addTag').value = '';
   addForm.hidden = true;
   refreshDeck();
+});
+
+const bulkForm = document.getElementById('bulkForm');
+document.getElementById('bulkToggleBtn').addEventListener('click', () => {
+  addForm.hidden = true;
+  bulkForm.hidden = !bulkForm.hidden;
+  if (!bulkForm.hidden) document.getElementById('bulkText').focus();
+});
+document.getElementById('bulkCancelBtn').addEventListener('click', () => { bulkForm.hidden = true; });
+document.getElementById('bulkSaveBtn').addEventListener('click', () => {
+  const entries = parseBulkVocab(document.getElementById('bulkText').value);
+  if (!entries.length) {
+    alert('No valid lines found. Use the format:\\n\\nfront – back\\n\\noptionally starting a block with (tag).');
+    return;
+  }
+  const { added, retagged } = addBulkCards(entries);
+  document.getElementById('bulkText').value = '';
+  bulkForm.hidden = true;
+  refreshDeck();
+  alert(`Added ${added} new card(s)` + (retagged ? `, retagged ${retagged} existing word(s).` : '.'));
 });
 
 document.addEventListener('keydown', (e) => {
