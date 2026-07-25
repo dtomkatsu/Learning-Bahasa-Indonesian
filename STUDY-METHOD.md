@@ -96,10 +96,14 @@ flashcards and all three quiz modes interleaved (interleaving item types measura
 blocks), with an end-of-session summary and a next-due forecast. It reads and writes the same schedules as the
 individual pages, so it doesn't matter where you review.
 
-One pacing rule is built in, standard spaced-repetition practice:
+Two pacing rules are built in, standard spaced-repetition practice:
 
 - **Reviews always run in full** — they're the part that actually schedules memory, and skipping them is what
   creates backlog spirals.
+- **A session is a fixed number of items** — the picker at the top of study.html (10 / 20 / 50 / All, default
+  20, remembered per device). Due reviews are built into the session before new material, so a short session
+  spends itself on the debt first. Changing the size mid-session only takes effect next time, so you can never
+  lose answers to it.
 
 **Misrated a card?** Every rating surface (flashcards, all three quiz modes, and the mixed study session) has a
 **"↶ Go back"** button, shortcut **`z`**. It doesn't just re-show the card — it restores that item's previous
@@ -108,10 +112,24 @@ or a phantom review skewing your stats. If the rating was the card's first, undo
 the study session it also steps the progress counter back. The stack holds the last 30 ratings but is in-memory
 only — it's for fixing the misclick you just made, not history across page loads.
 
-New cards are *not* capped (removed 2026-07-19, was 15/day). That trades away the "trickle a big deck in over a
-week" safety net: introducing a lot of new cards in one sitting means FSRS schedules their first reviews at
-roughly the same time (day ~1, then ~3, then ~10...), so they'll bunch up on the review queue for a few weeks
-afterward. Self-pace instead — nothing in the UI stops you from rating through the whole deck in one sitting.
+There's no *daily* cap on new cards (removed 2026-07-19, was 15/day) — the session size is what keeps a sitting
+finite instead. Before it existed, "Study now" on a fresh deck built a **716-item** session with a meaningless
+progress bar. What the daily cap used to buy you was spreading a big deck over a week: introducing a lot of new
+cards at once means FSRS schedules their first reviews at roughly the same time (day ~1, then ~3, then ~10…), so
+they bunch up for a few weeks afterward. Choosing a smaller session size is the lever for that now.
+
+**Finding things.** flashcards.html has a **Filter** panel (search box + multi-select category chips with card
+counts) and a **Browse** list showing every card in the current filter with its scheduling state — new /
+due now / in N days / mastered. Click any row to study that card immediately. quiz.html uses the same chip
+filter; its categories are mode-dependent (Word mode = vocab categories, Sentence/Listening = conversations),
+so the chips rebuild when you switch mode. On narrow screens the filter panel starts collapsed, because 15
+category chips wrap to about seven rows and push the card off screen.
+
+**Knowing what to work on.** The landing page shows a **daily goal** (editable inline, default 30 reviews) and
+**recall by category, weakest first** — reviews grouped by the tags of the card they were on, so you can see
+that e.g. connectors are at 40% while adjectives are at 90%. Categories with fewer than 5 reviews are omitted
+as noise. This needs the item key that `srsLogReview` began recording on 2026-07-25; reviews logged before that
+have no key and are skipped by the breakdown (they still count in the streak and overall recall rate).
 
 Every rating is also logged (timestamped, synced across devices), which feeds the **Stats** panel on the landing
 page: streak, a 28-day heatmap, and a measured recall rate. The recall number is worth glancing at monthly —

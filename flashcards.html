@@ -20,13 +20,32 @@
   h1 { font-size:1.15rem; margin:0; }
   a.back { color:var(--muted); font-size:0.8rem; text-decoration:none; }
   .stats { color:var(--muted); font-size:0.8rem; margin-bottom:16px; }
-  .topRow { display:flex; gap:8px; align-items:flex-start; margin-bottom:16px; }
-  .topRow #addToggleBtn { flex:0 0 auto; white-space:nowrap; }
-  .chips { flex:1 1 auto; display:flex; flex-wrap:wrap; gap:6px; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .panel { border:1px solid var(--line); border-radius:10px; background:var(--card);
+    padding:12px; margin-bottom:16px; }
+  .panel[hidden] { display:none; }
+  #searchBox { width:100%; font-size:0.85rem; border-radius:8px; border:1px solid var(--line);
+    background:var(--bg); color:var(--fg); padding:8px 10px; margin-bottom:10px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
   button.chip { font-size:0.75rem; padding:5px 10px; border-radius:999px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
   button.chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
   button.chip:hover { border-color:var(--accent); }
+  button.chip .n { opacity:0.65; font-size:0.68rem; margin-left:4px; }
+  .panelFoot { margin-top:10px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .panelFoot .count { color:var(--muted); font-size:0.75rem; }
+  .browseList { max-height:58vh; overflow-y:auto; margin:-4px -4px 0; }
+  .browseRow { display:flex; justify-content:space-between; gap:10px; align-items:baseline;
+    padding:9px 6px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .browseRow:last-child { border-bottom:none; }
+  .browseRow:hover { background:var(--bg); }
+  .browseRow .bmain { min-width:0; }
+  .browseRow .bf { font-weight:600; font-size:0.9rem; }
+  .browseRow .bb { color:var(--muted); font-size:0.78rem; }
+  .browseRow .bs { font-size:0.7rem; white-space:nowrap; flex:0 0 auto; }
+  .bs.new { color:var(--accent); }
+  .bs.learning { color:var(--hard); }
+  .bs.mature { color:var(--good); }
   #card { border:1px solid var(--line); border-radius:14px; background:var(--card);
     min-height:220px; display:flex; align-items:center; justify-content:center; text-align:center;
     padding:28px 20px; cursor:pointer; margin:18px 0; user-select:none; }
@@ -34,6 +53,10 @@
   #card .back { display:none; }
   #card.flipped .front { display:none; }
   #card.flipped .back { display:block; }
+  /* The Indonesian is echoed above the answer: you're judging recall at the
+     moment you rate, so the pair you're trying to associate has to be on
+     screen together rather than the prompt vanishing on flip. */
+  #card .back .q { color:var(--muted); font-size:0.95rem; margin-bottom:10px; }
   #card .back .en { font-size:1.25rem; font-weight:600; margin-bottom:6px; }
   #card .back .tag { color:var(--muted); font-size:0.78rem; }
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
@@ -48,17 +71,22 @@
   button.rate-btn.good { border-color:var(--good); color:var(--good); }
   button.rate-btn.easy { border-color:var(--easy); color:var(--easy); }
   .rate[hidden] { display:none; }
-  .cardMeta { text-align:center; margin-top:10px; }
+  /* Sits well clear of the rate buttons and right-aligned rather than centred
+     under them — it used to be a full-width tap target directly beneath
+     "Again", which is a thumb misfire waiting to happen on a phone. */
+  .cardMeta { text-align:right; margin-top:22px; }
   .cardMeta[hidden] { display:none; }
-  button.linkBtn { font-size:0.75rem; color:var(--muted); background:none; border:none;
-    text-decoration:underline; cursor:pointer; padding:4px; }
-  button.linkBtn:hover { color:var(--again); }
+  button.linkBtn { font-size:0.72rem; color:var(--muted); background:none; border:none;
+    cursor:pointer; padding:4px; }
+  button.linkBtn:hover { color:var(--again); text-decoration:underline; }
   .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px;
     flex-wrap:wrap; gap:8px; }
   .tools .row { display:flex; gap:8px; flex-wrap:wrap; }
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
   button.plain:disabled { opacity:0.4; cursor:default; }
+  button.plain.active { border-color:var(--accent); color:var(--accent); }
+  button.plain.danger:hover { border-color:var(--again); color:var(--again); }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -80,10 +108,26 @@
     <a class="back" href="index.html">&larr; all conversations</a>
   </div>
   <div class="stats" id="stats"></div>
-  <div class="topRow">
+  <div class="controls">
+    <button class="plain" id="filterToggleBtn">Filter</button>
+    <button class="plain" id="browseToggleBtn">Browse</button>
+    <button class="plain" id="addToggleBtn">+ Card</button>
+    <button class="plain" id="bulkToggleBtn">+ List</button>
+  </div>
+  <div class="panel" id="filterPanel" hidden>
+    <input id="searchBox" placeholder="Search Indonesian or English…">
     <div class="chips" id="tagChips"></div>
-    <button class="plain" id="addToggleBtn">+ Add card</button>
-    <button class="plain" id="bulkToggleBtn">+ Add list</button>
+    <div class="panelFoot">
+      <span class="count" id="filterCount"></span>
+      <button class="plain" id="clearFilterBtn">Clear filters</button>
+    </div>
+  </div>
+  <div class="panel" id="browsePanel" hidden>
+    <div class="browseList" id="browseList"></div>
+    <div class="panelFoot">
+      <span class="count" id="browseCount"></span>
+      <button class="plain" id="browseCloseBtn">Close</button>
+    </div>
   </div>
   <div id="addForm" hidden>
     <input id="addFront" placeholder="Indonesian (e.g. kayaknya)">
@@ -111,8 +155,8 @@ atau – or"></textarea>
       <button class="plain" id="bulkCancelBtn">Cancel</button>
     </div>
   </div>
-  <div id="card"><div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div></div>
-  <div class="hint">Click the card (or press space) to flip · “z” to go back</div>
+  <div id="card"><div class="front"></div><div class="back"><div class="q"></div><div class="en"></div><div class="tag"></div></div></div>
+  <div class="hint" id="hint"></div>
   <div class="rate" id="rateRow" hidden>
     <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
     <button class="rate-btn hard" id="btn2"><span class="lbl">Hard</span><span class="prev" id="prev2"></span></button>
@@ -120,16 +164,18 @@ atau – or"></textarea>
     <button class="rate-btn easy" id="btn4"><span class="lbl">Easy</span><span class="prev" id="prev4"></span></button>
   </div>
   <div class="cardMeta" id="cardMeta" hidden>
-    <button class="linkBtn" id="removeBtn">Remove this card from my deck</button>
+    <button class="linkBtn" id="removeBtn">Remove card</button>
   </div>
   <div class="tools">
     <div class="row">
       <button class="plain" id="undoBtn" disabled>&#8630; Go back</button>
-      <button class="plain" id="resetBtn">Reset progress</button>
       <button class="plain" id="restoreBtn">Restore removed (0)</button>
     </div>
-    <span class="stats" id="syncState"></span>
-    <span class="stats" id="deckInfo"></span>
+    <div class="row">
+      <span class="stats" id="syncState"></span>
+      <span class="stats" id="deckInfo"></span>
+      <button class="plain danger" id="resetBtn">Reset progress</button>
+    </div>
   </div>
 </div>
 <script>
@@ -254,11 +300,16 @@ const REVIEWLOG_KEY = 'bahasa:reviewLog:v1';
 const REVIEWLOG_CAP = 2000;
 
 // Returns the key it logged under, so an undo can take the entry back out.
-function srsLogReview(kind, grade, isNew) {
+// `itemKey` (the item's SRS id) is recorded so stats can join a review back to
+// the card it belongs to — that's what makes retention-by-tag possible.
+// Entries written before this existed simply have no `i` and are skipped by
+// those breakdowns rather than miscounted.
+function srsLogReview(kind, grade, isNew, itemKey) {
   const log = srsLoad(REVIEWLOG_KEY);
   let t = Date.now();
   while (log[t]) t++;
   log[t] = { g: grade, k: kind, n: isNew ? 1 : 0 };
+  if (itemKey) log[t].i = itemKey;
   const keys = Object.keys(log).map(Number).sort((a, b) => b - a);
   if (keys.length > REVIEWLOG_CAP) {
     for (const k of keys.slice(REVIEWLOG_CAP)) delete log[k];
@@ -302,6 +353,52 @@ function srsUnlogReview(ts) {
   if (!(ts in log)) return;
   delete log[ts];
   srsSave(REVIEWLOG_KEY, log);
+}
+
+// ---- Daily goal ------------------------------------------------------------
+// A target number of reviews per day. Deliberately a soft goal shown on the
+// landing page, not a cap that stops you (the hard 15/day new-card cap was
+// removed on purpose) — it exists to make "am I done for today?" answerable.
+// Device-local: it's a display preference, not progress, so it stays out of
+// SYNC_KEYS and each device can set its own.
+const GOAL_KEY = 'bahasa:dailyGoal:v1';
+const DEFAULT_GOAL = 30;
+
+function srsDayKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function srsGoal() {
+  const g = srsLoad(GOAL_KEY);
+  return g && g.n ? g.n : DEFAULT_GOAL;
+}
+function srsSetGoal(n) {
+  srsSave(GOAL_KEY, { n: Math.max(1, Math.round(n)) });
+}
+function srsReviewsToday() {
+  const today = srsDayKey(new Date());
+  const log = srsLoad(REVIEWLOG_KEY);
+  let n = 0;
+  for (const ts of Object.keys(log)) {
+    if (srsDayKey(new Date(Number(ts))) === today) n++;
+  }
+  return n;
+}
+
+// ---- Device ----------------------------------------------------------------
+// Touch devices have no space bar and no "z" key, but they do have the swipe
+// gestures — so the on-screen hints have to say different things. `hover:none`
+// is the right signal (it means "no mouse"); screen width is not, since a
+// narrow desktop window still has a keyboard.
+function srsIsTouch() {
+  return !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
+}
+
+// Separate from srsIsTouch on purpose: whether a panel should start collapsed
+// is a *layout* question (is there room?), while hint wording is an *input*
+// question (is there a keyboard?). A narrow desktop window needs the collapse
+// but still wants the keyboard hints.
+function srsIsNarrow() {
+  return window.innerWidth < 640;
 }
 
 function srsFmtDue(ts) {
@@ -654,32 +751,66 @@ const chipsEl = document.getElementById('tagChips');
 // union of those categories (a card matches if it carries ANY active tag,
 // so cross-tagged cards let categories mix).
 let activeTags = new Set();
+let searchTerm = '';
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
 
 function uniqueTags() {
   return [...new Set(DECK.flatMap(d => d.tags))].sort();
+}
+function tagCount(t) {
+  return DECK.filter(d => d.tags.includes(t)).length;
 }
 function renderChips() {
   const tags = uniqueTags();
   activeTags = new Set([...activeTags].filter(t => tags.includes(t)));
   chipsEl.innerHTML = tags.map(t =>
-    `<button class="chip${activeTags.has(t) ? ' active' : ''}" data-tag="${t}">${t}</button>`).join('');
+    `<button class="chip${activeTags.has(t) ? ' active' : ''}" data-tag="${escapeHtml(t)}">` +
+    `${escapeHtml(t)}<span class="n">${tagCount(t)}</span></button>`).join('');
   chipsEl.querySelectorAll('.chip').forEach(b => {
     b.addEventListener('click', () => {
       const t = b.dataset.tag;
       if (activeTags.has(t)) activeTags.delete(t); else activeTags.add(t);
       b.classList.toggle('active');
       practiceAhead = false;
-      applyFilter();
-      pickNext();
+      afterFilterChange(true);
     });
   });
 }
 renderChips();
 
+function matchesSearch(d) {
+  if (!searchTerm) return true;
+  return (d.front + ' ' + d.back).toLowerCase().includes(searchTerm);
+}
+
 function applyFilter() {
-  pool = activeTags.size
-    ? DECK.filter(d => d.tags.some(t => activeTags.has(t)))
-    : DECK.slice();
+  pool = DECK.filter(d =>
+    (!activeTags.size || d.tags.some(t => activeTags.has(t))) && matchesSearch(d));
+  updateFilterChrome();
+}
+
+function activeFilterCount() { return activeTags.size + (searchTerm ? 1 : 0); }
+
+function updateFilterChrome() {
+  const n = activeFilterCount();
+  const btn = document.getElementById('filterToggleBtn');
+  btn.textContent = n ? 'Filter · ' + n : 'Filter';
+  btn.classList.toggle('active', n > 0);
+  document.getElementById('filterCount').textContent =
+    pool.length + ' of ' + DECK.length + ' cards match';
+}
+
+// Chips are an explicit "show me this category" action, so they always draw a
+// fresh card. Typing in the search box shouldn't yank the current card away
+// mid-word, so it only re-picks once the card on screen stops matching.
+function afterFilterChange(forcePick) {
+  applyFilter();
+  if (!document.getElementById('browsePanel').hidden) renderBrowse();
+  if (forcePick || !current || !pool.some(d => d.front === current.front)) pickNext();
+  else renderStats();
 }
 applyFilter();
 
@@ -721,8 +852,9 @@ function showCard(card) {
   current = card;
   flipped = false;
   cardEl.className = '';
-  cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div>';
+  cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="q"></div><div class="en"></div><div class="tag"></div></div>';
   cardEl.querySelector('.front').textContent = current.front;
+  cardEl.querySelector('.q').textContent = current.front;
   cardEl.querySelector('.en').textContent = current.back;
   cardEl.querySelector('.tag').textContent = current.tags.join(' · ');
   rateRow.hidden = true;
@@ -780,7 +912,7 @@ function flip() {
 function rate(grade) {
   if (!current) return;
   const isNew = !srs[current.front];
-  const ts = srsLogReview('flash', grade, isNew);
+  const ts = srsLogReview('flash', grade, isNew, current.front);
   srsPushUndo({ card: current, front: current.front, prev: srs[current.front] || null, ts });
   srs[current.front] = fsrsNextState(srs[current.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
@@ -807,6 +939,71 @@ function undoLast() {
 
 function updateUndoBtn() {
   document.getElementById('undoBtn').disabled = !srsUndoDepth();
+}
+
+// ---- Browse ---------------------------------------------------------------
+// A list view over the current filter, so a 274-card deck is something you can
+// actually look at rather than only meeting one card at a time. Rows show
+// scheduling state; clicking one jumps straight to studying that card.
+function cardStateLabel(front) {
+  const s = srs[front];
+  if (!s) return { txt: 'new', cls: 'new' };
+  if (srsIsMature(s)) return { txt: 'mastered · ' + srsFmtDue(s.due), cls: 'mature' };
+  return { txt: srsIsDue(s) ? 'due now' : 'in ' + srsFmtDue(s.due), cls: 'learning' };
+}
+
+function renderBrowse() {
+  const listEl = document.getElementById('browseList');
+  if (!pool.length) {
+    listEl.innerHTML = '<div class="empty">Nothing matches.</div>';
+  } else {
+    listEl.innerHTML = pool.map((d, i) => {
+      const st = cardStateLabel(d.front);
+      return `<div class="browseRow" data-i="${i}">` +
+        `<div class="bmain"><div class="bf">${escapeHtml(d.front)}</div>` +
+        `<div class="bb">${escapeHtml(d.back)}</div></div>` +
+        `<div class="bs ${st.cls}">${escapeHtml(st.txt)}</div></div>`;
+    }).join('');
+    listEl.querySelectorAll('.browseRow').forEach(r => {
+      r.addEventListener('click', () => {
+        const card = pool[Number(r.dataset.i)];
+        closePanels();
+        showCard(card);
+      });
+    });
+  }
+  document.getElementById('browseCount').textContent =
+    pool.length + (pool.length === 1 ? ' card' : ' cards');
+}
+
+// ---- Panels ---------------------------------------------------------------
+// Filter / Browse / Add card / Add list are mutually exclusive so they never
+// stack up and push the card off screen.
+const PANEL_IDS = ['filterPanel', 'browsePanel', 'addForm', 'bulkForm'];
+
+function closePanels(except) {
+  PANEL_IDS.forEach(id => {
+    if (id !== except) document.getElementById(id).hidden = true;
+  });
+  document.getElementById('browseToggleBtn')
+    .classList.toggle('active', except === 'browsePanel');
+}
+
+function togglePanel(id) {
+  const el = document.getElementById(id);
+  const willOpen = el.hidden;
+  closePanels(willOpen ? id : null);
+  el.hidden = !willOpen;
+  if (id === 'browsePanel' && willOpen) renderBrowse();
+  document.getElementById('browseToggleBtn')
+    .classList.toggle('active', id === 'browsePanel' && willOpen);
+  return willOpen;
+}
+
+function renderHint() {
+  document.getElementById('hint').textContent = srsIsTouch()
+    ? 'Tap the card to flip · swipe right = Good, left = Again'
+    : 'Click the card (or press space) to flip · “z” to go back';
 }
 
 function updateRestoreCount() {
@@ -929,9 +1126,7 @@ document.getElementById('restoreBtn').addEventListener('click', () => {
 
 const addForm = document.getElementById('addForm');
 document.getElementById('addToggleBtn').addEventListener('click', () => {
-  bulkForm.hidden = true;
-  addForm.hidden = !addForm.hidden;
-  if (!addForm.hidden) document.getElementById('addFront').focus();
+  if (togglePanel('addForm')) document.getElementById('addFront').focus();
 });
 document.getElementById('addCancelBtn').addEventListener('click', () => { addForm.hidden = true; });
 document.getElementById('addSaveBtn').addEventListener('click', () => {
@@ -951,9 +1146,26 @@ document.getElementById('addSaveBtn').addEventListener('click', () => {
 
 const bulkForm = document.getElementById('bulkForm');
 document.getElementById('bulkToggleBtn').addEventListener('click', () => {
-  addForm.hidden = true;
-  bulkForm.hidden = !bulkForm.hidden;
-  if (!bulkForm.hidden) document.getElementById('bulkText').focus();
+  if (togglePanel('bulkForm')) document.getElementById('bulkText').focus();
+});
+
+document.getElementById('filterToggleBtn').addEventListener('click', () => togglePanel('filterPanel'));
+document.getElementById('browseToggleBtn').addEventListener('click', () => togglePanel('browsePanel'));
+document.getElementById('browseCloseBtn').addEventListener('click', () => closePanels());
+
+const searchBox = document.getElementById('searchBox');
+searchBox.addEventListener('input', () => {
+  searchTerm = searchBox.value.trim().toLowerCase();
+  practiceAhead = false;
+  afterFilterChange(false);
+});
+document.getElementById('clearFilterBtn').addEventListener('click', () => {
+  activeTags.clear();
+  searchTerm = '';
+  searchBox.value = '';
+  practiceAhead = false;
+  renderChips();
+  afterFilterChange(true);
 });
 document.getElementById('bulkCancelBtn').addEventListener('click', () => { bulkForm.hidden = true; });
 document.getElementById('bulkSaveBtn').addEventListener('click', () => {
@@ -990,6 +1202,11 @@ cardEl.addEventListener('touchend', (e) => {
   if (Math.abs(dx) > 60 && Math.abs(dy) < 40) rate(dx > 0 ? 3 : 1);
 });
 
+// On a phone the chip row is the single biggest thing between you and a card
+// (15 categories wrap to ~7 rows), so it starts collapsed on any narrow
+// screen. Wide windows have the room, so leave it open there.
+if (!srsIsTouch() && !srsIsNarrow()) document.getElementById('filterPanel').hidden = false;
+renderHint();
 updateRestoreCount();
 pickNext();
 </script>

@@ -299,6 +299,20 @@ PAGE = """<!doctype html>
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
   button.plain:disabled { opacity:0.4; cursor:default; }
+  button.plain.active { border-color:var(--accent); color:var(--accent); }
+  button.plain.danger:hover { border-color:var(--again); color:var(--again); }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .panel { border:1px solid var(--line); border-radius:10px; background:var(--card);
+    padding:12px; margin-bottom:16px; }
+  .panel[hidden] { display:none; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  button.chip { font-size:0.75rem; padding:5px 10px; border-radius:999px; border:1px solid var(--line);
+    background:var(--bg); color:var(--muted); cursor:pointer; }
+  button.chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.chip:hover { border-color:var(--accent); }
+  button.chip .n { opacity:0.65; font-size:0.68rem; margin-left:4px; }
+  .panelFoot { margin-top:10px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .panelFoot .count { color:var(--muted); font-size:0.75rem; }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:40px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -317,11 +331,20 @@ PAGE = """<!doctype html>
   </div>
   <div class="modeHint" id="modeHint"></div>
   <div class="stats" id="stats"></div>
-  <select id="tagFilter"></select>
+  <div class="controls">
+    <button class="plain" id="filterToggleBtn">Filter</button>
+  </div>
+  <div class="panel" id="filterPanel" hidden>
+    <div class="chips" id="tagChips"></div>
+    <div class="panelFoot">
+      <span class="count" id="filterCount"></span>
+      <button class="plain" id="clearFilterBtn">Clear filters</button>
+    </div>
+  </div>
   <div id="card"></div>
   <div class="tools">
     <button class="plain" id="undoBtn" disabled>&#8630; Go back</button>
-    <button class="plain" id="resetBtn">Reset progress</button>
+    <button class="plain danger" id="resetBtn">Reset progress</button>
     <button class="plain" id="unflagBtn">Unflag lines (0)</button>
     <span class="stats" id="syncState"></span>
     <span class="stats" id="deckInfo"></span>
@@ -351,7 +374,7 @@ setTimeout(() => syncRemoteAutoPull(() => {
   srs = srsLoad(SRS_KEY);
   flags = loadFlags();
   updateUnflagCount();
-  rebuildTagFilter();
+  renderChips();
   applyFilter();
   pickNext();
 }, setSyncState), 0);
@@ -373,7 +396,7 @@ let revealed = false;
 let stopAt = null;
 
 const cardEl = document.getElementById('card');
-const tagFilter = document.getElementById('tagFilter');
+const chipsEl = document.getElementById('tagChips');
 const modeHintEl = document.getElementById('modeHint');
 
 const MODE_HINTS = {
@@ -384,21 +407,54 @@ const MODE_HINTS = {
 
 function itemsForMode(m) { return ITEMS.filter(d => d.kind === m && !flags[d.lineId]); }
 
-function rebuildTagFilter() {
-  const modeItems = itemsForMode(mode);
-  const label = mode === 'word' ? 'All tags' : 'All conversations';
-  const tags = [...new Set(modeItems.flatMap(d => d.tags))].sort();
-  tagFilter.innerHTML = `<option value="">${label}</option>` +
-    tags.map(t => `<option value="${t}">${t}</option>`).join('');
-}
+// Same multi-select chip filter as flashcards (several chips = union of those
+// categories). Tags are mode-dependent — Word items carry vocab categories,
+// Sentence/Listening carry conversations — so the chips rebuild on mode switch
+// and any now-invalid selection is dropped.
+let activeTags = new Set();
 
-tagFilter.addEventListener('change', () => { practiceAhead = false; applyFilter(); pickNext(); });
+function renderChips() {
+  const modeItems = itemsForMode(mode);
+  const tags = [...new Set(modeItems.flatMap(d => d.tags))].sort();
+  activeTags = new Set([...activeTags].filter(t => tags.includes(t)));
+  chipsEl.innerHTML = tags.map(t =>
+    `<button class="chip${activeTags.has(t) ? ' active' : ''}" data-tag="${escapeHtml(t)}">` +
+    `${escapeHtml(t)}<span class="n">${modeItems.filter(d => d.tags.includes(t)).length}</span></button>`).join('');
+  chipsEl.querySelectorAll('.chip').forEach(b => {
+    b.addEventListener('click', () => {
+      const t = b.dataset.tag;
+      if (activeTags.has(t)) activeTags.delete(t); else activeTags.add(t);
+      b.classList.toggle('active');
+      practiceAhead = false;
+      applyFilter();
+      pickNext();
+    });
+  });
+}
 
 function applyFilter() {
   const modeItems = itemsForMode(mode);
-  const t = tagFilter.value;
-  pool = t ? modeItems.filter(d => d.tags.includes(t)) : modeItems;
+  pool = activeTags.size
+    ? modeItems.filter(d => d.tags.some(t => activeTags.has(t)))
+    : modeItems;
+  const btn = document.getElementById('filterToggleBtn');
+  btn.textContent = activeTags.size ? 'Filter · ' + activeTags.size : 'Filter';
+  btn.classList.toggle('active', activeTags.size > 0);
+  document.getElementById('filterCount').textContent =
+    pool.length + ' of ' + modeItems.length + ' match';
 }
+
+document.getElementById('filterToggleBtn').addEventListener('click', () => {
+  const el = document.getElementById('filterPanel');
+  el.hidden = !el.hidden;
+});
+document.getElementById('clearFilterBtn').addEventListener('click', () => {
+  activeTags.clear();
+  practiceAhead = false;
+  renderChips();
+  applyFilter();
+  pickNext();
+});
 
 // Split out of the click handler so undo can switch back to whichever mode a
 // rating was made in (it stops short of pickNext, since undo picks the card).
@@ -407,7 +463,7 @@ function setMode(m) {
   practiceAhead = false;
   document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('active', x.dataset.mode === m));
   modeHintEl.textContent = MODE_HINTS[mode];
-  rebuildTagFilter();
+  renderChips();
   applyFilter();
 }
 
@@ -416,8 +472,9 @@ document.querySelectorAll('.modeBtn').forEach(b => {
 });
 
 modeHintEl.textContent = MODE_HINTS[mode];
-rebuildTagFilter();
+renderChips();
 applyFilter();
+if (!srsIsTouch() && !srsIsNarrow()) document.getElementById('filterPanel').hidden = false;
 
 function escapeHtml(s) {
   return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -442,7 +499,9 @@ function renderAllCaughtUp() {
 function renderCard() {
   let promptText, hintLine, revealInner;
   if (current.kind === 'listening') {
-    promptText = '🎧 Listen — no peeking. Press play (or "p") and try to catch the whole line.';
+    promptText = srsIsTouch()
+      ? '🎧 Listen — no peeking. Tap play and try to catch the whole line.'
+      : '🎧 Listen — no peeking. Press play (or "p") and try to catch the whole line.';
     hintLine = '';
     revealInner = `
       <div class="id">${current.sentenceHtml}</div>

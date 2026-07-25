@@ -139,11 +139,16 @@ const REVIEWLOG_KEY = 'bahasa:reviewLog:v1';
 const REVIEWLOG_CAP = 2000;
 
 // Returns the key it logged under, so an undo can take the entry back out.
-function srsLogReview(kind, grade, isNew) {
+// `itemKey` (the item's SRS id) is recorded so stats can join a review back to
+// the card it belongs to — that's what makes retention-by-tag possible.
+// Entries written before this existed simply have no `i` and are skipped by
+// those breakdowns rather than miscounted.
+function srsLogReview(kind, grade, isNew, itemKey) {
   const log = srsLoad(REVIEWLOG_KEY);
   let t = Date.now();
   while (log[t]) t++;
   log[t] = { g: grade, k: kind, n: isNew ? 1 : 0 };
+  if (itemKey) log[t].i = itemKey;
   const keys = Object.keys(log).map(Number).sort((a, b) => b - a);
   if (keys.length > REVIEWLOG_CAP) {
     for (const k of keys.slice(REVIEWLOG_CAP)) delete log[k];
@@ -187,6 +192,52 @@ function srsUnlogReview(ts) {
   if (!(ts in log)) return;
   delete log[ts];
   srsSave(REVIEWLOG_KEY, log);
+}
+
+// ---- Daily goal ------------------------------------------------------------
+// A target number of reviews per day. Deliberately a soft goal shown on the
+// landing page, not a cap that stops you (the hard 15/day new-card cap was
+// removed on purpose) — it exists to make "am I done for today?" answerable.
+// Device-local: it's a display preference, not progress, so it stays out of
+// SYNC_KEYS and each device can set its own.
+const GOAL_KEY = 'bahasa:dailyGoal:v1';
+const DEFAULT_GOAL = 30;
+
+function srsDayKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function srsGoal() {
+  const g = srsLoad(GOAL_KEY);
+  return g && g.n ? g.n : DEFAULT_GOAL;
+}
+function srsSetGoal(n) {
+  srsSave(GOAL_KEY, { n: Math.max(1, Math.round(n)) });
+}
+function srsReviewsToday() {
+  const today = srsDayKey(new Date());
+  const log = srsLoad(REVIEWLOG_KEY);
+  let n = 0;
+  for (const ts of Object.keys(log)) {
+    if (srsDayKey(new Date(Number(ts))) === today) n++;
+  }
+  return n;
+}
+
+// ---- Device ----------------------------------------------------------------
+// Touch devices have no space bar and no "z" key, but they do have the swipe
+// gestures — so the on-screen hints have to say different things. `hover:none`
+// is the right signal (it means "no mouse"); screen width is not, since a
+// narrow desktop window still has a keyboard.
+function srsIsTouch() {
+  return !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
+}
+
+// Separate from srsIsTouch on purpose: whether a panel should start collapsed
+// is a *layout* question (is there room?), while hint wording is an *input*
+// question (is there a keyboard?). A narrow desktop window needs the collapse
+// but still wants the keyboard hints.
+function srsIsNarrow() {
+  return window.innerWidth < 640;
 }
 
 function srsFmtDue(ts) {

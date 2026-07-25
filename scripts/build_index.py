@@ -31,10 +31,10 @@ PAGE = """<!doctype html>
 <title>Learning Bahasa Indonesian</title>
 <style>
   :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; --card:#f9fafb;
-    --good:#16a34a; --bad:#dc2626; }
+    --good:#16a34a; --bad:#dc2626; --warn:#d97706; }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#111318; --fg:#e7e9ee; --muted:#9aa1ac; --line:#2a2e37; --accent:#5b9dff; --card:#1a1d24;
-      --good:#4ade80; --bad:#f87171; }
+      --good:#4ade80; --bad:#f87171; --warn:#fbbf24; }
   }
   * { box-sizing:border-box; }
   html, body { margin:0; background:var(--bg); color:var(--fg);
@@ -62,6 +62,22 @@ PAGE = """<!doctype html>
   .heat .h0 { background:var(--line); }
   .heat .h1 { opacity:0.3; } .heat .h2 { opacity:0.55; } .heat .h3 { opacity:0.8; } .heat .h4 { opacity:1; }
   .statsCard .sub { color:var(--muted); font-size:0.76rem; }
+  .goal { margin-top:14px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .goal .lbl { font-size:0.76rem; color:var(--muted); white-space:nowrap; }
+  .goal input { width:50px; font-size:0.76rem; padding:2px 4px; border-radius:5px;
+    border:1px solid var(--line); background:var(--bg); color:var(--fg); }
+  .pbar { flex:1 1 90px; min-width:70px; height:6px; background:var(--line);
+    border-radius:3px; overflow:hidden; }
+  .pbar i { display:block; height:100%; background:var(--accent); }
+  .tagStats { margin-top:18px; }
+  .tagStats .hd { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em;
+    color:var(--muted); margin-bottom:8px; }
+  .tagRow { display:flex; align-items:center; gap:8px; margin-bottom:5px; font-size:0.76rem; }
+  .tagRow .tn { flex:0 0 96px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .tagRow .tp { flex:0 0 60px; text-align:right; color:var(--muted); }
+  .tagRow .lo i { background:var(--bad); }
+  .tagRow .mid i { background:var(--warn); }
+  .tagRow .hi i { background:var(--good); }
   h2.section:first-of-type { margin-top:0; }
   .empty { color:var(--muted); font-size:0.9rem; }
 
@@ -287,10 +303,58 @@ renderStudyMeta();
 function dayKey(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+// Reviews grouped by the tags of the card they were on, weakest first — the
+// weak end is the actionable one. Needs the item key that srsLogReview started
+// recording on 2026-07-25; older entries have no `i` and are skipped rather
+// than lumped into a bogus bucket. Tags with a tiny sample are dropped because
+// a 2-review category swinging between 0% and 100% is noise, not signal.
+const TAG_MIN_REVIEWS = 5;
+
+function tagBreakdownHtml(entries) {
+  const byTag = {};
+  entries.forEach(e => {
+    const tags = e.i && STUDY_META.tags[e.i];
+    if (!tags) return;
+    tags.forEach(t => {
+      const b = byTag[t] || (byTag[t] = { n: 0, ok: 0 });
+      b.n++;
+      if (e.g > 1) b.ok++;
+    });
+  });
+  const rows = Object.keys(byTag)
+    .map(t => ({ t, n: byTag[t].n, pct: Math.round(100 * byTag[t].ok / byTag[t].n) }))
+    .filter(r => r.n >= TAG_MIN_REVIEWS)
+    .sort((a, b) => a.pct - b.pct)
+    .slice(0, 8);
+  if (!rows.length) return '';
+  return `<div class="tagStats"><div class="hd">Recall by category — weakest first</div>` +
+    rows.map(r => {
+      const cls = r.pct < 70 ? 'lo' : r.pct < 85 ? 'mid' : 'hi';
+      return `<div class="tagRow"><span class="tn">${r.t}</span>` +
+        `<span class="pbar ${cls}"><i style="width:${r.pct}%"></i></span>` +
+        `<span class="tp">${r.pct}% · ${r.n}</span></div>`;
+    }).join('') + `</div>`;
+}
+
+function goalHtml(today) {
+  const goal = srsGoal();
+  const pct = Math.min(100, Math.round(100 * today / goal));
+  return `<div class="goal">` +
+    `<span class="lbl">Daily goal ${today} / <input id="goalInput" type="number" min="1" value="${goal}">` +
+    `${today >= goal ? ' ✓' : ''}</span>` +
+    `<span class="pbar"><i style="width:${pct}%"></i></span></div>`;
+}
+
 function renderStatsPanel() {
   const log = syncRead(SYNC_REVIEWLOG_KEY);
-  const entries = Object.entries(log).map(([t, v]) => ({ t: +t, g: v.g, n: v.n }));
-  if (!entries.length) return;
+  const entries = Object.entries(log).map(([t, v]) => ({ t: +t, g: v.g, n: v.n, i: v.i }));
+  if (!entries.length) {
+    // Still show the goal on day one — "0 / 30" is the nudge to start.
+    document.getElementById('statsCard').innerHTML =
+      `<div class="line">No reviews yet — hit Study now to start the streak.</div>` + goalHtml(0);
+    wireGoalInput();
+    return;
+  }
   const byDay = {};
   entries.forEach(e => { const k = dayKey(new Date(e.t)); byDay[k] = (byDay[k] || 0) + 1; });
   const DAY = 86400000;
@@ -314,7 +378,19 @@ function renderStatsPanel() {
   document.getElementById('statsCard').innerHTML = `
     <div class="line"><span class="big">${streak}</span>-day streak · <span class="big">${today}</span> reviews today · <span class="big">${entries.length}</span> logged</div>
     <div class="heat">${heat}</div>
-    <div class="sub">last 28 days${recall !== null ? ` · recall rate ${recall}% (target 90% — much higher means you can afford more new cards)` : ''}</div>`;
+    <div class="sub">last 28 days${recall !== null ? ` · recall rate ${recall}% (target 90% — much higher means you can afford more new cards)` : ''}</div>
+    ${goalHtml(today)}
+    ${tagBreakdownHtml(entries)}`;
+  wireGoalInput();
+}
+
+function wireGoalInput() {
+  const el = document.getElementById('goalInput');
+  if (!el) return;
+  el.addEventListener('change', () => {
+    const n = Number(el.value);
+    if (n >= 1) { srsSetGoal(n); renderStatsPanel(); }
+  });
 }
 renderStatsPanel();
 
@@ -343,8 +419,15 @@ def build_study_meta():
     word_items = build_quiz_items(vocab, convos)
     sentence_items = build_sentence_items(convos)
     listening_items = build_listening_items(sentence_items)
-    quiz = [{"id": i["id"], "lineId": i["lineId"]} for i in word_items + sentence_items + listening_items]
-    return {"flashFronts": [d["front"] for d in flash], "quiz": quiz}
+    all_quiz = word_items + sentence_items + listening_items
+    quiz = [{"id": i["id"], "lineId": i["lineId"]} for i in all_quiz]
+    # SRS key -> tags, so the stats panel can group logged reviews by category.
+    # The review log only records the item key, not its tags (tags can change
+    # when a deck is re-tagged), so the join happens here at render time.
+    tags = {d["front"]: d["tags"] for d in flash}
+    for i in all_quiz:
+        tags[i["id"]] = i["tags"]
+    return {"flashFronts": [d["front"] for d in flash], "quiz": quiz, "tags": tags}
 
 
 def main():

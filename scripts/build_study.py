@@ -52,7 +52,13 @@ PAGE = """<!doctype html>
   .top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
   h1 { font-size:1.15rem; margin:0; }
   a.back { color:var(--muted); font-size:0.8rem; text-decoration:none; }
-  .progress { color:var(--muted); font-size:0.8rem; margin-bottom:14px; }
+  .progress { color:var(--muted); font-size:0.8rem; }
+  .sessionBar { display:flex; justify-content:space-between; align-items:center; gap:10px;
+    margin-bottom:14px; }
+  .sizeSel { color:var(--muted); font-size:0.78rem; display:flex; align-items:center; gap:5px;
+    white-space:nowrap; }
+  .sizeSel select { font-size:0.78rem; padding:3px 6px; border-radius:6px;
+    border:1px solid var(--line); background:var(--bg); color:var(--fg); }
   .bar { height:4px; background:var(--line); border-radius:2px; margin-bottom:18px; overflow:hidden; }
   .bar span { display:block; height:100%; background:var(--accent); width:0; transition:width 0.25s; }
   #card { border:1px solid var(--line); border-radius:14px; background:var(--card);
@@ -108,7 +114,17 @@ PAGE = """<!doctype html>
     <h1>Study session</h1>
     <a class="back" href="index.html">&larr; home</a>
   </div>
-  <div class="progress" id="progress"></div>
+  <div class="sessionBar">
+    <span class="progress" id="progress"></span>
+    <label class="sizeSel">Session
+      <select id="sizeSel">
+        <option value="10">10</option>
+        <option value="20">20</option>
+        <option value="50">50</option>
+        <option value="0">All</option>
+      </select>
+    </label>
+  </div>
   <div class="bar"><span id="barFill"></span></div>
   <div id="card"></div>
   <div class="rate" id="rateRow" hidden>
@@ -185,7 +201,21 @@ function shuffle(a) {
 // so on a big vocab dump (or a first-ever session) this can be large — that's
 // intentional per-request, but worth knowing before hitting "Study now".
 let session = [], idx = 0, tallies = { 1: 0, 2: 0, 3: 0, 4: 0 }, startedAt = null;
+let kindTally = {};
 let practiceRun = false;
+
+// How many items one sitting is. Without this the session is simply "every
+// due review plus every card you've never seen" — which after the daily
+// new-card cap was removed meant 716 items on a fresh deck: an unfinishable
+// session with a meaningless progress bar. 0 means no limit.
+const SIZE_KEY = 'bahasa:sessionSize:v1';
+const DEFAULT_SIZE = 20;
+
+function sessionSize() {
+  const s = srsLoad(SIZE_KEY);
+  return typeof s.n === 'number' ? s.n : DEFAULT_SIZE;
+}
+function setSessionSize(n) { srsSave(SIZE_KEY, { n }); }
 
 function buildSession(practice) {
   practiceRun = !!practice;
@@ -194,7 +224,7 @@ function buildSession(practice) {
     session = shuffle(all.filter(i => stateFor(i))).slice(0, 20);
   } else {
     const reviews = shuffle(all.filter(i => stateFor(i) && srsIsDue(stateFor(i))));
-    const fresh = shuffle(all.filter(i => !stateFor(i))).slice(0, srsNewQuotaLeft());
+    const fresh = shuffle(all.filter(i => !stateFor(i)));
     session = [];
     let f = 0;
     for (let r = 0; r < reviews.length; r++) {
@@ -202,9 +232,14 @@ function buildSession(practice) {
       if ((r + 1) % 3 === 0 && f < fresh.length) session.push(fresh[f++]);
     }
     while (f < fresh.length) session.push(fresh[f++]);
+    // Reviews are built in first, so trimming to the session size takes the
+    // debt before the new material rather than the other way round.
+    const size = sessionSize();
+    if (size > 0) session = session.slice(0, size);
   }
   idx = 0;
   tallies = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  kindTally = {};
   startedAt = Date.now();
 }
 
@@ -237,7 +272,9 @@ function renderCard() {
     revealInner = `<div class="en">${escapeHtml(item.translation)}</div>`;
     playRow = '<div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>';
   } else { // listening
-    promptHtml = '🎧 Listen — no peeking. Press play (or "p") and try to catch the whole line.';
+    promptHtml = srsIsTouch()
+      ? '🎧 Listen — no peeking. Tap play and try to catch the whole line.'
+      : '🎧 Listen — no peeking. Press play (or "p") and try to catch the whole line.';
     revealInner = `<div class="id">${item.sentenceHtml}</div><div class="en">${escapeHtml(item.translation)}</div>`;
     playRow = '<div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>';
   }
@@ -277,11 +314,13 @@ function reveal() {
 function rate(grade) {
   if (!current || !revealed) return;
   const isNew = !stateFor(current);
-  const ts = srsLogReview(current.kind, grade, isNew);
-  srsPushUndo({ item: current, prev: stateFor(current) || null, ts, grade });
+  const key = current.kind === 'flash' ? current.front : current.id;
+  const ts = srsLogReview(current.kind, grade, isNew, key);
+  srsPushUndo({ item: current, prev: stateFor(current) || null, ts, grade, kind: current.kind });
   setState(current, fsrsNextState(stateFor(current), grade, Date.now()));
   syncRemoteQueuePush(setSyncState);
   tallies[grade]++;
+  kindTally[current.kind] = (kindTally[current.kind] || 0) + 1;
   idx++;
   updateUndoBtn();
   next();
@@ -298,6 +337,7 @@ function undoLast() {
   srsUnlogReview(u.ts);
   syncRemoteQueuePush(setSyncState);
   if (tallies[u.grade]) tallies[u.grade]--;
+  if (u.kind && kindTally[u.kind]) kindTally[u.kind]--;
   idx = Math.max(0, idx - 1);
   audio.pause();
   stopAt = null;
@@ -325,6 +365,13 @@ function renderSummary() {
   rateRow.hidden = true;
   const total = tallies[1] + tallies[2] + tallies[3] + tallies[4];
   const mins = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
+  // "Recalled" = anything you didn't rate Again, which is the same convention
+  // the landing-page recall-rate stat uses, so the two numbers agree.
+  const pct = total ? Math.round((total - tallies[1]) / total * 100) : 0;
+  const kindLine = Object.keys(kindTally)
+    .map(k => `${kindTally[k]} ${KIND_LABEL[k] || k}`).join(' · ');
+  const doneToday = srsReviewsToday();
+  const goal = srsGoal();
   const all = [...computeFlashItems(), ...computeQuizItems()];
   const now = Date.now();
   const dues = all.map(i => (stateFor(i) && stateFor(i).due) || Infinity);
@@ -341,7 +388,9 @@ function renderSummary() {
         <div class="t3"><div class="n">${tallies[3]}</div><div class="l">Good</div></div>
         <div class="t4"><div class="n">${tallies[4]}</div><div class="l">Easy</div></div>
       </div>
-      <p>${total} answered in ~${mins} min.</p>` : ''}
+      <p>${total} answered in ~${mins} min · ${pct}% recalled</p>
+      <p>${kindLine}</p>` : ''}
+      <p>Today: ${doneToday} / ${goal} reviews${doneToday >= goal ? ' &nbsp;✓ goal met' : ''}</p>
       <p>Next review ${srsFmtDue(nextDue)}${in24h ? ` · ${in24h} due within 24h` : ''}.</p>
       <div>
         <button id="moreBtn">Practice 20 more</button>
@@ -412,6 +461,14 @@ cardEl.addEventListener('touchend', (e) => {
 });
 
 // ---- go ----
+const sizeSel = document.getElementById('sizeSel');
+sizeSel.value = String(sessionSize());
+sizeSel.addEventListener('change', () => {
+  setSessionSize(Number(sizeSel.value));
+  // Rebuilding mid-session would throw away answers, so a size change only
+  // takes effect immediately while the session is still untouched.
+  if (tallies[1] + tallies[2] + tallies[3] + tallies[4] === 0) { buildSession(false); next(); }
+});
 buildSession(false);
 next();
 syncRemoteAutoPull(() => {
