@@ -93,6 +93,7 @@ PAGE = """<!doctype html>
   .tools .row { display:flex; gap:8px; flex-wrap:wrap; }
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
+  button.plain:disabled { opacity:0.4; cursor:default; }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -146,7 +147,7 @@ atau – or"></textarea>
     </div>
   </div>
   <div id="card"><div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div></div>
-  <div class="hint">Click the card (or press space) to flip</div>
+  <div class="hint">Click the card (or press space) to flip · “z” to go back</div>
   <div class="rate" id="rateRow" hidden>
     <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
     <button class="rate-btn hard" id="btn2"><span class="lbl">Hard</span><span class="prev" id="prev2"></span></button>
@@ -158,6 +159,7 @@ atau – or"></textarea>
   </div>
   <div class="tools">
     <div class="row">
+      <button class="plain" id="undoBtn" disabled>&#8630; Go back</button>
       <button class="plain" id="resetBtn">Reset progress</button>
       <button class="plain" id="restoreBtn">Restore removed (0)</button>
     </div>
@@ -273,7 +275,13 @@ function pickNext() {
   if (!due.length) { renderAllCaughtUp(); return; }
   let next = due[Math.floor(Math.random() * due.length)];
   if (due.length > 1 && current && next.front === current.front) next = due[Math.floor(Math.random() * due.length)];
-  current = next;
+  showCard(next);
+}
+
+// Split out of pickNext so undo can put a specific card back on screen
+// instead of drawing a fresh random one.
+function showCard(card) {
+  current = card;
   flipped = false;
   cardEl.className = '';
   cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="en"></div><div class="tag"></div></div>';
@@ -281,6 +289,7 @@ function pickNext() {
   cardEl.querySelector('.en').textContent = current.back;
   cardEl.querySelector('.tag').textContent = current.tags.join(' · ');
   rateRow.hidden = true;
+  cardMeta.hidden = true;
   renderStats();
 }
 
@@ -334,13 +343,33 @@ function flip() {
 function rate(grade) {
   if (!current) return;
   const isNew = !srs[current.front];
-  if (isNew) srsNoteNewIntroduced();
-  srsLogReview('flash', grade, isNew);
+  const ts = srsLogReview('flash', grade, isNew);
+  srsPushUndo({ card: current, front: current.front, prev: srs[current.front] || null, ts });
   srs[current.front] = fsrsNextState(srs[current.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
   practiceAhead = false;
+  updateUndoBtn();
   pickNext();
+}
+
+// Undo puts the card back exactly as it was: its previous schedule (or no
+// schedule at all, if that rating was its first) and no review-log entry.
+function undoLast() {
+  const u = srsPopUndo();
+  if (!u) return;
+  const restored = srsRestoreState(u.prev);
+  if (restored) srs[u.front] = restored; else delete srs[u.front];
+  srsSave(SRS_KEY, srs);
+  srsUnlogReview(u.ts);
+  syncRemoteQueuePush(setSyncState);
+  practiceAhead = false;
+  updateUndoBtn();
+  showCard(u.card);
+}
+
+function updateUndoBtn() {
+  document.getElementById('undoBtn').disabled = !srsUndoDepth();
 }
 
 function updateRestoreCount() {
@@ -448,6 +477,7 @@ cardEl.addEventListener('click', flip);
   document.getElementById('btn' + g).addEventListener('click', (e) => { e.stopPropagation(); rate(g); });
 });
 document.getElementById('removeBtn').addEventListener('click', removeCurrentCard);
+document.getElementById('undoBtn').addEventListener('click', undoLast);
 document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
 });
@@ -505,6 +535,7 @@ document.getElementById('bulkSaveBtn').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if (e.key === ' ') { e.preventDefault(); flip(); }
+  else if (e.key === 'z') undoLast();
   else if (flipped && ['1','2','3','4'].includes(e.key)) rate(parseInt(e.key, 10));
 });
 

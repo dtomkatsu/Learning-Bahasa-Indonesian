@@ -298,6 +298,7 @@ PAGE = """<!doctype html>
   .tools { display:flex; justify-content:space-between; align-items:center; margin-top:24px; }
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
     background:var(--bg); color:var(--muted); cursor:pointer; }
+  button.plain:disabled { opacity:0.4; cursor:default; }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:40px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -319,6 +320,7 @@ PAGE = """<!doctype html>
   <select id="tagFilter"></select>
   <div id="card"></div>
   <div class="tools">
+    <button class="plain" id="undoBtn" disabled>&#8630; Go back</button>
     <button class="plain" id="resetBtn">Reset progress</button>
     <button class="plain" id="unflagBtn">Unflag lines (0)</button>
     <span class="stats" id="syncState"></span>
@@ -398,16 +400,19 @@ function applyFilter() {
   pool = t ? modeItems.filter(d => d.tags.includes(t)) : modeItems;
 }
 
+// Split out of the click handler so undo can switch back to whichever mode a
+// rating was made in (it stops short of pickNext, since undo picks the card).
+function setMode(m) {
+  mode = m;
+  practiceAhead = false;
+  document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('active', x.dataset.mode === m));
+  modeHintEl.textContent = MODE_HINTS[mode];
+  rebuildTagFilter();
+  applyFilter();
+}
+
 document.querySelectorAll('.modeBtn').forEach(b => {
-  b.addEventListener('click', () => {
-    mode = b.dataset.mode;
-    practiceAhead = false;
-    document.querySelectorAll('.modeBtn').forEach(x => x.classList.toggle('active', x === b));
-    modeHintEl.textContent = MODE_HINTS[mode];
-    rebuildTagFilter();
-    applyFilter();
-    pickNext();
-  });
+  b.addEventListener('click', () => { setMode(b.dataset.mode); pickNext(); });
 });
 
 modeHintEl.textContent = MODE_HINTS[mode];
@@ -544,13 +549,41 @@ function reveal() {
 function rate(grade) {
   if (!current) return;
   const isNew = !srs[current.id];
-  if (isNew) srsNoteNewIntroduced();
-  srsLogReview(current.kind, grade, isNew);
+  const ts = srsLogReview(current.kind, grade, isNew);
+  srsPushUndo({ item: current, id: current.id, prev: srs[current.id] || null, ts, mode });
   srs[current.id] = fsrsNextState(srs[current.id], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
   practiceAhead = false;
+  updateUndoBtn();
   pickNext();
+}
+
+// Undo restores the item's previous schedule (or removes it entirely if that
+// rating was its first) and drops the review-log entry.
+function undoLast() {
+  const u = srsPopUndo();
+  if (!u) return;
+  const restored = srsRestoreState(u.prev);
+  if (restored) srs[u.id] = restored; else delete srs[u.id];
+  srsSave(SRS_KEY, srs);
+  srsUnlogReview(u.ts);
+  syncRemoteQueuePush(setSyncState);
+  practiceAhead = false;
+  updateUndoBtn();
+  // The rating may have happened in another mode; go back to it so the
+  // restored item is the one actually on screen.
+  if (u.mode !== mode) setMode(u.mode);
+  audio.pause();
+  stopAt = null;
+  current = u.item;
+  revealed = false;
+  renderCard();
+  renderStats();
+}
+
+function updateUndoBtn() {
+  document.getElementById('undoBtn').disabled = !srsUndoDepth();
 }
 
 function pickNext() {
@@ -604,8 +637,11 @@ document.addEventListener('pointerdown', () => { userInteracted = true; }, { cap
 document.addEventListener('keydown', (e) => {
   userInteracted = true;
   if (e.key === 'p') { playLine(); return; }
+  if (e.key === 'z') { undoLast(); return; }
   if (revealed && ['1','2','3','4'].includes(e.key)) rate(parseInt(e.key, 10));
 });
+
+document.getElementById('undoBtn').addEventListener('click', undoLast);
 
 updateUnflagCount();
 pickNext();

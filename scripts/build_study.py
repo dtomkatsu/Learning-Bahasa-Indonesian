@@ -83,7 +83,10 @@ PAGE = """<!doctype html>
   button.rate-btn.hard { border-color:var(--hard); color:var(--hard); }
   button.rate-btn.good { border-color:var(--good); color:var(--good); }
   button.rate-btn.easy { border-color:var(--easy); color:var(--easy); }
-  .tools { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+  .tools { display:flex; justify-content:space-between; align-items:center; margin-top:20px; gap:8px; }
+  button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); color:var(--muted); cursor:pointer; }
+  button.plain:disabled { opacity:0.4; cursor:default; }
   .stats { color:var(--muted); font-size:0.8rem; }
   .summary { text-align:center; padding:30px 10px; }
   .summary h2 { font-size:1.3rem; margin:0 0 8px; }
@@ -115,6 +118,7 @@ PAGE = """<!doctype html>
     <button class="rate-btn easy" id="btn4"><span class="lbl">Easy</span><span class="prev" id="prev4"></span></button>
   </div>
   <div class="tools">
+    <button class="plain" id="undoBtn" disabled>&#8630; Go back</button>
     <span class="stats" id="syncState"></span>
     <span class="stats" id="sessionInfo"></span>
   </div>
@@ -160,6 +164,12 @@ function stateFor(item) { return item.kind === 'flash' ? srsF[item.front] : srsQ
 function setState(item, s) {
   if (item.kind === 'flash') { srsF[item.front] = s; srsSave(FLASH_SRS_KEY, srsF); }
   else { srsQ[item.id] = s; srsSave(QUIZ_SRS_KEY, srsQ); }
+}
+// Undoing the first-ever rating of an item has to remove its state, not write
+// an empty one — anything present reads as "already seen" everywhere else.
+function clearState(item) {
+  if (item.kind === 'flash') { delete srsF[item.front]; srsSave(FLASH_SRS_KEY, srsF); }
+  else { delete srsQ[item.id]; srsSave(QUIZ_SRS_KEY, srsQ); }
 }
 
 function shuffle(a) {
@@ -267,13 +277,38 @@ function reveal() {
 function rate(grade) {
   if (!current || !revealed) return;
   const isNew = !stateFor(current);
-  if (isNew) srsNoteNewIntroduced();
-  srsLogReview(current.kind, grade, isNew);
+  const ts = srsLogReview(current.kind, grade, isNew);
+  srsPushUndo({ item: current, prev: stateFor(current) || null, ts, grade });
   setState(current, fsrsNextState(stateFor(current), grade, Date.now()));
   syncRemoteQueuePush(setSyncState);
   tallies[grade]++;
   idx++;
+  updateUndoBtn();
   next();
+}
+
+// Steps the session back one card as well as reverting the rating, so the
+// progress counter and tallies stay honest. Works from the summary screen too
+// (idx is past the end there, so this walks back onto the last card).
+function undoLast() {
+  const u = srsPopUndo();
+  if (!u) return;
+  const restored = srsRestoreState(u.prev);
+  if (restored) setState(u.item, restored); else clearState(u.item);
+  srsUnlogReview(u.ts);
+  syncRemoteQueuePush(setSyncState);
+  if (tallies[u.grade]) tallies[u.grade]--;
+  idx = Math.max(0, idx - 1);
+  audio.pause();
+  stopAt = null;
+  revealed = false;
+  current = session[idx] || u.item;
+  updateUndoBtn();
+  renderCard();
+}
+
+function updateUndoBtn() {
+  document.getElementById('undoBtn').disabled = !srsUndoDepth();
 }
 
 function next() {
@@ -353,10 +388,12 @@ audio.addEventListener('timeupdate', () => {
 [1, 2, 3, 4].forEach(g => {
   document.getElementById('btn' + g).addEventListener('click', () => rate(g));
 });
+document.getElementById('undoBtn').addEventListener('click', undoLast);
 document.addEventListener('pointerdown', () => { userInteracted = true; }, { capture: true });
 document.addEventListener('keydown', (e) => {
   userInteracted = true;
   if (e.key === 'p') { playLine(); return; }
+  if (e.key === 'z') { undoLast(); return; }
   if (e.key === ' ' && current && !revealed) { e.preventDefault(); reveal(); return; }
   if (revealed && ['1', '2', '3', '4'].includes(e.key)) rate(parseInt(e.key, 10));
 });

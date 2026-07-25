@@ -138,6 +138,7 @@ function srsNoteNewIntroduced() {}
 const REVIEWLOG_KEY = 'bahasa:reviewLog:v1';
 const REVIEWLOG_CAP = 2000;
 
+// Returns the key it logged under, so an undo can take the entry back out.
 function srsLogReview(kind, grade, isNew) {
   const log = srsLoad(REVIEWLOG_KEY);
   let t = Date.now();
@@ -147,6 +148,44 @@ function srsLogReview(kind, grade, isNew) {
   if (keys.length > REVIEWLOG_CAP) {
     for (const k of keys.slice(REVIEWLOG_CAP)) delete log[k];
   }
+  srsSave(REVIEWLOG_KEY, log);
+  return t;
+}
+
+// ---- Undo ------------------------------------------------------------------
+// Rating is the only destructive action in the study UIs: it overwrites an
+// item's FSRS state and appends a review-log entry. "Go back" restores both,
+// so a misclicked "Again" doesn't leave a wrecked schedule behind. The stack
+// is in-memory on purpose — it's for the misclick you just made, not
+// cross-session history.
+const UNDO_CAP = 30;
+let srsUndoStack = [];
+
+function srsPushUndo(entry) {
+  srsUndoStack.push(entry);
+  if (srsUndoStack.length > UNDO_CAP) srsUndoStack.shift();
+}
+function srsPopUndo() { return srsUndoStack.pop() || null; }
+function srsUndoDepth() { return srsUndoStack.length; }
+
+// An undo rewrites an item to an *older* state, which would normally lose the
+// sync merge to the rated copy this device may already have pushed (the merge
+// keeps whichever side was reviewed later). `rev` marks "this was written
+// locally at time T" without touching lastReview, which FSRS reads as when the
+// item was genuinely last reviewed. See syncMergeFsrs in _sync_js.py.
+// Returns null when the item had no prior state (it was brand new), which the
+// caller turns into a delete rather than a write.
+function srsRestoreState(prev) {
+  return prev ? Object.assign({}, prev, { rev: Date.now() }) : null;
+}
+
+// Removes a review-log entry by the key srsLogReview returned, so an undone
+// rating doesn't keep inflating the streak/recall stats.
+function srsUnlogReview(ts) {
+  if (!ts) return;
+  const log = srsLoad(REVIEWLOG_KEY);
+  if (!(ts in log)) return;
+  delete log[ts];
   srsSave(REVIEWLOG_KEY, log);
 }
 

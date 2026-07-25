@@ -101,6 +101,13 @@ One pacing rule is built in, standard spaced-repetition practice:
 - **Reviews always run in full** — they're the part that actually schedules memory, and skipping them is what
   creates backlog spirals.
 
+**Misrated a card?** Every rating surface (flashcards, all three quiz modes, and the mixed study session) has a
+**"↶ Go back"** button, shortcut **`z`**. It doesn't just re-show the card — it restores that item's previous
+FSRS schedule exactly and deletes the review-log entry, so a misclicked "Again" doesn't leave a wrecked interval
+or a phantom review skewing your stats. If the rating was the card's first, undo puts it back to never-seen. In
+the study session it also steps the progress counter back. The stack holds the last 30 ratings but is in-memory
+only — it's for fixing the misclick you just made, not history across page loads.
+
 New cards are *not* capped (removed 2026-07-19, was 15/day). That trades away the "trickle a big deck in over a
 week" safety net: introducing a lot of new cards in one sitting means FSRS schedules their first reviews at
 roughly the same time (day ~1, then ~3, then ~10...), so they'll bunch up on the review queue for a few weeks

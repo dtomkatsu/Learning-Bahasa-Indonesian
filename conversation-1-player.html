@@ -116,14 +116,22 @@ function syncBuildExport() {
   };
 }
 
-// Per item id, keep whichever side was reviewed more recently.
+// How recently a record was written. Normally that's its lastReview, but an
+// undo deliberately restores an *older* state and stamps it with `rev` (see
+// srsRestoreState in _srs_js.py) so it isn't instantly re-clobbered by the
+// rated copy already sitting on the remote.
+function syncStamp(r) {
+  return Math.max((r && r.lastReview) || 0, (r && r.rev) || 0);
+}
+
+// Per item id, keep whichever side was written more recently.
 function syncMergeFsrs(local, incoming) {
   const out = Object.assign({}, local);
   let added = 0, updated = 0, kept = 0;
   for (const [id, inc] of Object.entries(incoming || {})) {
     const cur = out[id];
     if (!cur) { out[id] = inc; added++; continue; }
-    if ((inc.lastReview || 0) > (cur.lastReview || 0)) { out[id] = inc; updated++; }
+    if (syncStamp(inc) > syncStamp(cur)) { out[id] = inc; updated++; }
     else kept++;
   }
   return { out, added, updated, kept };
