@@ -24,10 +24,13 @@ Usage:
 """
 import csv
 import json
+import re
+from html import escape as html_escape
 from pathlib import Path
 
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
+from _vocab_js import VOCAB_JS
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -94,6 +97,19 @@ PAGE = """<!doctype html>
   #card .back .q { color:var(--muted); font-size:0.95rem; margin-bottom:10px; }
   #card .back .en { font-size:1.25rem; font-weight:600; margin-bottom:6px; }
   #card .back .tag { color:var(--muted); font-size:0.78rem; }
+  #card .back .ex { margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);
+    font-size:0.88rem; line-height:1.5; }
+  #card .back .ex b { color:var(--accent); }
+  #card .back .ex .exEn { color:var(--muted); font-size:0.8rem; margin-top:3px; }
+  #card .back .ex:empty { display:none; }
+  .playRow { display:flex; align-items:center; gap:10px; justify-content:center;
+    margin:-6px 0 14px; }
+  button.playBtn { font-size:0.82rem; padding:7px 13px; border-radius:8px;
+    border:1px solid var(--accent); background:transparent; color:var(--accent); cursor:pointer; }
+  button.playBtn:hover { background:var(--accent); color:#fff; }
+  button.playBtn:disabled { border-color:var(--line); color:var(--muted);
+    background:transparent; cursor:default; }
+  .playNote { color:var(--muted); font-size:0.72rem; }
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
   .rate { display:flex; gap:8px; }
   button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
@@ -190,7 +206,11 @@ atau – or"></textarea>
       <button class="plain" id="bulkCancelBtn">Cancel</button>
     </div>
   </div>
-  <div id="card"><div class="front"></div><div class="back"><div class="q"></div><div class="en"></div><div class="tag"></div></div></div>
+  <div id="card"><div class="front"></div><div class="back"><div class="q"></div><div class="en"></div><div class="tag"></div><div class="ex"></div></div></div>
+  <div class="playRow">
+    <button class="playBtn" id="playBtn">&#9654; Hear it</button>
+    <span class="playNote" id="playNote"></span>
+  </div>
   <div class="hint" id="hint"></div>
   <div class="rate" id="rateRow" hidden>
     <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
@@ -201,6 +221,7 @@ atau – or"></textarea>
   <div class="cardMeta" id="cardMeta" hidden>
     <button class="linkBtn" id="removeBtn">Remove card</button>
   </div>
+  <audio id="cardAudio" preload="none"></audio>
   <div class="tools">
     <div class="row">
       <button class="plain" id="undoBtn" disabled>&#8630; Go back</button>
@@ -364,24 +385,37 @@ function showCard(card) {
   current = card;
   flipped = false;
   cardEl.className = '';
-  cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="q"></div><div class="en"></div><div class="tag"></div></div>';
+  cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="q"></div>' +
+    '<div class="en"></div><div class="tag"></div><div class="ex"></div></div>';
   cardEl.querySelector('.front').textContent = current.front;
   cardEl.querySelector('.q').textContent = current.front;
   cardEl.querySelector('.en').textContent = current.back;
   cardEl.querySelector('.tag').textContent = current.tags.join(' · ');
+  // The real line the word came from, shown only on the back so it can't give
+  // the answer away before you've committed to one.
+  if (current.sentenceHtml) {
+    cardEl.querySelector('.ex').innerHTML = current.sentenceHtml +
+      (current.exTranslation ? `<div class="exEn">${escapeHtml(current.exTranslation)}</div>` : '');
+  }
   rateRow.hidden = true;
   cardMeta.hidden = true;
+  stopAudio();
+  updatePlayRow();
   renderStats();
 }
 
 function renderEmpty(msg) {
   current = null;
+  stopAudio();
+  updatePlayRow();
   cardEl.innerHTML = `<div class="empty">${msg}</div>`;
   rateRow.hidden = true;
 }
 
 function renderAllCaughtUp() {
   current = null;
+  stopAudio();
+  updatePlayRow();
   const now = Date.now();
   const dues = pool.map(d => (srs[d.front] && srs[d.front].due) || Infinity);
   const nextDue = Math.min(...dues);
@@ -512,10 +546,93 @@ function togglePanel(id) {
   return willOpen;
 }
 
+// ---- Audio -----------------------------------------------------------------
+// Two sources, deliberately distinguishable. Cards whose word actually occurs
+// in the recording play the family saying it, in context — that's the point of
+// the project. The rest (most of the standalone reference decks) fall back to
+// the device's Indonesian speech synthesis, which is clearly labelled so a
+// synthetic voice is never mistaken for how these people really talk.
+const cardAudio = document.getElementById('cardAudio');
+const playBtn = document.getElementById('playBtn');
+const playNote = document.getElementById('playNote');
+let stopAt = null;
+let idVoice = null;
+const hasTTS = typeof window.speechSynthesis !== 'undefined'
+  && typeof window.SpeechSynthesisUtterance !== 'undefined';
+
+cardAudio.addEventListener('timeupdate', () => {
+  if (stopAt !== null && cardAudio.currentTime >= stopAt) { cardAudio.pause(); stopAt = null; }
+});
+
+// Voices load asynchronously in most browsers, and an Indonesian voice may
+// simply not be installed — in which case the default voice would read
+// Indonesian with English phonics and teach the wrong pronunciation. Better to
+// disable the button and say so.
+function pickVoice() {
+  if (!hasTTS) return;
+  const vs = window.speechSynthesis.getVoices() || [];
+  idVoice = vs.find(v => /^id\\b|^id[-_]/i.test(v.lang)) || null;
+}
+if (hasTTS) {
+  pickVoice();
+  window.speechSynthesis.addEventListener('voiceschanged', () => { pickVoice(); updatePlayRow(); });
+}
+
+function updatePlayRow() {
+  if (!current) { playBtn.disabled = true; playNote.textContent = ''; return; }
+  if (current.audio) {
+    playBtn.disabled = false;
+    playBtn.innerHTML = '&#9654; Hear it';
+    playNote.textContent = 'real recording';
+  } else if (idVoice) {
+    playBtn.disabled = false;
+    playBtn.innerHTML = '&#128266; Hear it';
+    playNote.textContent = 'synthesized — not from the recording';
+  } else {
+    playBtn.disabled = true;
+    playBtn.innerHTML = '&#128266; Hear it';
+    playNote.textContent = hasTTS
+      ? 'no Indonesian voice installed on this device'
+      : 'speech synthesis unavailable';
+  }
+}
+
+function stopAudio() {
+  cardAudio.pause();
+  stopAt = null;
+  if (hasTTS) window.speechSynthesis.cancel();
+}
+
+function playCurrent() {
+  if (!current) return;
+  if (current.audio) {
+    if (hasTTS) window.speechSynthesis.cancel();
+    if (!cardAudio.paused) { cardAudio.pause(); stopAt = null; return; }
+    stopAt = current.nextSec;
+    const start = () => { cardAudio.currentTime = current.sec; cardAudio.play(); };
+    if (cardAudio.src.endsWith(current.audio) && cardAudio.readyState >= 1) {
+      start();
+    } else {
+      cardAudio.src = current.audio;
+      cardAudio.addEventListener('loadedmetadata', start, { once: true });
+      cardAudio.load();
+    }
+    return;
+  }
+  if (!idVoice) return;
+  cardAudio.pause();
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(current.front);
+  u.voice = idVoice;
+  u.lang = idVoice.lang;
+  u.rate = 0.9;
+  window.speechSynthesis.speak(u);
+}
+
 function renderHint() {
   document.getElementById('hint').textContent = srsIsTouch()
     ? 'Tap the card to flip · swipe right = Good, left = Again'
-    : 'Click the card (or press space) to flip · “z” to go back';
+    : 'Click the card (or press space) to flip · “p” to hear it · “z” to go back';
 }
 
 function updateRestoreCount() {
@@ -562,35 +679,7 @@ function addCustomCard(front, back, tagsRaw) {
   return true;
 }
 
-// Parses the same "front – back" paste format used to build the vocab/*.tsv
-// decks: blank-line-separated blocks, each optionally starting with a
-// "(tag[,tag2])" line that applies to every entry in that block. Accepts
-// en dash / em dash / hyphen as the separator, as long as it's space-padded
-// (so hyphenated words like "kira-kira" inside a term are left alone).
-function parseBulkVocab(text) {
-  const entries = [];
-  const blocks = text.split(/\\n\\s*\\n/);
-  for (const block of blocks) {
-    const lines = block.split('\\n').map(l => l.trim()).filter(Boolean);
-    if (!lines.length) continue;
-    let tags = ['custom'];
-    let start = 0;
-    const tagMatch = lines[0].match(/^\\(([^)]+)\\)$/);
-    if (tagMatch) {
-      tags = tagMatch[1].split(',').map(t => t.trim()).filter(Boolean);
-      if (!tags.length) tags = ['custom'];
-      start = 1;
-    }
-    for (let i = start; i < lines.length; i++) {
-      const sep = lines[i].match(/\\s[–—-]\\s/);
-      if (!sep) continue;
-      const front = lines[i].slice(0, sep.index).trim();
-      const back = lines[i].slice(sep.index + sep[0].length).trim();
-      if (front && back) entries.push({ front, back, tags });
-    }
-  }
-  return entries;
-}
+__VOCAB_JS__
 
 // Same collision rule as manual TSV edits: a front that already exists
 // anywhere in the deck (built-in or custom) gets the new tag(s) merged onto
@@ -624,6 +713,7 @@ cardEl.addEventListener('click', flip);
 });
 document.getElementById('removeBtn').addEventListener('click', removeCurrentCard);
 document.getElementById('undoBtn').addEventListener('click', undoLast);
+playBtn.addEventListener('click', (e) => { e.stopPropagation(); playCurrent(); });
 document.getElementById('resetBtn').addEventListener('click', () => {
   if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
 });
@@ -696,6 +786,7 @@ document.getElementById('bulkSaveBtn').addEventListener('click', () => {
 document.addEventListener('keydown', (e) => {
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if (e.key === ' ') { e.preventDefault(); flip(); }
+  else if (e.key === 'p') playCurrent();
   else if (e.key === 'z') undoLast();
   else if (flipped && ['1','2','3','4'].includes(e.key)) rate(parseInt(e.key, 10));
 });
@@ -719,6 +810,7 @@ cardEl.addEventListener('touchend', (e) => {
 // screen. Wide windows have the room, so leave it open there.
 if (!srsIsTouch() && !srsIsNarrow()) document.getElementById('filterPanel').hidden = false;
 renderHint();
+updatePlayRow();
 updateRestoreCount();
 pickNext();
 </script>
@@ -756,15 +848,71 @@ def load_decks():
     return deduped
 
 
+def attach_context(deck):
+    """Give each card the family actually saying its word, where they do.
+
+    Finds the first real Indonesian transcript line containing the term and
+    attaches the clip bounds plus the sentence, so the card can play authentic
+    audio and show the word in context. Only ~104 of 274 cards match — the
+    standalone reference decks (adjectives, comparisons, connectors) mostly
+    aren't drawn from the conversation. Those get no audio fields and the page
+    falls back to speech synthesis for them.
+
+    Imported lazily so build_flashcards stays usable (minus context) even if
+    the transcript/audio side of the project isn't set up.
+    """
+    try:
+        from build_quiz import load_conversations, clamp_next_sec
+    except Exception:
+        return deck, 0
+    convos = load_conversations()
+    if not convos:
+        return deck, 0
+    matched = 0
+    for card in deck:
+        pattern = re.compile(r"(?<!\w)" + re.escape(card["front"]) + r"(?!\w)", re.IGNORECASE)
+        hit = None
+        for convo in convos:
+            for i, e in enumerate(convo["entries"]):
+                if e["lang"] != "Indonesian":
+                    continue
+                m = pattern.search(e["text"])
+                if m:
+                    hit = (convo, i, e, m)
+                    break
+            if hit:
+                break
+        if not hit:
+            continue
+        convo, i, e, m = hit
+        entries = convo["entries"]
+        next_sec = entries[i + 1]["sec"] if i + 1 < len(entries) else e["sec"] + 6
+        card["audio"] = convo["audio"]
+        card["sec"] = e["sec"]
+        card["nextSec"] = clamp_next_sec(e["sec"], next_sec, 8)
+        card["sentenceHtml"] = (
+            html_escape(e["text"][: m.start()])
+            + "<b>" + html_escape(e["text"][m.start(): m.end()]) + "</b>"
+            + html_escape(e["text"][m.end():])
+        )
+        if e.get("en"):
+            card["exTranslation"] = e["en"]
+        matched += 1
+    return deck, matched
+
+
 def main():
     deck = load_decks()
+    deck, matched = attach_context(deck)
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
+        .replace("__VOCAB_JS__", VOCAB_JS)
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")
-    print(f"wrote {OUT} with {len(deck)} cards from {len(list(VOCAB_DIR.glob('*.tsv')))} deck(s)")
+    print(f"wrote {OUT} with {len(deck)} cards from {len(list(VOCAB_DIR.glob('*.tsv')))} deck(s); "
+          f"{matched} with real audio, {len(deck) - matched} rely on speech synthesis")
 
 
 if __name__ == "__main__":

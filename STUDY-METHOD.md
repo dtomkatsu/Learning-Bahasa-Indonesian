@@ -118,6 +118,15 @@ progress bar. What the daily cap used to buy you was spreading a big deck over a
 cards at once means FSRS schedules their first reviews at roughly the same time (day ~1, then ~3, then ~10…), so
 they bunch up for a few weeks afterward. Choosing a smaller session size is the lever for that now.
 
+**Hearing every card.** Each flashcard has a **Hear it** button (shortcut `p`). About 105 of the 274 cards use
+a word that actually occurs in the recording — those play the family saying it, in context, and show that line
+plus its translation on the back of the card. The other ~169 are from the standalone reference decks
+(adjectives, comparisons, connectors), which aren't drawn from the conversation; those use the device's
+Indonesian speech synthesis and are labelled *"synthesized — not from the recording"* so a robot voice is never
+mistaken for how this family really talks. If the device has no Indonesian voice installed the button is
+disabled and says so, rather than reading Indonesian with English phonics and teaching you the wrong
+pronunciation.
+
 **Finding things.** flashcards.html has a **Filter** panel (search box + multi-select category chips with card
 counts) and a **Browse** list showing every card in the current filter with its scheduling state — new /
 due now / in N days / mastered. Click any row to study that card immediately. quiz.html uses the same chip

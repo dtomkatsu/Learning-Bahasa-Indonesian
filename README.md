@@ -16,7 +16,7 @@ handful of Python scripts, and runs as plain HTML/JS with no server, no build st
 | | |
 |---|---|
 | **Synced player** | Full transcript beside the audio. Click any line to jump there; hover for **loop** (repeat one line), **+ card** (capture that line's vocab straight into the flashcard deck); **Shadow mode** auto-pauses after every line so you can repeat it aloud; 0.6x–1.25x speed; toggle an English gloss under every Indonesian line. |
-| **Flashcards** | ~274 cards (conversation-mined vocab + common-adjectives, comparisons, and connectors reference decks). Search, multi-select category chips with counts, and a **Browse** list showing every card's scheduling state — click a row to study it. Add cards one at a time, or paste a whole `front – back` list with an optional `(tag)` header per block — no file editing needed. |
+| **Flashcards** | ~274 cards (conversation-mined vocab + common-adjectives, comparisons, and connectors reference decks). Every card can be **heard**: words that occur in the recording play the family actually saying them, in context, with the source line and its translation on the back; the rest fall back to Indonesian speech synthesis, clearly labelled so a synthetic voice is never mistaken for the real thing. Search, category chips with counts, and a **Browse** list of every card's scheduling state. Add cards one at a time, or paste a whole `front – back` list with an optional `(tag)` header per block. |
 | **Quiz** | **Word** mode blanks a vocab term out of a real sentence (cloze) and plays that exact moment of audio. **Sentence** mode checks you followed a whole line. **Listening** mode is ears-only: the clip plays with text hidden — the actual target skill. |
 | **Spaced repetition** | Real **FSRS-5** — the algorithm Anki itself now recommends over SM-2 — with Again/Hard/Good/Easy and live interval previews on each button. Misclicked? **Go back** (`z`) restores that card's previous schedule and un-logs the review. A **Study now** mixed session interleaves everything due, sized to 10/20/50/all so a sitting is always finishable. Installable as a **PWA** on the phone. |
 | **Stats** | Streak, 28-day heatmap, and overall recall rate, plus an editable **daily goal** and **recall by category, weakest first** — so it's obvious that connectors are at 40% while adjectives are at 90%, and what to drill next. |
@@ -62,6 +62,22 @@ for context, then merged by line index. See [`STUDY-METHOD.md`](STUDY-METHOD.md)
 
 Requirements: Python 3 (standard library only). `scripts/build_icon.sh` additionally uses headless Chrome and
 macOS's `iconutil`, but that's only for the optional desktop-app wrapper.
+
+## Tests
+
+```bash
+python3 tests/run_tests.py
+```
+
+Runs the browser-side logic — FSRS scheduling, the gist sync merge rules, undo, the review log, the bulk vocab
+parser — under Node with a `localStorage` shim, then syntax-checks the inline script of every generated page.
+No dependencies beyond Node itself.
+
+The suite is deliberately scoped to pure functions, because that's where the real bugs in this project have
+been: an FSRS formula, a merge rule, a parser edge case. It is verified by mutation — breaking the `rev`
+tiebreaker, the parser's separator rule, the goal clamp, the item-key logging, or "Again" scheduling each makes
+it go red. Note that `node --check` only catches *syntax*, so a call to a function that no longer exists still
+passes; the browser is still the place to check rendering and audio.
 
 ## Layout
 
