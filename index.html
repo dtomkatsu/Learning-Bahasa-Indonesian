@@ -300,6 +300,34 @@ function srsRestoreState(prev) {
   return prev ? Object.assign({}, prev, { rev: Date.now() }) : null;
 }
 
+// ---- Forward stack ---------------------------------------------------------
+// The card an undo pushed off the screen. Flashcards and the quiz draw the
+// next item at random, so without this, going back and re-rating would hand
+// you a *different* card than the one you were already looking at — the undo
+// would quietly reshuffle your place in the deck.
+//
+// LIFO, so consecutive undos replay forwards in the right order: rate A (see
+// B), rate B (see C), undo, undo — now re-rating A gives back B, and B gives
+// back C.
+let srsForwardStack = [];
+
+function srsPushForward(item) {
+  if (item) srsForwardStack.push(item);
+}
+function srsClearForward() { srsForwardStack = []; }
+function srsForwardDepth() { return srsForwardStack.length; }
+
+// `resolve` re-looks-up the queued item and returns it (or a falsy value if
+// it's no longer eligible — filtered out, removed, or edited away). Skips past
+// anything stale rather than showing a card that isn't in the current pool.
+function srsTakeForward(resolve) {
+  while (srsForwardStack.length) {
+    const found = resolve(srsForwardStack.pop());
+    if (found) return found;
+  }
+  return null;
+}
+
 // Removes a review-log entry by the key srsLogReview returned, so an undone
 // rating doesn't keep inflating the streak/recall stats.
 function srsUnlogReview(ts) {

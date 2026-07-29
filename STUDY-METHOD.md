@@ -117,8 +117,11 @@ Two pacing rules are built in, standard spaced-repetition practice:
 **"↶ Go back"** button, shortcut **`z`**. It doesn't just re-show the card — it restores that item's previous
 FSRS schedule exactly and deletes the review-log entry, so a misclicked "Again" doesn't leave a wrecked interval
 or a phantom review skewing your stats. If the rating was the card's first, undo puts it back to never-seen. In
-the study session it also steps the progress counter back. The stack holds the last 30 ratings but is in-memory
-only — it's for fixing the misclick you just made, not history across page loads.
+the study session it also steps the progress counter back. Going back also **holds your place**: re-rating the
+restored card hands you the card that was already queued up, rather than a fresh random draw — and consecutive
+undos replay forwards in the same order you undid them. (If you change the filter, mode or deck in between, the
+queue is dropped, since the card waiting there may no longer belong.) The stack holds the last 30 ratings but is
+in-memory only — it's for fixing the misclick you just made, not history across page loads.
 
 There's no *daily* cap on new cards (removed 2026-07-19, was 15/day) — the session size is what keeps a sitting
 finite instead. Before it existed, "Study now" on a fresh deck built a **716-item** session with a meaningless

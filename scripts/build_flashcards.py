@@ -340,6 +340,7 @@ function updateFilterChrome() {
 // fresh card. Typing in the search box shouldn't yank the current card away
 // mid-word, so it only re-picks once the card on screen stops matching.
 function afterFilterChange(forcePick) {
+  srsClearForward();
   applyFilter();
   if (!document.getElementById('browsePanel').hidden) renderBrowse();
   if (forcePick || !current || !pool.some(d => d.front === current.front)) pickNext();
@@ -350,6 +351,7 @@ applyFilter();
 // Re-derive the deck after a local edit (add/remove) or a remote sync pull
 // that may have brought in edits made on another device.
 function refreshDeck() {
+  srsClearForward();
   DECK = computeDeck();
   renderChips();
   updateRestoreCount();
@@ -367,6 +369,10 @@ function dueIn(items) { return items.filter(d => srsIsDue(srs[d.front])); }
 
 function pickNext() {
   if (!pool.length) { renderEmpty('No cards for this tag.'); return; }
+  // If an undo displaced a card, give that one back rather than drawing a
+  // fresh random one — otherwise "Go back" loses your place in the deck.
+  const queued = srsTakeForward(c => pool.find(d => d.front === c.front));
+  if (queued) { showCard(queued); return; }
   // Reviews first, then any brand-new card; practice-ahead ignores the
   // schedule entirely once even that pool is exhausted.
   const reviews = pool.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
@@ -473,6 +479,9 @@ function rate(grade) {
 function undoLast() {
   const u = srsPopUndo();
   if (!u) return;
+  // Remember what was on screen, so re-rating the restored card returns you
+  // to it instead of a random draw.
+  srsPushForward(current);
   const restored = srsRestoreState(u.prev);
   if (restored) srs[u.front] = restored; else delete srs[u.front];
   srsSave(SRS_KEY, srs);
@@ -715,7 +724,7 @@ document.getElementById('removeBtn').addEventListener('click', removeCurrentCard
 document.getElementById('undoBtn').addEventListener('click', undoLast);
 playBtn.addEventListener('click', (e) => { e.stopPropagation(); playCurrent(); });
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
+  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); pickNext(); }
 });
 document.getElementById('restoreBtn').addEventListener('click', () => {
   const n = Object.keys(loadRemovedCards()).length;

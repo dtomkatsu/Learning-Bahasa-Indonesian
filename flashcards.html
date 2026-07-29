@@ -363,6 +363,34 @@ function srsRestoreState(prev) {
   return prev ? Object.assign({}, prev, { rev: Date.now() }) : null;
 }
 
+// ---- Forward stack ---------------------------------------------------------
+// The card an undo pushed off the screen. Flashcards and the quiz draw the
+// next item at random, so without this, going back and re-rating would hand
+// you a *different* card than the one you were already looking at — the undo
+// would quietly reshuffle your place in the deck.
+//
+// LIFO, so consecutive undos replay forwards in the right order: rate A (see
+// B), rate B (see C), undo, undo — now re-rating A gives back B, and B gives
+// back C.
+let srsForwardStack = [];
+
+function srsPushForward(item) {
+  if (item) srsForwardStack.push(item);
+}
+function srsClearForward() { srsForwardStack = []; }
+function srsForwardDepth() { return srsForwardStack.length; }
+
+// `resolve` re-looks-up the queued item and returns it (or a falsy value if
+// it's no longer eligible — filtered out, removed, or edited away). Skips past
+// anything stale rather than showing a card that isn't in the current pool.
+function srsTakeForward(resolve) {
+  while (srsForwardStack.length) {
+    const found = resolve(srsForwardStack.pop());
+    if (found) return found;
+  }
+  return null;
+}
+
 // Removes a review-log entry by the key srsLogReview returned, so an undone
 // rating doesn't keep inflating the streak/recall stats.
 function srsUnlogReview(ts) {
@@ -825,6 +853,7 @@ function updateFilterChrome() {
 // fresh card. Typing in the search box shouldn't yank the current card away
 // mid-word, so it only re-picks once the card on screen stops matching.
 function afterFilterChange(forcePick) {
+  srsClearForward();
   applyFilter();
   if (!document.getElementById('browsePanel').hidden) renderBrowse();
   if (forcePick || !current || !pool.some(d => d.front === current.front)) pickNext();
@@ -835,6 +864,7 @@ applyFilter();
 // Re-derive the deck after a local edit (add/remove) or a remote sync pull
 // that may have brought in edits made on another device.
 function refreshDeck() {
+  srsClearForward();
   DECK = computeDeck();
   renderChips();
   updateRestoreCount();
@@ -852,6 +882,10 @@ function dueIn(items) { return items.filter(d => srsIsDue(srs[d.front])); }
 
 function pickNext() {
   if (!pool.length) { renderEmpty('No cards for this tag.'); return; }
+  // If an undo displaced a card, give that one back rather than drawing a
+  // fresh random one — otherwise "Go back" loses your place in the deck.
+  const queued = srsTakeForward(c => pool.find(d => d.front === c.front));
+  if (queued) { showCard(queued); return; }
   // Reviews first, then any brand-new card; practice-ahead ignores the
   // schedule entirely once even that pool is exhausted.
   const reviews = pool.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
@@ -958,6 +992,9 @@ function rate(grade) {
 function undoLast() {
   const u = srsPopUndo();
   if (!u) return;
+  // Remember what was on screen, so re-rating the restored card returns you
+  // to it instead of a random draw.
+  srsPushForward(current);
   const restored = srsRestoreState(u.prev);
   if (restored) srs[u.front] = restored; else delete srs[u.front];
   srsSave(SRS_KEY, srs);
@@ -1230,7 +1267,7 @@ document.getElementById('removeBtn').addEventListener('click', removeCurrentCard
 document.getElementById('undoBtn').addEventListener('click', undoLast);
 playBtn.addEventListener('click', (e) => { e.stopPropagation(); playCurrent(); });
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
+  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); pickNext(); }
 });
 document.getElementById('restoreBtn').addEventListener('click', () => {
   const n = Object.keys(loadRemovedCards()).length;

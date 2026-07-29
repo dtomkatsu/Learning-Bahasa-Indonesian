@@ -129,6 +129,53 @@ suite('srsRestoreState stamps rev without touching lastReview', () => {
   eq(srsRestoreState(null), null, 'no previous state restores to null (caller deletes)');
 });
 
+// ---- Forward stack (what "Go back" should hand you next) -------------------
+
+suite('forward stack replays in the order the undos happened', () => {
+  // rate A (see B), rate B (see C), then undo twice. Re-rating A must give
+  // back B, and re-rating B must give back C — not a fresh random draw.
+  srsClearForward();
+  const id = x => x;
+  srsPushForward({ front: 'C' });   // first undo displaced C
+  srsPushForward({ front: 'B' });   // second undo displaced B
+  eq(srsForwardDepth(), 2, 'both queued');
+  eq(srsTakeForward(id).front, 'B', 'most recent undo replays first');
+  eq(srsTakeForward(id).front, 'C', 'then the one before it');
+  eq(srsTakeForward(id), null, 'exhausted');
+  eq(srsForwardDepth(), 0, 'drained');
+});
+
+suite('forward stack skips items that are no longer eligible', () => {
+  srsClearForward();
+  srsPushForward({ front: 'still-here' });
+  srsPushForward({ front: 'filtered-out' });
+  // resolve() stands in for "is it still in the current pool?"
+  const resolve = c => (c.front === 'filtered-out' ? null : c);
+  eq(srsTakeForward(resolve).front, 'still-here',
+    'a queued card that left the pool is skipped, not shown');
+  eq(srsForwardDepth(), 0, 'the stale entry was consumed too');
+});
+
+suite('forward stack: resolve may swap in a refreshed object', () => {
+  // The pool holds the current version of a card; an edit between queueing and
+  // replaying should not resurrect the stale copy.
+  srsClearForward();
+  srsPushForward({ front: 'x', back: 'old' });
+  const refreshed = srsTakeForward(c => ({ front: c.front, back: 'new' }));
+  eq(refreshed.back, 'new', 'the resolved object is what gets used');
+});
+
+suite('forward stack: push ignores nothing-on-screen, clear empties', () => {
+  srsClearForward();
+  srsPushForward(null);
+  srsPushForward(undefined);
+  eq(srsForwardDepth(), 0, 'null/undefined are not queued');
+  srsPushForward({ front: 'a' });
+  srsClearForward();
+  eq(srsForwardDepth(), 0, 'clear empties the stack');
+  eq(srsTakeForward(x => x), null, 'taking from an empty stack is null');
+});
+
 // ---- Sync merges -----------------------------------------------------------
 
 suite('syncMergeFsrs keeps the more recently reviewed side', () => {

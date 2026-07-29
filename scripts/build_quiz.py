@@ -433,6 +433,7 @@ function renderChips() {
 }
 
 function applyFilter() {
+  srsClearForward();
   const modeItems = itemsForMode(mode);
   pool = activeTags.size
     ? modeItems.filter(d => d.tags.some(t => activeTags.has(t)))
@@ -623,6 +624,9 @@ function rate(grade) {
 function undoLast() {
   const u = srsPopUndo();
   if (!u) return;
+  // Remember what was on screen, so re-rating the restored item returns you
+  // to it instead of a random draw.
+  srsPushForward(current);
   const restored = srsRestoreState(u.prev);
   if (restored) srs[u.id] = restored; else delete srs[u.id];
   srsSave(SRS_KEY, srs);
@@ -649,6 +653,17 @@ function pickNext() {
   audio.pause();
   stopAt = null;
   if (!pool.length) { renderEmpty('No quiz items for this tag.'); renderStats(); return; }
+  // If an undo displaced an item, give that one back rather than drawing a
+  // fresh random one — otherwise "Go back" loses your place.
+  const queued = srsTakeForward(c => pool.find(d => d.id === c.id));
+  if (queued) {
+    current = queued;
+    revealed = false;
+    renderCard();
+    renderStats();
+    if (current.kind === 'listening' && userInteracted) playLine();
+    return;
+  }
   // Reviews first, then any brand-new item; practice-ahead ignores the
   // schedule entirely once even that pool is exhausted.
   const reviews = pool.filter(d => srs[d.id] && srsIsDue(srs[d.id]));
@@ -677,7 +692,7 @@ function renderStats() {
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all quiz progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); pickNext(); }
+  if (confirm('Reset all quiz progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); pickNext(); }
 });
 
 unflagBtn.addEventListener('click', () => {
