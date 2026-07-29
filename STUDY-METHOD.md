@@ -31,6 +31,14 @@ particle-heavy, and specific to the people and places in your actual life. The g
    and discourse markers like dan/karena/walaupun/akhirnya) — two collisions (`kalau`, `makanya`) already existed
    in `conversation-1-vocab.tsv`, so those two rows were retagged to also carry `connector` instead of duplicating.
 
+   `vocab/verbs.tsv` (176 rows, 182 verbs counting the merged ones) is tagged two ways at once: every entry
+   carries the base tag `verb` **plus** one function tag, so you can drill all verbs together or narrow to a
+   use — `motion` (29), `handling` (26), `mind` (22), `work` (20), `routine` (19), `change` (18), `speech` (16),
+   `household` (12), `money` (7), `state` (5), `tech` (4), `emotion` (4). The last two reuse categories that
+   already existed rather than inventing near-duplicates. Six verbs already lived in other decks and were
+   merged in place rather than duplicated; five of those are real polysemy, so the gloss carries both senses
+   (`jadi` — "so / therefore; to become", tagged `connector,verb,change`).
+
    You don't have to go through a TSV + rebuild for a quick vocab dump, either: flashcards.html's **"+ Add
    list"** button (next to "+ Add card") takes a paste in the exact same `front – back` format used above, one
    entry per line. Start a block with a `(tag)` line to categorize everything below it until the next blank line

@@ -16,7 +16,7 @@ handful of Python scripts, and runs as plain HTML/JS with no server, no build st
 | | |
 |---|---|
 | **Synced player** | Full transcript beside the audio. Click any line to jump there; hover for **loop** (repeat one line), **+ card** (capture that line's vocab straight into the flashcard deck); **Shadow mode** auto-pauses after every line so you can repeat it aloud; 0.6x–1.25x speed; toggle an English gloss under every Indonesian line. |
-| **Flashcards** | ~274 cards (conversation-mined vocab + common-adjectives, comparisons, and connectors reference decks). Every card can be **heard**: words that occur in the recording play the family actually saying them, in context, with the source line and its translation on the back; the rest fall back to Indonesian speech synthesis, clearly labelled so a synthetic voice is never mistaken for the real thing. Search, category chips with counts, and a **Browse** list of every card's scheduling state. Add cards one at a time, or paste a whole `front – back` list with an optional `(tag)` header per block. |
+| **Flashcards** | ~450 cards (conversation-mined vocab + common-adjectives, comparisons, connectors, and a 182-verb reference deck tagged by function). Every card can be **heard**: words that occur in the recording play the family actually saying them, in context, with the source line and its translation on the back; the rest fall back to Indonesian speech synthesis, clearly labelled so a synthetic voice is never mistaken for the real thing. Search, category chips with counts, and a **Browse** list of every card's scheduling state. Add cards one at a time, or paste a whole `front – back` list with an optional `(tag)` header per block. |
 | **Quiz** | **Word** mode blanks a vocab term out of a real sentence (cloze) and plays that exact moment of audio. **Sentence** mode checks you followed a whole line. **Listening** mode is ears-only: the clip plays with text hidden — the actual target skill. |
 | **Spaced repetition** | Real **FSRS-5** — the algorithm Anki itself now recommends over SM-2 — with Again/Hard/Good/Easy and live interval previews on each button. Misclicked? **Go back** (`z`) restores that card's previous schedule and un-logs the review. A **Study now** mixed session interleaves everything due, sized to 10/20/50/all so a sitting is always finishable. Installable as a **PWA** on the phone. |
 | **Stats** | Streak, 28-day heatmap, and overall recall rate, plus an editable **daily goal** and **recall by category, weakest first** — so it's obvious that connectors are at 40% while adjectives are at 90%, and what to drill next. |
@@ -86,8 +86,8 @@ scripts/          build scripts (all stdlib Python) + FSRS engine + icon art
 transcripts/      raw Soniox export, cleaned transcript, translations
 audio/            source recording
 vocab/            TSV decks (Indonesian / English+notes / tag) — Anki-importable as-is; not all decks need to
-                  come from a conversation (common-adjectives.tsv, comparisons.tsv, connectors.tsv are standalone
-                  reference decks)
+                  come from a conversation (common-adjectives.tsv, comparisons.tsv, connectors.tsv, verbs.tsv
+                  are standalone reference decks)
 notes/            speaker map, timestamped topic index, particle glossary, cultural notes
 *.html            generated: player, flashcards, quiz, landing page
 ```
