@@ -42,7 +42,7 @@ Inferred from context only — treat as provisional, correct it as you listen:
 | Time | Topic |
 |---|---|
 | 00:00–08:00 | Rain and a possible flood; cutting/preparing food alongside it |
-| 08:00–16:00 | Food talk — crackers, *pisang goreng* (fried bananas); someone messaging back and forth |
+| 08:00–16:00 | Food talk — someone named **Totok** and *pisang goreng* (fried bananas); messaging back and forth |
 | 16:00–32:00 | **Bank account admin.** Account numbers read aloud digit by digit, which bank, old vs new number, "*titik*" for the full stop. Dense with numbers — good listening drill |
 | 32:00–40:00 | **Arisan logistics**: transfers, dates ("Monday, July 6th"), who pays whom, the *bendahara* (treasurer), notification for August |
 | 40:00–48:00 | **In the car** — directions, which road is faster, traffic |
@@ -68,11 +68,16 @@ of this recording. There's no clean English equivalent.
 
 ## Caveats
 
-- **The translations are machine-generated and unreviewed.** Most are fine; some are visibly wrong where the
-  ASR mis-heard. "My car is already drunk" (~40 min) is a mistranscription, not an idiom, and "The cracker
-  just brought fried bananas" has mangled a name into "cracker". Treat a confusing translation as suspect
-  before assuming you misunderstood the Indonesian.
+- **The translations are machine-generated and mostly unreviewed.** A systematic sweep (digit mismatches,
+  word-count-ratio outliers, immediate word repetition) plus manual spot-checking found and removed 4 confirmed-
+  wrong entries from `conversation-2.translations.json`: three around 08:06–08:15 where the ASR mangled a name
+  ("Totok"/"Rotok") into "cracker", and one at 45:16 ("Mobilku sudah mabuk" mistranscribed as "My car is already
+  drunk"). Those Indonesian lines and their audio are untouched — only the bad English gloss was dropped, so
+  Sentence/Listening mode simply skips them (two of the four were already too short to qualify) rather than
+  testing you against a wrong answer. The other ~944 translations are unreviewed beyond that sweep; treat a
+  confusing one as suspect before assuming you misunderstood the Indonesian.
 - Because Sentence and Listening quiz modes rate you against these translations, use the **"Not real content"**
-  flag on any line where the translation is clearly broken — it removes that line everywhere at once.
+  flag on any other line where the translation reads as clearly broken — it removes that line everywhere at
+  once, same as removing a translation entry does.
 - No ASR hallucination loop in this recording (the cleaner collapsed **0** lines), unlike Conversation 1's
   ~22-minute "I'm sorry" run.
