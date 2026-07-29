@@ -4,10 +4,11 @@ A self-contained toolkit for building **listening comprehension of real, unscrip
 code-switched, particle-heavy way a family actually talks at home, rather than the clean sentences you get from
 a textbook.
 
-It's built around one 68-minute recording of my partner's family in Indonesia, made while they were testing a
-live-translation app (Soniox) over an ordinary evening: errands, food, picking a movie, family history, ordering
-pizza. Everything here — the player, the flashcards, the quiz — is generated from that transcript and audio by a
-handful of Python scripts, and runs as plain HTML/JS with no server, no build step, and no account.
+It's built around real recordings of my partner's family in Indonesia, made while they were testing a
+live-translation app (Soniox) over ordinary evenings: errands, food, picking a movie, family history,
+ordering pizza, arisan admin, a zombie film. Two conversations so far — 68 and 113 minutes, ~1,400
+Indonesian lines between them. Everything here — the players, the flashcards, the quiz — is generated from
+those transcripts and audio by a handful of Python scripts, and runs as plain HTML/JS with no server, no build step, and no account.
 
 **▶ [Try it live](https://dtomkatsu.github.io/Learning-Bahasa-Indonesian/)**
 
@@ -16,7 +17,7 @@ handful of Python scripts, and runs as plain HTML/JS with no server, no build st
 | | |
 |---|---|
 | **Synced player** | Full transcript beside the audio. Click any line to jump there; hover for **loop** (repeat one line), **+ card** (capture that line's vocab straight into the flashcard deck); **Shadow mode** auto-pauses after every line so you can repeat it aloud; 0.6x–1.25x speed; toggle an English gloss under every Indonesian line. |
-| **Flashcards** | ~450 cards (conversation-mined vocab + common-adjectives, comparisons, connectors, and a 182-verb reference deck tagged by function). Every card can be **heard**: words that occur in the recording play the family actually saying them, in context, with the source line and its translation on the back; the rest fall back to Indonesian speech synthesis, clearly labelled so a synthetic voice is never mistaken for the real thing. Search, category chips with counts, and a **Browse** list of every card's scheduling state. Add cards one at a time, or paste a whole `front – back` list with an optional `(tag)` header per block. |
+| **Flashcards** | ~550 cards (conversation-mined vocab + common-adjectives, comparisons, connectors, and a 182-verb reference deck tagged by function). Every card can be **heard**: words that occur in the recording play the family actually saying them, in context, with the source line and its translation on the back; the rest fall back to Indonesian speech synthesis, clearly labelled so a synthetic voice is never mistaken for the real thing. Search, category chips with counts, and a **Browse** list of every card's scheduling state. Add cards one at a time, or paste a whole `front – back` list with an optional `(tag)` header per block. |
 | **Quiz** | **Word** mode blanks a vocab term out of a real sentence (cloze) and plays that exact moment of audio. **Sentence** mode checks you followed a whole line. **Listening** mode is ears-only: the clip plays with text hidden — the actual target skill. |
 | **Spaced repetition** | Real **FSRS-5** — the algorithm Anki itself now recommends over SM-2 — with Again/Hard/Good/Easy and live interval previews on each button. Misclicked? **Go back** (`z`) restores that card's previous schedule and un-logs the review. A **Study now** mixed session interleaves everything due, sized to 10/20/50/all so a sitting is always finishable. Installable as a **PWA** on the phone. |
 | **Stats** | Streak, 28-day heatmap, and overall recall rate, plus an editable **daily goal** and **recall by category, weakest first** — so it's obvious that connectors are at 40% while adjectives are at 90%, and what to drill next. |
@@ -40,11 +41,15 @@ re-listen a week later. Details, including the particle glossary, are in
 Nothing here is specific to this conversation — point the scripts at your own transcript and audio:
 
 ```bash
-# 1. Drop in transcripts/<name>.raw.txt (Soniox export) and audio/<name>.<ext>
+# 1. Drop the audio in audio/<name>.<ext>, then import the transcript.
+#    If your Soniox export has TWO lines per block (utterance + its machine
+#    translation), use this — it writes the raw, cleaned and translation files
+#    in one go, and would otherwise be silently discarded:
+python3 scripts/import_soniox_translated.py ~/Downloads/<export>.txt <name>
 
-# 2. Strip ASR hallucination loops (Soniox got stuck repeating "I'm sorry" for
-#    ~22 minutes of quiet audio in this recording; the script collapses those
-#    runs while keeping every genuine line)
+#    If it has ONE line per block, drop it in transcripts/<name>.raw.txt and
+#    strip ASR hallucination loops instead (Soniox got stuck repeating
+#    "I'm sorry" for ~22 minutes of quiet audio in Conversation 1):
 python3 scripts/clean_transcript.py transcripts/<name>.raw.txt transcripts/<name>.clean.txt
 
 # 3. Build the pages (all of these re-scan everything from scratch)
@@ -56,9 +61,9 @@ python3 scripts/build_study.py
 python3 scripts/build_index.py
 ```
 
-Translations are optional (drop `--translations`). There's no translation API wired up — the ones here were
-produced by fanning out parallel LLM calls over chunks of the Indonesian lines, each given the particle glossary
-for context, then merged by line index. See [`STUDY-METHOD.md`](STUDY-METHOD.md).
+Translations are optional (drop `--translations`). Conversation 2's came free with the Soniox export;
+Conversation 1's were produced by fanning out parallel LLM calls over chunks of the Indonesian lines, each
+given the particle glossary for context, then merged by line index. See [`STUDY-METHOD.md`](STUDY-METHOD.md).
 
 Requirements: Python 3 (standard library only). `scripts/build_icon.sh` additionally uses headless Chrome and
 macOS's `iconutil`, but that's only for the optional desktop-app wrapper.
@@ -83,8 +88,8 @@ passes; the browser is still the place to check rendering and audio.
 
 ```
 scripts/          build scripts (all stdlib Python) + FSRS engine + icon art
-transcripts/      raw Soniox export, cleaned transcript, translations
-audio/            source recording
+transcripts/      raw Soniox exports, cleaned transcripts, translations
+audio/            source recordings
 vocab/            TSV decks (Indonesian / English+notes / tag) — Anki-importable as-is; not all decks need to
                   come from a conversation (common-adjectives.tsv, comparisons.tsv, connectors.tsv, verbs.tsv
                   are standalone reference decks)

@@ -6,6 +6,31 @@ particle-heavy, and specific to the people and places in your actual life. The g
 
 ## Pipeline for each new recording
 
+0. **Check which kind of export you have first.** Soniox can transcribe with or without translation, and the
+   two look different in a way that matters:
+
+   ```
+   untranslated (Conversation 1)        translated (Conversation 2)
+   [00:00] Speaker 1:                   [00:00] Speaker 1:
+   [Indonesian] "Aku tuh lebih takut."   [Indonesian] "Mungkin banjir nih."
+                                        [English] "Maybe it's a flood."
+   ```
+
+   In an untranslated export each block holds one line, and an `[English]` block means somebody genuinely
+   *spoke* English. In a translated export the second line is a machine translation of the first — and the
+   shared `ENTRY_RE` only ever matches a block's first line, so running the normal pipeline on one would
+   silently bin every translation. If your export has two lines per block, use this instead of steps 1–2 and
+   skip step 5:
+
+   ```bash
+   python3 scripts/import_soniox_translated.py ~/Downloads/<export>.txt <name>
+   ```
+
+   That writes `<name>.raw.txt`, `<name>.clean.txt` (loop-cleaned via the same code as step 2) and
+   `<name>.translations.json` in one go. Translations are matched back onto the cleaned transcript by
+   (timestamp, speaker, text) rather than by position, so entries dropped as ASR artifacts can't shift the
+   index mapping. Only Indonesian utterances get a translation entry — a translated export also renders
+   English into Indonesian, which the gloss doesn't want.
 1. Drop the raw Soniox export in `transcripts/<name>.raw.txt` and the audio in `audio/<name>.<ext>`.
 2. Clean it: `python3 scripts/clean_transcript.py transcripts/<name>.raw.txt transcripts/<name>.clean.txt`
    This strips ASR hallucination loops (it got stuck on "I'm sorry" / "quiet" for ~22 minutes in Conversation 1)
