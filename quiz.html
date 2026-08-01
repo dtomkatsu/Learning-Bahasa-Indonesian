@@ -717,15 +717,25 @@ function ttsStop() {
 
 // Slightly under normal speed: fast enough to sound like speech, slow enough
 // that the syllable boundaries are still audible to a learner.
+//
+// Returns a promise that resolves when the voice has finished, so callers that
+// need to sequence something after it (the say-it-yourself compare in
+// _record_js.py plays the model, then your attempt) don't have to guess at a
+// duration. Callers that just want noise can ignore the return value.
 function ttsSpeak(text, rate) {
-  if (!ttsVoice || !text) return false;
+  if (!ttsVoice || !text) return Promise.resolve(false);
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.voice = ttsVoice;
-  u.lang = ttsVoice.lang;
-  u.rate = rate || 0.9;
-  window.speechSynthesis.speak(u);
-  return true;
+  return new Promise(resolve => {
+    const u = new SpeechSynthesisUtterance(text);
+    u.voice = ttsVoice;
+    u.lang = ttsVoice.lang;
+    u.rate = rate || 0.9;
+    // 'end' fires on cancel() too, so an interrupted utterance still settles
+    // rather than leaving the caller's await hanging forever.
+    u.addEventListener('end', () => resolve(true));
+    u.addEventListener('error', () => resolve(false));
+    window.speechSynthesis.speak(u);
+  });
 }
 
 // One place that decides what to tell the user about a synthetic voice, so

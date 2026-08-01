@@ -31,11 +31,13 @@ Usage:
 """
 import csv
 import json
+import re
 from html import escape as html_escape
 from pathlib import Path
 
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
+from _record_js import REC_JS
 from _tts_js import TTS_JS
 from _vocab_js import VOCAB_JS
 from _vocab_text import bounded, find_term
@@ -124,6 +126,26 @@ PAGE = """<!doctype html>
   button.playBtn:disabled { border-color:var(--line); color:var(--muted);
     background:transparent; cursor:default; }
   .playNote { color:var(--muted); font-size:0.72rem; }
+  /* Say-it-yourself. Sits under the model's play row because the order of
+     operations is the point: hear it, say it, then hear both back to back. */
+  .sayRow { display:flex; align-items:center; gap:8px; justify-content:center;
+    flex-wrap:wrap; margin:-6px 0 12px; }
+  .sayRow[hidden] { display:none; }
+  button.sayBtn { font-size:0.82rem; padding:7px 13px; border-radius:8px;
+    border:1px solid var(--line); background:transparent; color:var(--fg); cursor:pointer; }
+  button.sayBtn:hover { border-color:var(--accent); color:var(--accent); }
+  button.sayBtn.recording { border-color:var(--again); color:var(--again); }
+  button.sayBtn:disabled { opacity:0.45; cursor:default; }
+  .sayNote { color:var(--muted); font-size:0.72rem; }
+  .sayNote.model { color:var(--accent); }
+  .sayNote.you { color:var(--good); }
+  .sayTip { max-width:460px; margin:0 auto 16px; padding:9px 12px; border-radius:8px;
+    background:var(--card); border:1px solid var(--line); color:var(--muted);
+    font-size:0.78rem; line-height:1.5; text-align:left; }
+  .sayTip[hidden] { display:none; }
+  .sayTip b { color:var(--accent); }
+  .sayTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
+    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
   .rate { display:flex; gap:8px; }
   button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
@@ -225,6 +247,12 @@ atau – or"></textarea>
     <button class="playBtn" id="playBtn">&#9654; Hear it</button>
     <span class="playNote" id="playNote"></span>
   </div>
+  <div class="sayRow" id="sayRow" hidden>
+    <button class="sayBtn" id="recBtn">&#127908; Say it</button>
+    <button class="sayBtn" id="cmpBtn" disabled>&#8646; Compare</button>
+    <span class="sayNote" id="sayNote"></span>
+  </div>
+  <div class="sayTip" id="sayTip" hidden></div>
   <div class="hint" id="hint"></div>
   <div class="rate" id="rateRow" hidden>
     <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
@@ -252,6 +280,7 @@ atau – or"></textarea>
 __SRS_JS__
 __SYNC_JS__
 __TTS_JS__
+__REC_JS__
 const BUILTIN_DECK = __DATA__;
 const SRS_KEY = 'bahasa:flashcards:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:flashcards:v1', 'bahasa:flashcards:srs:v1'];
@@ -426,6 +455,7 @@ function showCard(card) {
   rateRow.hidden = true;
   cardMeta.hidden = true;
   stopAudio();
+  resetSay();
   updatePlayRow();
   renderStats();
 }
@@ -479,6 +509,7 @@ function flip() {
   rateRow.hidden = !flipped;
   cardMeta.hidden = !flipped;
   updatePlayRow();          // what "Hear it" says changes once the sentence is visible
+  updateSayRow();
   if (flipped) updatePreviews();
 }
 
@@ -624,15 +655,7 @@ function playCurrent() {
   if (current.audio) {
     ttsStop();
     if (!cardAudio.paused) { cardAudio.pause(); stopAt = null; return; }
-    stopAt = current.nextSec;
-    const start = () => { cardAudio.currentTime = current.sec; cardAudio.play(); };
-    if (cardAudio.src.endsWith(current.audio) && cardAudio.readyState >= 1) {
-      start();
-    } else {
-      cardAudio.src = current.audio;
-      cardAudio.addEventListener('loadedmetadata', start, { once: true });
-      cardAudio.load();
-    }
+    playModel();
     return;
   }
   cardAudio.pause();
@@ -640,6 +663,124 @@ function playCurrent() {
   // is the useful prompt; after it, the sentence is what's worth modelling.
   ttsSpeak(flipped && current.example ? current.example : current.front);
 }
+
+// Same audio as "Hear it", but always plays from the start and resolves when
+// it's done — the compare loop has to know when the model has stopped talking
+// before it plays your attempt back.
+function playModel() {
+  if (!current) return Promise.resolve();
+  if (!current.audio) {
+    cardAudio.pause();
+    return ttsSpeak(flipped && current.example ? current.example : current.front);
+  }
+  ttsStop();
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      cardAudio.removeEventListener('pause', finish);
+      cardAudio.removeEventListener('ended', finish);
+      resolve();
+    };
+    // The timeupdate handler above pauses at nextSec, which fires 'pause' —
+    // so clip-end and user-interruption settle through the same path.
+    cardAudio.addEventListener('pause', finish);
+    cardAudio.addEventListener('ended', finish);
+    stopAt = current.nextSec;
+    const start = () => {
+      cardAudio.currentTime = current.sec;
+      cardAudio.play().catch(finish);
+    };
+    if (cardAudio.src.endsWith(current.audio) && cardAudio.readyState >= 1) {
+      start();
+    } else {
+      cardAudio.src = current.audio;
+      cardAudio.addEventListener('loadedmetadata', start, { once: true });
+      cardAudio.load();
+    }
+  });
+}
+
+// ---- Say it yourself -------------------------------------------------------
+// Record, then hear the model and your attempt back to back. No score: there
+// is no honest way to grade Indonesian pronunciation in a browser today (see
+// notes/elevenlabs-pronunciation-scope.md), and the research this is built on
+// says what actually helps is adjacency plus being told what to listen for —
+// which is what sayTip carries. The clip never leaves the page.
+const sayRow = document.getElementById('sayRow');
+const sayTipEl = document.getElementById('sayTip');
+const sayNote = document.getElementById('sayNote');
+const recBtn = document.getElementById('recBtn');
+const cmpBtn = document.getElementById('cmpBtn');
+let comparing = false;
+
+function updateSayRow() {
+  // Back of the card only: on the front you're still trying to recall the
+  // word, and a microphone button there would just give the answer away.
+  const show = recSupported && flipped && !!current;
+  sayRow.hidden = !show;
+  sayTipEl.hidden = !(show && current && current.sayTip);
+  if (show && current && current.sayTip) {
+    sayTipEl.innerHTML = '<span class="lbl">Listen for</span>' + current.sayTip;
+  }
+  cmpBtn.disabled = !recHasClip() || comparing;
+  recBtn.disabled = comparing;
+}
+
+function resetSay() {
+  comparing = false;
+  recClear();
+  recBtn.classList.remove('recording');
+  recBtn.innerHTML = '&#127908; Say it';
+  sayNote.textContent = '';
+  sayNote.className = 'sayNote';
+  updateSayRow();
+}
+
+async function toggleRecord() {
+  if (comparing) return;
+  if (recIsRecording()) {
+    recBtn.disabled = true;
+    const url = await recStop();
+    recBtn.disabled = false;
+    recBtn.classList.remove('recording');
+    recBtn.innerHTML = '&#127908; Again';
+    sayNote.textContent = url ? 'recorded — now compare' : 'nothing recorded';
+    sayNote.className = 'sayNote';
+    updateSayRow();
+    if (url) compareSay();
+    return;
+  }
+  stopAudio();
+  const ok = await recStart();
+  if (!ok) {
+    sayNote.textContent = 'microphone unavailable';
+    sayNote.className = 'sayNote';
+    return;
+  }
+  recBtn.classList.add('recording');
+  recBtn.innerHTML = '&#9209; Stop';
+  sayNote.textContent = 'listening…';
+  sayNote.className = 'sayNote';
+  updateSayRow();
+}
+
+async function compareSay() {
+  if (!recHasClip() || comparing) return;
+  comparing = true;
+  updateSayRow();
+  await recCompare(playModel, step => {
+    if (step === 'model') { sayNote.textContent = 'the model'; sayNote.className = 'sayNote model'; }
+    else if (step === 'you') { sayNote.textContent = 'you'; sayNote.className = 'sayNote you'; }
+    else { sayNote.textContent = 'again?'; sayNote.className = 'sayNote'; }
+  });
+  comparing = false;
+  updateSayRow();
+}
+
+recBtn.addEventListener('click', toggleRecord);
+cmpBtn.addEventListener('click', compareSay);
 
 function renderHint() {
   document.getElementById('hint').textContent = srsIsTouch()
@@ -838,6 +979,53 @@ def parse_tags(raw):
     return tags or ["untagged"]
 
 
+# --- directed-attention prompts for the say-it-yourself loop ----------------
+#
+# Free-form "does that sound right?" is the thing the self-assessment research
+# says learners are bad at; being told which single feature to listen for is
+# what makes the comparison work. These cover the trouble spots documented for
+# English speakers learning Indonesian (see notes/pronunciation-training-scope.md
+# §3) and are matched off spelling, most-specific first.
+#
+# Deliberately absent: the pepet/taling <e> split (schwa vs clear e), which is
+# the biggest single difficulty and the one thing spelling *cannot* tell you —
+# both are written <e> with no diacritic. Guessing would teach the wrong vowel
+# half the time, so those cards get no tip until the contrast deck exists to
+# mark them by hand.
+SAY_TIPS = [
+    (re.compile(r"^ng", re.I),
+     "Starts with <b>ng-</b>. English only has this sound at the <i>end</i> of a word "
+     "(“sing”) — here it opens the word, with no hard g after it."),
+    (re.compile(r"^ny", re.I),
+     "Starts with <b>ny-</b>. Like the middle of “canyon”, but at the front — "
+     "one sound, not n + y."),
+    (re.compile(r"k$", re.I),
+     "Ends in <b>-k</b>, which is a glottal stop: the sound is cut off in the throat, "
+     "not released the way English releases the k in “back”."),
+    (re.compile(r"^[ptk]", re.I),
+     "Starts with <b>p/t/k</b> — no puff of air. English aspirates these "
+     "(“pot”, “top”, “cat”); Indonesian doesn't."),
+    (re.compile(r"[aiueo]$", re.I),
+     "Ends in a vowel — keep it full and clean. English would weaken a final "
+     "unstressed vowel toward “uh”; Indonesian vowels stay the same everywhere."),
+]
+
+
+def say_tip(front):
+    """The one thing to listen for when comparing your attempt to the model.
+
+    Only the first match applies — stacking three prompts on a card defeats
+    the purpose, which is to narrow attention to a single feature.
+    """
+    word = front.split(" / ")[0].strip().lower()
+    if " " in word or not word.isalpha():
+        return None          # phrases and punctuation-bearing fronts: no single target
+    for pattern, tip in SAY_TIPS:
+        if pattern.search(word):
+            return tip
+    return None
+
+
 def highlight(term, sentence):
     """Bold the card's term inside its example sentence, as HTML.
 
@@ -865,6 +1053,9 @@ def load_decks():
                 if not front:
                     continue
                 card = {"front": front, "back": back, "tags": tags, "deck": tsv.stem}
+                tip = say_tip(front)
+                if tip:
+                    card["sayTip"] = tip
                 example = row[3].strip() if len(row) > 3 else ""
                 if example:
                     card["example"] = example        # raw, for speech synthesis
@@ -978,6 +1169,7 @@ def main():
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
         .replace("__TTS_JS__", TTS_JS)
+        .replace("__REC_JS__", REC_JS)
         .replace("__VOCAB_JS__", VOCAB_JS)
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
     )
