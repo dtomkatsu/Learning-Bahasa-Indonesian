@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Build quiz.html — comprehension exercises generated from real transcript
-lines, with inline audio playback of the source line. Four modes:
+lines, with inline audio playback of the source line. Five modes:
 
 - Word (cloze/recall): cross-references every vocab/*.tsv term against each
   conversation's Indonesian-language lines. A term that appears inside a
@@ -14,6 +14,12 @@ lines, with inline audio playback of the source line. Four modes:
   happened to say; this reaches the whole deck. No audio from the recording,
   by definition — these sentences were written for the deck — so the play
   button is speech synthesis only.
+- Catch it: a real clip plays and you pick which of four similar-sounding
+  words was in it, with immediate feedback. Built only from words at least
+  two different family members say, so the same word is heard out of more
+  than one mouth — the High Variability Phonetic Training protocol, which
+  is the best-evidenced technique in the pronunciation literature and the
+  reason this drill uses real speakers rather than synthesis.
 - Sentence: every Indonesian line with a translation and at least
   MIN_SENTENCE_WORDS words becomes a whole-sentence comprehension check —
   read/listen to the real line, then reveal the translation and self-rate.
@@ -42,7 +48,7 @@ from pathlib import Path
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
 from _tts_js import TTS_JS
-from _vocab_text import find_term
+from _vocab_text import bounded, find_term
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -201,6 +207,130 @@ def build_blank_items(vocab):
     return items
 
 
+def _edit_distance(a, b):
+    """Plain Levenshtein — used only to rank how confusable two words look."""
+    if a == b:
+        return 0
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def _confusable(target, pool, line_text, n=3):
+    """The n words most likely to be misheard *as* the target.
+
+    Ranked by edit distance, tie-broken by length similarity, because the
+    point of the drill is discriminating sounds rather than recognising
+    vocabulary — "tahu" against "tahun" and "tuju" is phonetic training,
+    "tahu" against "kulkas" is a free point.
+
+    Anything that also occurs in the very line being played is excluded, or
+    the trial would have two defensible answers and mark one of them wrong.
+    """
+    tl = target.lower()
+    ranked = []
+    for w in pool:
+        wl = w.lower()
+        if wl == tl or " " in w:
+            continue
+        if bounded(w).search(line_text):
+            continue
+        d = _edit_distance(tl, wl)
+        if d == 0 or d > max(2, len(tl) // 2):
+            continue
+        ranked.append((d, abs(len(wl) - len(tl)), w))
+    ranked.sort(key=lambda r: (r[0], r[1], r[2]))
+    return [w for _, _, w in ranked[:n]]
+
+
+def build_hear_items(vocab, convos, per_term=2):
+    """Catch-the-word: a real clip plays, you pick which word was in it.
+
+    This is the one drill in the project with High Variability Phonetic
+    Training behind it (see notes/hvpt-elevenlabs-build.md). HVPT's evidenced
+    effect comes from training across *several real talkers* so the learner
+    abstracts the sound away from any one voice — which is why this is built
+    only from the family's own audio and not from synthesised voices: the one
+    study that tested TTS as the variability source found no multi-talker
+    benefit.
+
+    So an item is only generated for a term at least two different people
+    actually say, and the clips kept for that term are deliberately spread
+    across those speakers. Long lines are skipped — the task is catching one
+    word, and a 25-word ramble tests patience instead.
+
+    Line-level timestamps are all the transcripts have, so the trial plays a
+    whole line rather than an isolated token. That makes it identification in
+    running speech, which is closer to the real target skill than isolated
+    tokens would be anyway.
+    """
+    fronts = [v["front"] for v in vocab]
+    by_term = {}
+    for v in vocab:
+        pattern = bounded(v["front"])
+        hits = []
+        for convo in convos:
+            entries = convo["entries"]
+            for i, e in enumerate(entries):
+                if e["lang"] != "Indonesian" or not e.get("en"):
+                    continue
+                words = e["text"].split()
+                if not (3 <= len(words) <= 12):
+                    continue
+                m = pattern.search(e["text"])
+                if not m:
+                    continue
+                nxt = entries[i + 1]["sec"] if i + 1 < len(entries) else e["sec"] + 6
+                hits.append({
+                    "convo": convo, "i": i, "e": e, "m": m,
+                    "speaker": f"{convo['name']}::{e['speaker']}",
+                    "nextSec": clamp_next_sec(e["sec"], nxt, 8),
+                })
+        speakers = {h["speaker"] for h in hits}
+        if len(speakers) >= 2:
+            by_term[v["front"]] = (v, hits)
+
+    items = []
+    for front, (v, hits) in by_term.items():
+        # One clip per speaker before a second from anyone: the whole point is
+        # hearing the same word out of different mouths.
+        chosen, seen = [], set()
+        for h in sorted(hits, key=lambda h: h["speaker"]):
+            if h["speaker"] not in seen:
+                seen.add(h["speaker"])
+                chosen.append(h)
+            if len(chosen) == per_term:
+                break
+        for h in chosen:
+            e, m, convo = h["e"], h["m"], h["convo"]
+            distractors = _confusable(front, fronts, e["text"])
+            if len(distractors) < 2:
+                continue          # nothing confusable enough to make it a real choice
+            items.append({
+                "id": f"hear::{convo['name']}::{h['i']}::{front}",
+                "lineId": f"{convo['name']}::{h['i']}",
+                "kind": "hear",
+                "answer": front,
+                "options": sorted([front] + distractors),
+                "hint": v["back"],
+                "tags": v["tags"],
+                "sentence": e["text"],
+                "sentenceHtml": (html_escape(e["text"][: m.start()])
+                                 + "<b>" + html_escape(e["text"][m.start(): m.end()]) + "</b>"
+                                 + html_escape(e["text"][m.end():])),
+                "translation": e.get("en"),
+                "sec": e["sec"],
+                "nextSec": h["nextSec"],
+                "audio": convo["audio"],
+                "source": convo["label"],
+            })
+    return items
+
+
 def build_quiz_items(vocab, convos):
     items = []
     for v in vocab:
@@ -355,6 +485,17 @@ PAGE = """<!doctype html>
   .verdict.wrong { color:var(--again); }
   .verdict .sub { display:block; font-weight:400; font-size:0.8rem;
     color:var(--muted); margin-top:3px; }
+  /* Catch-it: forced choice, big enough targets to answer by ear on a phone
+     without hunting. Correct/incorrect colouring stays on after the answer so
+     the contrast you just failed is still on screen while you re-listen. */
+  .opts { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; margin-bottom:12px; }
+  button.opt { font-size:0.95rem; padding:11px 8px; border-radius:10px;
+    border:1px solid var(--line); background:var(--bg); color:var(--fg); cursor:pointer; }
+  button.opt:hover:not(:disabled) { border-color:var(--accent); }
+  button.opt:disabled { cursor:default; }
+  button.opt.right { border-color:var(--good); color:var(--good); font-weight:600; }
+  button.opt.wrong { border-color:var(--again); color:var(--again); text-decoration:line-through; }
+  button.opt.dim:disabled { opacity:0.45; }
   .reveal { display:none; border-top:1px dashed var(--line); margin-top:14px; padding-top:14px; }
   .reveal.shown { display:block; }
   .reveal .id { font-size:1.05rem; margin-bottom:4px; }
@@ -408,6 +549,7 @@ PAGE = """<!doctype html>
   <div class="modes">
     <button class="modeBtn active" data-mode="word">Word</button>
     <button class="modeBtn" data-mode="blank">Fill the blank</button>
+    <button class="modeBtn" data-mode="hear">Catch it</button>
     <button class="modeBtn" data-mode="sentence">Sentence</button>
     <button class="modeBtn" data-mode="listening">Listening</button>
   </div>
@@ -485,6 +627,7 @@ const modeHintEl = document.getElementById('modeHint');
 const MODE_HINTS = {
   word: 'One word blanked out of a real sentence — recall it from context.',
   blank: 'Type the missing word into the example sentence. Covers the whole deck, not just words the family happened to say — so no audio from the recording, only synthesis.',
+  hear: 'A real clip plays — pick which word was in it. Every word here is one at least two different people in the recordings say, so you hear it out of more than one mouth.',
   sentence: 'A whole real line — read or listen, then reveal the translation and rate yourself on the whole thing, not just one word.',
   listening: 'Ears only: the clip plays with the text hidden. Understand it by ear, then reveal and rate. This is the actual target skill.',
 };
@@ -694,8 +837,72 @@ function showBlankAnswer(result) {
   reveal();
 }
 
+// Catch-it. Forced-choice identification with immediate feedback, which is the
+// protocol the HVPT literature actually tested — feedback-free discrimination
+// shows much weaker effects, so answering has to resolve right away rather
+// than waiting for a self-rated reveal.
+function renderHearCard() {
+  // Reshuffled every showing: fixed positions turn into "the answer is the
+  // third button" surprisingly fast.
+  const opts = current.options.slice();
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  cardEl.innerHTML = `
+    <div class="source">${escapeHtml(current.source)} · ${escapeHtml(current.tags.join(' · '))}</div>
+    <div class="prompt">🎧 Which word is in this clip?</div>
+    <div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>
+    <div class="opts" id="opts">
+      ${opts.map(o => `<button class="opt" data-opt="${escapeHtml(o)}">${escapeHtml(o)}</button>`).join('')}
+    </div>
+    <div class="verdict" id="verdict" hidden></div>
+    <button class="flagLineBtn" id="flagLineBtn" title="Hide this line everywhere — silent clip or ASR junk">&#128681; Not real content</button>
+    <div class="reveal" id="revealBox">
+      <div class="id">${current.sentenceHtml}</div>
+      <div class="en">${escapeHtml(current.translation || '')}</div>
+    </div>
+    <div class="rate" id="rateRow" hidden>
+      <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
+      <button class="rate-btn hard" id="btn2"><span class="lbl">Hard</span><span class="prev" id="prev2"></span></button>
+      <button class="rate-btn good" id="btn3"><span class="lbl">Good</span><span class="prev" id="prev3"></span></button>
+      <button class="rate-btn easy" id="btn4"><span class="lbl">Easy</span><span class="prev" id="prev4"></span></button>
+    </div>
+  `;
+  document.getElementById('playBtn').addEventListener('click', playLine);
+  document.getElementById('flagLineBtn').addEventListener('click', flagCurrentLine);
+  cardEl.querySelectorAll('.opt').forEach(b => {
+    b.addEventListener('click', () => answerHear(b.dataset.opt));
+  });
+  [1, 2, 3, 4].forEach(g => {
+    document.getElementById('btn' + g).addEventListener('click', () => rate(g));
+  });
+  updatePlayBtnLabel();
+}
+
+function answerHear(picked) {
+  if (revealed) return;
+  const ok = picked === current.answer;
+  cardEl.querySelectorAll('.opt').forEach(b => {
+    b.disabled = true;
+    const o = b.dataset.opt;
+    if (o === current.answer) b.classList.add('right');
+    else if (o === picked) b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
+  const el = document.getElementById('verdict');
+  el.hidden = false;
+  el.className = 'verdict ' + (ok ? 'right' : 'wrong');
+  el.innerHTML = ok
+    ? `✓ <b>${escapeHtml(current.answer)}</b> — ${escapeHtml(current.hint)}`
+    : `✗ It was <b>${escapeHtml(current.answer)}</b> — ${escapeHtml(current.hint)}` +
+      '<span class="sub">Play it once more now you know which word to hear.</span>';
+  reveal();
+}
+
 function renderCard() {
   let promptText, hintLine, revealInner;
+  if (current.kind === 'hear') { renderHearCard(); return; }
   if (current.kind === 'blank') {
     promptText = escapeHtml(current.cloze).replace('_____', '<span class="blank">_____</span>');
     hintLine = `<div class="hint">${escapeHtml(current.translation || '')}` +
@@ -879,7 +1086,7 @@ function pickNext() {
     revealed = false;
     renderCard();
     renderStats();
-    if (current.kind === 'listening' && userInteracted) playLine();
+    if ((current.kind === 'listening' || current.kind === 'hear') && userInteracted) playLine();
     return;
   }
   // Reviews first, then any brand-new item; practice-ahead ignores the
@@ -895,7 +1102,7 @@ function pickNext() {
   revealed = false;
   renderCard();
   renderStats();
-  if (current.kind === 'listening' && userInteracted) playLine();
+  if ((current.kind === 'listening' || current.kind === 'hear') && userInteracted) playLine();
 }
 
 function renderStats() {
@@ -903,7 +1110,7 @@ function renderStats() {
   const dueReviews = modeItems.filter(d => srs[d.id] && srsIsDue(srs[d.id])).length;
   const fresh = modeItems.filter(d => !srs[d.id]).length;
   const mature = modeItems.filter(d => srsIsMature(srs[d.id])).length;
-  const label = { word: 'word items', blank: 'blanks to fill', sentence: 'sentences', listening: 'listening clips' }[mode];
+  const label = { word: 'word items', blank: 'blanks to fill', hear: 'clips to catch', sentence: 'sentences', listening: 'listening clips' }[mode];
   document.getElementById('stats').textContent =
     `${modeItems.length} ${label} — ${dueReviews} to review, ${fresh} new, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
@@ -948,9 +1155,10 @@ def main():
     convos = load_conversations()
     word_items = build_quiz_items(vocab, convos)
     blank_items = build_blank_items(vocab)
+    hear_items = build_hear_items(vocab, convos)
     sentence_items = build_sentence_items(convos)
     listening_items = build_listening_items(sentence_items)
-    items = word_items + blank_items + sentence_items + listening_items
+    items = word_items + blank_items + hear_items + sentence_items + listening_items
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
@@ -962,7 +1170,8 @@ def main():
     affixed = sum(1 for i in blank_items if len(i["accepts"]) > 1)
     print(f"wrote {OUT}: {len(word_items)} word items ({cloze_n} cloze, {len(word_items)-cloze_n} recall) "
           f"from {len(vocab)} vocab terms, {len(blank_items)} fill-the-blank items "
-          f"({affixed} where the sentence uses an affixed form), {len(sentence_items)} sentence items, "
+          f"({affixed} where the sentence uses an affixed form), {len(hear_items)} catch-it clips "
+          f"over {len({i[chr(39)+chr(39)] if False else i['answer'] for i in hear_items})} multi-speaker words, {len(sentence_items)} sentence items, "
           f"{len(listening_items)} listening items, across {len(convos)} conversation(s)")
 
 
