@@ -37,7 +37,9 @@ from pathlib import Path
 
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
+from _tts_js import TTS_JS
 from _vocab_js import VOCAB_JS
+from _vocab_text import bounded, find_term
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -250,6 +252,7 @@ atau – or"></textarea>
 <script>
 __SRS_JS__
 __SYNC_JS__
+__TTS_JS__
 const BUILTIN_DECK = __DATA__;
 const SRS_KEY = 'bahasa:flashcards:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:flashcards:v1', 'bahasa:flashcards:srs:v1'];
@@ -476,6 +479,7 @@ function flip() {
   cardEl.classList.toggle('flipped', flipped);
   rateRow.hidden = !flipped;
   cardMeta.hidden = !flipped;
+  updatePlayRow();          // what "Hear it" says changes once the sentence is visible
   if (flipped) updatePreviews();
 }
 
@@ -583,27 +587,12 @@ const cardAudio = document.getElementById('cardAudio');
 const playBtn = document.getElementById('playBtn');
 const playNote = document.getElementById('playNote');
 let stopAt = null;
-let idVoice = null;
-const hasTTS = typeof window.speechSynthesis !== 'undefined'
-  && typeof window.SpeechSynthesisUtterance !== 'undefined';
 
 cardAudio.addEventListener('timeupdate', () => {
   if (stopAt !== null && cardAudio.currentTime >= stopAt) { cardAudio.pause(); stopAt = null; }
 });
 
-// Voices load asynchronously in most browsers, and an Indonesian voice may
-// simply not be installed — in which case the default voice would read
-// Indonesian with English phonics and teach the wrong pronunciation. Better to
-// disable the button and say so.
-function pickVoice() {
-  if (!hasTTS) return;
-  const vs = window.speechSynthesis.getVoices() || [];
-  idVoice = vs.find(v => /^id\\b|^id[-_]/i.test(v.lang)) || null;
-}
-if (hasTTS) {
-  pickVoice();
-  window.speechSynthesis.addEventListener('voiceschanged', () => { pickVoice(); updatePlayRow(); });
-}
+ttsOnVoicesChanged(updatePlayRow);
 
 function updatePlayRow() {
   if (!current) { playBtn.disabled = true; playNote.textContent = ''; return; }
@@ -611,29 +600,30 @@ function updatePlayRow() {
     playBtn.disabled = false;
     playBtn.innerHTML = '&#9654; Hear it';
     playNote.textContent = 'real recording';
-  } else if (idVoice) {
+  } else if (ttsVoice) {
     playBtn.disabled = false;
     playBtn.innerHTML = '&#128266; Hear it';
-    playNote.textContent = 'synthesized — not from the recording';
+    // Once flipped there's a whole sentence worth hearing, not just the word.
+    playNote.textContent = flipped && current.example
+      ? 'example sentence · synthesized'
+      : 'synthesized — not from the recording';
   } else {
     playBtn.disabled = true;
     playBtn.innerHTML = '&#128266; Hear it';
-    playNote.textContent = hasTTS
-      ? 'no Indonesian voice installed on this device'
-      : 'speech synthesis unavailable';
+    playNote.textContent = ttsUnavailableNote();
   }
 }
 
 function stopAudio() {
   cardAudio.pause();
   stopAt = null;
-  if (hasTTS) window.speechSynthesis.cancel();
+  ttsStop();
 }
 
 function playCurrent() {
   if (!current) return;
   if (current.audio) {
-    if (hasTTS) window.speechSynthesis.cancel();
+    ttsStop();
     if (!cardAudio.paused) { cardAudio.pause(); stopAt = null; return; }
     stopAt = current.nextSec;
     const start = () => { cardAudio.currentTime = current.sec; cardAudio.play(); };
@@ -646,14 +636,10 @@ function playCurrent() {
     }
     return;
   }
-  if (!idVoice) return;
   cardAudio.pause();
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(current.front);
-  u.voice = idVoice;
-  u.lang = idVoice.lang;
-  u.rate = 0.9;
-  window.speechSynthesis.speak(u);
+  // Before the flip you're being asked to recall the word, so hearing the word
+  // is the useful prompt; after it, the sentence is what's worth modelling.
+  ttsSpeak(flipped && current.example ? current.example : current.front);
 }
 
 function renderHint() {
@@ -853,98 +839,19 @@ def parse_tags(raw):
     return tags or ["untagged"]
 
 
-# --- highlighting the term inside its example sentence -----------------------
-#
-# Indonesian affixation means the card's dictionary form is often not the
-# surface form in the sentence: "tangkap" shows up as "menangkap", "kunjung"
-# as "mengunjungi". The meN-/peN- prefixes also swallow the root's initial
-# consonant (k, s, t, p), so a plain substring test misses those outright.
-# Rather than build a stemmer, we walk the sentence and ask of each word:
-# "could this be the card's word wearing affixes?" — stripping known prefixes
-# and suffixes and restoring the elided consonant where the prefix implies one.
-
-_PREFIXES = [
-    "memper", "member", "menge", "meng", "meny", "mem", "men", "me",
-    "penge", "peng", "peny", "pem", "pen", "pe",
-    "diper", "di", "ter", "ber", "be", "se", "ke",
-]
-# Which initial root consonant each nasal prefix absorbs (meng- + kirim -> mengirim)
-_ELIDED = {"meng": "k", "peng": "k", "meny": "s", "peny": "s",
-           "men": "t", "pen": "t", "mem": "p", "pem": "p"}
-_SUFFIXES = ["kannya", "annya", "inya", "nya", "kan", "an", "lah", "i"]
-
-_WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]+(?:-[A-Za-zÀ-ÿ]+)*")
-
-
-def _possible_roots(word):
-    """Every dictionary form the given surface word could be an inflection of."""
-    w = word.lower()
-    stems = {w}
-    for pre in _PREFIXES:
-        if w.startswith(pre) and len(w) > len(pre) + 1:
-            rest = w[len(pre):]
-            stems.add(rest)
-            if pre in _ELIDED:
-                stems.add(_ELIDED[pre] + rest)
-    roots = set(stems)
-    for s in stems:
-        for suf in _SUFFIXES:
-            if s.endswith(suf) and len(s) > len(suf) + 1:
-                roots.add(s[: -len(suf)])
-    return roots
-
-
-_TRAILING_SUFFIX = r"(?:nya|ku|mu|kan|an|lah)?"
-
-
-def _bounded(term):
-    """Regex matching the term as a whole span in running text.
-
-    Three wrinkles the naive \\b version gets wrong: fronts that end in
-    punctuation ("Apa namanya?") — \\b can't sit after a "?"; fronts written
-    with an ellipsis placeholder ("Di mana…?"); and multi-word fronts whose
-    last word picks up a clitic in a real sentence ("kamar mandi" surfacing as
-    "kamar mandinya").
-    """
-    core = re.sub(r"[…?!.]+\s*$", "", term.strip())
-    words = core.split()
-    if not words:
-        return re.compile(r"(?!x)x")     # never matches
-    body = r"\s+".join(re.escape(w) for w in words)
-    lead = r"(?<!\w)" if re.match(r"\w", core) else ""
-    trail = (_TRAILING_SUFFIX + r"(?!\w)") if re.search(r"\w$", core) else ""
-    return re.compile(lead + body + trail, re.IGNORECASE)
-
-
 def highlight(term, sentence):
     """Bold the card's term inside its example sentence, as HTML.
 
-    Tries the literal phrase first (which also covers multi-word fronts and
-    whole-phrase cards), then falls back to the affix-aware word match. If
-    neither hits — the deck has a handful of fronts like "sama … dengan …"
-    that no single span corresponds to — the sentence is returned unbolded
-    rather than mangled.
+    Falls back to the plain escaped sentence when the term has no single span
+    to point at (see _vocab_text.find_term) rather than mangling it.
     """
-    variants = [v.strip() for v in term.split(" / ") if v.strip()]
-    for v in variants:
-        # A trailing "…" is just a placeholder for the rest of the sentence and
-        # gets stripped; an interior one ("sama … dengan …") means the front
-        # spans a gap, and no single run of text corresponds to it.
-        if "…" in re.sub(r"[…?!.\s]+$", "", v):
-            continue
-        m = _bounded(v).search(sentence)
-        if m:
-            return (html_escape(sentence[: m.start()])
-                    + "<b>" + html_escape(sentence[m.start(): m.end()]) + "</b>"
-                    + html_escape(sentence[m.end():]))
-    targets = {v.lower() for v in variants if " " not in v}
-    if targets:
-        for m in _WORD_RE.finditer(sentence):
-            if _possible_roots(m.group(0)) & targets:
-                return (html_escape(sentence[: m.start()])
-                        + "<b>" + html_escape(m.group(0)) + "</b>"
-                        + html_escape(sentence[m.end():]))
-    return html_escape(sentence)
+    span = find_term(term, sentence)
+    if span is None:
+        return html_escape(sentence)
+    a, b = span
+    return (html_escape(sentence[:a])
+            + "<b>" + html_escape(sentence[a:b]) + "</b>"
+            + html_escape(sentence[b:]))
 
 
 def load_decks():
@@ -961,6 +868,7 @@ def load_decks():
                 card = {"front": front, "back": back, "tags": tags, "deck": tsv.stem}
                 example = row[3].strip() if len(row) > 3 else ""
                 if example:
+                    card["example"] = example        # raw, for speech synthesis
                     card["exampleHtml"] = highlight(front, example)
                     if len(row) > 4 and row[4].strip():
                         card["exampleEn"] = row[4].strip()
@@ -1030,7 +938,7 @@ def attach_context(deck):
         return deck, 0
     matched = 0
     for card in deck:
-        pattern = _bounded(card["front"])
+        pattern = bounded(card["front"])
         best = None
         for convo in convos:
             for i, e in enumerate(convo["entries"]):
@@ -1070,6 +978,7 @@ def main():
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
+        .replace("__TTS_JS__", TTS_JS)
         .replace("__VOCAB_JS__", VOCAB_JS)
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
     )

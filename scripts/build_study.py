@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Build study.html — the one-tap daily session: everything due across
-flashcards AND all three quiz modes (word/sentence/listening), interleaved
+flashcards AND all four quiz modes (word/blank/sentence/listening), interleaved
 into a single run with an end-of-session summary.
 
 Why one page: interleaving item types measurably beats studying them in
@@ -25,7 +25,7 @@ from _sync_js import SYNC_JS
 from build_flashcards import load_decks
 from build_quiz import (
     load_vocab, load_conversations,
-    build_quiz_items, build_sentence_items, build_listening_items,
+    build_quiz_items, build_blank_items, build_sentence_items, build_listening_items,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -256,7 +256,8 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 }
 
-const KIND_LABEL = { flash: 'Flashcard', word: 'Fill the blank', sentence: 'Whole sentence', listening: 'By ear' };
+const KIND_LABEL = { flash: 'Flashcard', word: 'Fill the blank', blank: 'Fill the blank',
+                     sentence: 'Whole sentence', listening: 'By ear' };
 
 function renderCard() {
   const item = current;
@@ -276,6 +277,15 @@ function renderCard() {
     hintLine = `<div class="hintline">clue: ${escapeHtml(item.hint)}</div>`;
     revealInner = `<div class="id">${item.sentenceHtml}</div><div class="en">${item.translation ? escapeHtml(item.translation) : ''}</div>`;
     playRow = '<div class="playrow"><button class="play" id="playBtn">&#9654; Play line</button></div>';
+  } else if (item.kind === 'blank') {
+    // Same items as quiz.html's Fill-the-blank mode, but recalled and
+    // self-rated rather than typed. This page is the "everything due, keep
+    // moving" surface; typing every answer would stall the interleave, and
+    // there is no recorded clip to play either way.
+    promptHtml = escapeHtml(item.cloze).replace('_____', '<span class="blank">_____</span>');
+    hintLine = `<div class="hintline">${escapeHtml(item.translation || '')}` +
+      `${item.translation ? ' · ' : ''}clue: ${escapeHtml(item.hint)}</div>`;
+    revealInner = `<div class="id">${item.sentenceHtml}</div><div class="en">${escapeHtml(item.translation || '')}</div>`;
   } else if (item.kind === 'sentence') {
     promptHtml = item.sentenceHtml;
     revealInner = `<div class="en">${escapeHtml(item.translation)}</div>`;
@@ -498,9 +508,10 @@ def main():
     vocab = load_vocab()
     convos = load_conversations()
     word_items = build_quiz_items(vocab, convos)
+    blank_items = build_blank_items(vocab)
     sentence_items = build_sentence_items(convos)
     listening_items = build_listening_items(sentence_items)
-    quiz_items = word_items + sentence_items + listening_items
+    quiz_items = word_items + blank_items + sentence_items + listening_items
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)

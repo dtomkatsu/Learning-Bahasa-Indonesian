@@ -145,7 +145,7 @@ up there too.
 ## The daily session
 
 **Study now** on the landing page is the intended daily entry point: one mixed session of everything due —
-flashcards and all three quiz modes interleaved (interleaving item types measurably beats studying them in
+flashcards and all four quiz modes interleaved (interleaving item types measurably beats studying them in
 blocks), with an end-of-session summary and a next-due forecast. It reads and writes the same schedules as the
 individual pages, so it doesn't matter where you review.
 
@@ -158,7 +158,7 @@ Two pacing rules are built in, standard spaced-repetition practice:
   spends itself on the debt first. Changing the size mid-session only takes effect next time, so you can never
   lose answers to it.
 
-**Misrated a card?** Every rating surface (flashcards, all three quiz modes, and the mixed study session) has a
+**Misrated a card?** Every rating surface (flashcards, all four quiz modes, and the mixed study session) has a
 **"↶ Go back"** button, shortcut **`z`**. It doesn't just re-show the card — it restores that item's previous
 FSRS schedule exactly and deletes the review-log entry, so a misclicked "Again" doesn't leave a wrecked interval
 or a phantom review skewing your stats. If the rating was the card's first, undo puts it back to never-seen. In
@@ -197,7 +197,7 @@ pronunciation.
 **Finding things.** flashcards.html has a **Filter** panel (search box + multi-select category chips with card
 counts) and a **Browse** list showing every card in the current filter with its scheduling state — new /
 due now / in N days / mastered. Click any row to study that card immediately. quiz.html uses the same chip
-filter; its categories are mode-dependent (Word mode = vocab categories, Sentence/Listening = conversations),
+filter; its categories are mode-dependent (Word and Fill-the-blank = vocab categories, Sentence/Listening = conversations),
 so the chips rebuild when you switch mode. On narrow screens the filter panel starts collapsed, because 15
 category chips wrap to about seven rows and push the card off screen.
 
@@ -239,11 +239,28 @@ following it in a full sentence.
   remove it, since there's no source copy to restore from. Both are layered on top of the TSV deck in
   `localStorage`, not written back to it, and are included in the sync payload below, so add/remove decisions
   follow you to your other device the same way review progress does.
-- **`quiz.html`** (`scripts/build_quiz.py`) — two modes, toggled at the top of the page:
+- **`quiz.html`** (`scripts/build_quiz.py`) — four modes, toggled at the top of the page:
   - **Word** — cross-references vocab terms against real transcript lines. A term used inside a longer sentence
     becomes a **cloze** card (blank it, guess from context, play the actual audio of that line, then reveal). A
     term that basically *is* the whole line (most of the "phrase" tag entries) becomes a **recall** card (listen
     first, then reveal). Terms with no match in any transcript are silently skipped.
+  - **Fill the blank** — the same cloze idea, but over each card's *written* example sentence and with a
+    **typed** answer. Word mode is capped by what the family happened to say (407 items); this covers the whole
+    deck (984 — the shortfall from 997 is the six ellipsis fronts with no single span to blank, plus the
+    `codeswitch` entries the quiz skips everywhere). The clue line is the sentence's English translation plus
+    the term's gloss, which is what makes producing the word possible rather than a guessing game.
+
+    The answer it wants is the form **actually in the sentence**, not the card front: for `tangkap` the sentence
+    says *menangkap*, and 207 of the 984 items are like that. Typing the bare root is accepted but called out
+    (*"Right word — but in this sentence it takes affixes"*), because knowing the root and knowing which prefix
+    it takes are genuinely two different pieces of knowledge and you should rate yourself on the second one. A
+    single-character typo in a word of 4+ letters is also accepted, with the correct spelling shown. Case and
+    trailing punctuation are ignored.
+
+    These sentences were written for the deck, so there is nothing recorded to play — the "Hear the sentence"
+    button is speech synthesis, and is disabled with a note if the device has no Indonesian voice. That is the
+    weakest part of the mode and the thing
+    [`notes/elevenlabs-pronunciation-scope.md`](notes/elevenlabs-pronunciation-scope.md) is about fixing.
   - **Sentence** — tests whether you followed the *whole* line, not just one word in it. Every Indonesian line
     with a translation and at least 4 words becomes a card: read (and optionally play) the real sentence, then
     reveal the full English translation and self-rate. Filter switches to conversation source instead of vocab

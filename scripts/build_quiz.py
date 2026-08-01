@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """
 Build quiz.html — comprehension exercises generated from real transcript
-lines, with inline audio playback of the source line. Two modes:
+lines, with inline audio playback of the source line. Four modes:
 
 - Word (cloze/recall): cross-references every vocab/*.tsv term against each
   conversation's Indonesian-language lines. A term that appears inside a
   longer sentence becomes a cloze card (blank the term, guess it from
   context); a term that IS basically the whole line becomes a "recall" card
   (listen, then reveal). Terms with no match in any transcript are skipped.
+- Fill the blank: the same idea over each card's *written* example sentence
+  rather than a transcript line, and with a typed answer instead of a
+  self-rated reveal. Word mode can only reach the ~400 terms the family
+  happened to say; this reaches the whole deck. No audio from the recording,
+  by definition — these sentences were written for the deck — so the play
+  button is speech synthesis only.
 - Sentence: every Indonesian line with a translation and at least
   MIN_SENTENCE_WORDS words becomes a whole-sentence comprehension check —
   read/listen to the real line, then reveal the translation and self-rate.
@@ -35,6 +41,8 @@ from pathlib import Path
 
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
+from _tts_js import TTS_JS
+from _vocab_text import find_term
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -132,8 +140,65 @@ def load_vocab():
                 if not front or front in seen or any(t in SKIP_TAGS for t in tags):
                     continue
                 seen.add(front)
-                rows.append({"front": front, "back": back, "tags": tags})
+                rows.append({
+                    "front": front, "back": back, "tags": tags, "deck": tsv.stem,
+                    "example": row[3].strip() if len(row) > 3 else "",
+                    "example_en": row[4].strip() if len(row) > 4 else "",
+                })
     return rows
+
+
+def build_blank_items(vocab):
+    """Fill-the-blank over the written example sentences, one item per card.
+
+    Word mode can only ever cover terms the family happened to say — 407 of
+    997. Every card has a written example sentence though, so blanking the
+    term out of *that* covers the whole deck, including the reference decks
+    that have no transcript behind them at all.
+
+    The answer is the surface form actually in the sentence, not the card's
+    dictionary form: for "tangkap" the sentence says *menangkap*, and asking
+    for the affixed form is the harder and more useful exercise. The page
+    accepts either (see the `accepts` list) and points out the difference
+    when they don't match, because typing the root is a near miss worth
+    naming rather than an error.
+
+    Skipped: cards with no example, and the handful of fronts like
+    "sama … dengan …" that span a gap find_term can't point at — there is no
+    single span to blank, so there is no item to build.
+    """
+    items = []
+    for v in vocab:
+        sentence = v["example"]
+        if not sentence:
+            continue
+        span = find_term(v["front"], sentence)
+        if span is None:
+            continue
+        a, b = span
+        surface = sentence[a:b]
+        # A one-word sentence blanked out leaves nothing to reason from.
+        if len(sentence.split()) < 3:
+            continue
+        accepts = [surface]
+        if surface.lower() != v["front"].lower():
+            accepts.append(v["front"])
+        items.append({
+            "id": f"blank::{v['front']}",
+            "kind": "blank",
+            "term": v["front"],
+            "answer": surface,
+            "accepts": accepts,
+            "hint": v["back"],
+            "tags": v["tags"],
+            "cloze": sentence[:a] + "_____" + sentence[b:],
+            "sentenceHtml": (html_escape(sentence[:a]) + "<b>" + html_escape(surface)
+                             + "</b>" + html_escape(sentence[b:])),
+            "sentence": sentence,
+            "translation": v["example_en"],
+            "source": v["deck"].replace("-", " "),
+        })
+    return items
 
 
 def build_quiz_items(vocab, convos):
@@ -274,6 +339,22 @@ PAGE = """<!doctype html>
   button.play { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--accent);
     background:transparent; color:var(--accent); cursor:pointer; }
   button.play:hover { background:var(--accent); color:#fff; }
+  /* Fill-the-blank: typed answer, so the verdict is objective rather than
+     self-assessed. The input sits where the blank is being asked about. */
+  .answerRow { display:flex; gap:8px; margin-bottom:12px; }
+  input.answerBox { flex:1; min-width:0; font-size:1rem; border-radius:8px;
+    border:1px solid var(--line); background:var(--bg); color:var(--fg); padding:9px 11px; }
+  input.answerBox:focus { outline:none; border-color:var(--accent); }
+  input.answerBox:disabled { opacity:0.7; }
+  button.checkBtn { font-size:0.85rem; padding:8px 14px; border-radius:8px;
+    border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; }
+  button.checkBtn:disabled { background:transparent; border-color:var(--line);
+    color:var(--muted); cursor:default; }
+  .verdict { font-size:0.9rem; margin-bottom:12px; font-weight:600; }
+  .verdict.right { color:var(--good); }
+  .verdict.wrong { color:var(--again); }
+  .verdict .sub { display:block; font-weight:400; font-size:0.8rem;
+    color:var(--muted); margin-top:3px; }
   .reveal { display:none; border-top:1px dashed var(--line); margin-top:14px; padding-top:14px; }
   .reveal.shown { display:block; }
   .reveal .id { font-size:1.05rem; margin-bottom:4px; }
@@ -326,6 +407,7 @@ PAGE = """<!doctype html>
   </div>
   <div class="modes">
     <button class="modeBtn active" data-mode="word">Word</button>
+    <button class="modeBtn" data-mode="blank">Fill the blank</button>
     <button class="modeBtn" data-mode="sentence">Sentence</button>
     <button class="modeBtn" data-mode="listening">Listening</button>
   </div>
@@ -354,6 +436,7 @@ PAGE = """<!doctype html>
 <script>
 __SRS_JS__
 __SYNC_JS__
+__TTS_JS__
 const ITEMS = __DATA__;
 const SRS_KEY = 'bahasa:quiz:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:quiz:v1', 'bahasa:quiz:srs:v1'];
@@ -401,6 +484,7 @@ const modeHintEl = document.getElementById('modeHint');
 
 const MODE_HINTS = {
   word: 'One word blanked out of a real sentence — recall it from context.',
+  blank: 'Type the missing word into the example sentence. Covers the whole deck, not just words the family happened to say — so no audio from the recording, only synthesis.',
   sentence: 'A whole real line — read or listen, then reveal the translation and rate yourself on the whole thing, not just one word.',
   listening: 'Ears only: the clip plays with the text hidden. Understand it by ear, then reveal and rate. This is the actual target skill.',
 };
@@ -497,8 +581,132 @@ function renderAllCaughtUp() {
   document.getElementById('aheadBtn').addEventListener('click', () => { practiceAhead = true; pickNext(); });
 }
 
+// Indonesian spelling is regular enough that a typed answer can be graded
+// honestly, but not so regular that a stray accent or trailing period should
+// count against you. Everything here is about stripping the things that aren't
+// the answer.
+function normalizeAnswer(s) {
+  return (s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\\s-]/g, '')
+    .replace(/\\s+/g, ' ')
+    .trim();
+}
+
+// One-edit distance, capped — enough to tell "typo" from "different word".
+function withinOneEdit(a, b) {
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++;
+    else if (a.length < b.length) j++;
+    else { i++; j++; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+// Returns how the typed answer relates to what the sentence wanted, so the
+// verdict can say something more useful than right/wrong: typing the
+// dictionary form when the sentence inflects it is a near miss worth naming.
+function gradeAnswer(item, typed) {
+  const got = normalizeAnswer(typed);
+  if (!got) return { ok: false, kind: 'empty' };
+  const wanted = normalizeAnswer(item.answer);
+  if (got === wanted) return { ok: true, kind: 'exact' };
+  for (const alt of item.accepts || []) {
+    if (got === normalizeAnswer(alt)) return { ok: true, kind: 'dictionary' };
+  }
+  if (got.length >= 4 && withinOneEdit(got, wanted)) return { ok: true, kind: 'typo' };
+  return { ok: false, kind: 'wrong' };
+}
+
+// Fill-the-blank gets its own renderer because it has a step the other modes
+// don't: you commit to an answer before anything is revealed. The rate row
+// still appears afterwards — the grader knows whether you were right, but only
+// you know whether it was effortless.
+function renderBlankCard(promptText, hintLine, revealInner) {
+  const canHear = !!ttsVoice;
+  cardEl.innerHTML = `
+    <div class="source">${escapeHtml(current.source)} · ${escapeHtml(current.tags.join(' · '))}</div>
+    <div class="prompt">${promptText}</div>
+    ${hintLine}
+    <div class="answerRow">
+      <input class="answerBox" id="answerBox" type="text" autocomplete="off"
+             autocapitalize="off" autocorrect="off" spellcheck="false"
+             placeholder="type the missing word">
+      <button class="checkBtn" id="checkBtn">Check</button>
+    </div>
+    <div class="verdict" id="verdict" hidden></div>
+    <div class="playrow"><button class="play" id="playBtn"${canHear ? '' : ' disabled'}>&#128266; Hear the sentence</button></div>
+    <button class="revealBtn" id="revealBtn">I don't know &mdash; show it</button>
+    <div class="reveal" id="revealBox">${revealInner}</div>
+    <div class="rate" id="rateRow" hidden>
+      <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
+      <button class="rate-btn hard" id="btn2"><span class="lbl">Hard</span><span class="prev" id="prev2"></span></button>
+      <button class="rate-btn good" id="btn3"><span class="lbl">Good</span><span class="prev" id="prev3"></span></button>
+      <button class="rate-btn easy" id="btn4"><span class="lbl">Easy</span><span class="prev" id="prev4"></span></button>
+    </div>
+  `;
+  const box = document.getElementById('answerBox');
+  document.getElementById('checkBtn').addEventListener('click', checkAnswer);
+  box.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (revealed) rate(3); else checkAnswer();
+  });
+  // Typing goes to the box, so the global 1/2/3/4 and "p" shortcuts must not
+  // also fire while it has focus.
+  box.addEventListener('keydown', e => e.stopPropagation());
+  document.getElementById('revealBtn').addEventListener('click', () => showBlankAnswer(null));
+  document.getElementById('playBtn').addEventListener('click', () => ttsSpeak(current.sentence));
+  [1, 2, 3, 4].forEach(g => {
+    document.getElementById('btn' + g).addEventListener('click', () => rate(g));
+  });
+  if (!srsIsTouch()) box.focus();
+}
+
+function checkAnswer() {
+  if (!current || revealed) return;
+  showBlankAnswer(gradeAnswer(current, document.getElementById('answerBox').value));
+}
+
+// `result` is null when the answer was skipped rather than attempted — the
+// sentence still gets revealed, but claiming a verdict would be a lie.
+function showBlankAnswer(result) {
+  const box = document.getElementById('answerBox');
+  const el = document.getElementById('verdict');
+  box.disabled = true;
+  document.getElementById('checkBtn').disabled = true;
+  if (result && result.kind !== 'empty') {
+    el.hidden = false;
+    el.className = 'verdict ' + (result.ok ? 'right' : 'wrong');
+    if (result.kind === 'exact') el.textContent = '✓ Correct.';
+    else if (result.kind === 'typo') el.innerHTML = '✓ Close enough — the spelling is ' +
+      `<b>${escapeHtml(current.answer)}</b>.`;
+    else if (result.kind === 'dictionary') el.innerHTML = '✓ Right word — ' +
+      `but in this sentence it takes affixes: <b>${escapeHtml(current.answer)}</b>.` +
+      '<span class="sub">Rate yourself on whether you\\'d have produced that form.</span>';
+    else el.innerHTML = `✗ The answer was <b>${escapeHtml(current.answer)}</b>.`;
+  }
+  document.getElementById('revealBtn').hidden = true;
+  reveal();
+}
+
 function renderCard() {
   let promptText, hintLine, revealInner;
+  if (current.kind === 'blank') {
+    promptText = escapeHtml(current.cloze).replace('_____', '<span class="blank">_____</span>');
+    hintLine = `<div class="hint">${escapeHtml(current.translation || '')}` +
+      `${current.translation ? ' · ' : ''}clue: ${escapeHtml(current.hint)}</div>`;
+    revealInner = `
+      <div class="id">${current.sentenceHtml}</div>
+      <div class="en">${escapeHtml(current.translation || '')}</div>
+    `;
+    renderBlankCard(promptText, hintLine, revealInner);
+    return;
+  }
   if (current.kind === 'listening') {
     promptText = srsIsTouch()
       ? '🎧 Listen — no peeking. Tap play and try to catch the whole line.'
@@ -571,6 +779,9 @@ function isWithinCurrentClip() {
 
 function playLine() {
   if (!current) return;
+  // Fill-the-blank sentences were written for the deck, not spoken by anyone,
+  // so there is no clip to seek to — synthesis is the only option.
+  if (!current.audio) { ttsSpeak(current.sentence); return; }
   if (isWithinCurrentClip()) {
     if (audio.paused) { stopAt = current.nextSec; audio.play(); } else { audio.pause(); }
     return;
@@ -588,9 +799,16 @@ function playLine() {
 
 function updatePlayBtnLabel() {
   const btn = document.getElementById('playBtn');
-  if (!btn) return;
+  if (!btn || !current || !current.audio) return;   // blank items keep their own label
   btn.innerHTML = (!audio.paused && isWithinCurrentClip()) ? '&#10073;&#10073; Pause' : '&#9654; Play line';
 }
+
+// Voices arrive asynchronously; a blank card rendered before they load would
+// otherwise be stuck with a permanently disabled play button.
+ttsOnVoicesChanged(() => {
+  const btn = document.getElementById('playBtn');
+  if (btn && current && !current.audio) btn.disabled = !ttsVoice;
+});
 
 audio.addEventListener('play', updatePlayBtnLabel);
 audio.addEventListener('pause', updatePlayBtnLabel);
@@ -685,7 +903,7 @@ function renderStats() {
   const dueReviews = modeItems.filter(d => srs[d.id] && srsIsDue(srs[d.id])).length;
   const fresh = modeItems.filter(d => !srs[d.id]).length;
   const mature = modeItems.filter(d => srsIsMature(srs[d.id])).length;
-  const label = { word: 'word items', sentence: 'sentences', listening: 'listening clips' }[mode];
+  const label = { word: 'word items', blank: 'blanks to fill', sentence: 'sentences', listening: 'listening clips' }[mode];
   document.getElementById('stats').textContent =
     `${modeItems.length} ${label} — ${dueReviews} to review, ${fresh} new, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
@@ -729,18 +947,22 @@ def main():
     vocab = load_vocab()
     convos = load_conversations()
     word_items = build_quiz_items(vocab, convos)
+    blank_items = build_blank_items(vocab)
     sentence_items = build_sentence_items(convos)
     listening_items = build_listening_items(sentence_items)
-    items = word_items + sentence_items + listening_items
+    items = word_items + blank_items + sentence_items + listening_items
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
+        .replace("__TTS_JS__", TTS_JS)
         .replace("__DATA__", json.dumps(items, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")
     cloze_n = sum(1 for i in word_items if i["mode"] == "cloze")
+    affixed = sum(1 for i in blank_items if len(i["accepts"]) > 1)
     print(f"wrote {OUT}: {len(word_items)} word items ({cloze_n} cloze, {len(word_items)-cloze_n} recall) "
-          f"from {len(vocab)} vocab terms, {len(sentence_items)} sentence items, "
+          f"from {len(vocab)} vocab terms, {len(blank_items)} fill-the-blank items "
+          f"({affixed} where the sentence uses an affixed form), {len(sentence_items)} sentence items, "
           f"{len(listening_items)} listening items, across {len(convos)} conversation(s)")
 
 
