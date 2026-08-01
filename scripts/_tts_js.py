@@ -22,6 +22,52 @@ const ttsHasSupport = typeof window.speechSynthesis !== 'undefined'
   && typeof window.SpeechSynthesisUtterance !== 'undefined';
 let ttsVoice = null;
 
+// A pre-generated clip (scripts/build_tts.py) beats the device's own voice
+// wherever one exists: it's a real Indonesian voice rather than whatever the
+// OS happens to ship, it sounds the same on every device, and on desktop
+// browsers with no Indonesian voice installed it's the difference between
+// audio and a disabled button. Falls back to synthesis when a card has no clip
+// — a partial run is a valid state, since the free tier's monthly allowance
+// only covers about half the deck at a time.
+const ttsClipAudio = typeof Audio !== 'undefined' ? new Audio() : null;
+
+function ttsHasClip(src) { return !!(src && ttsClipAudio); }
+
+// Same contract as ttsSpeak: resolves when the audio finishes, so callers can
+// sequence against it without caring which of the two sources played.
+function ttsPlayClip(src) {
+  if (!ttsHasClip(src)) return Promise.resolve(false);
+  ttsStop();
+  return new Promise(resolve => {
+    let settled = false;
+    const done = ok => {
+      if (settled) return;
+      settled = true;
+      ttsClipAudio.removeEventListener('ended', onEnd);
+      ttsClipAudio.removeEventListener('error', onErr);
+      resolve(ok);
+    };
+    const onEnd = () => done(true);
+    const onErr = () => done(false);
+    ttsClipAudio.addEventListener('ended', onEnd);
+    ttsClipAudio.addEventListener('error', onErr);
+    ttsClipAudio.src = src;
+    ttsClipAudio.currentTime = 0;
+    ttsClipAudio.play().catch(() => done(false));
+  });
+}
+
+function ttsStopClip() {
+  if (ttsClipAudio) { ttsClipAudio.pause(); ttsClipAudio.currentTime = 0; }
+}
+
+// The one call sites should use: prefer the generated clip, fall back to the
+// device voice, so no page has to branch on which source it got.
+function ttsSay(text, src, rate) {
+  if (ttsHasClip(src)) return ttsPlayClip(src);
+  return ttsSpeak(text, rate);
+}
+
 // Voices load asynchronously in most browsers, and an Indonesian voice may
 // simply not be installed — in which case the default voice would read
 // Indonesian with English phonics and teach the wrong pronunciation. Callers
@@ -44,6 +90,7 @@ function ttsOnVoicesChanged(cb) {
 
 function ttsStop() {
   if (ttsHasSupport) window.speechSynthesis.cancel();
+  if (typeof ttsStopClip === 'function') ttsStopClip();
 }
 
 // Slightly under normal speed: fast enough to sound like speech, slow enough

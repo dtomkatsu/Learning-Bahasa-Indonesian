@@ -56,6 +56,14 @@ python3 scripts/clean_transcript.py transcripts/<name>.raw.txt transcripts/<name
 # 3. Build the pages (all of these re-scan everything from scratch)
 python3 scripts/build_player.py transcripts/<name>.clean.txt audio/<name>.<ext> \
     <name>-player.html --title "Conversation N" --translations transcripts/<name>.translations.json
+# (optional) give the ~570 cards with no family recording a real Indonesian
+#    voice, generated once at build time so no API key ever reaches a browser.
+#    Free tier covers about half the deck a month; re-run to continue.
+export ELEVENLABS_API_KEY=...      # never committed; used only during this run
+python3 scripts/build_tts.py --list-voices
+python3 scripts/build_tts.py --voice <id> --dry-run
+python3 scripts/build_tts.py --voice <id> --limit 20000
+
 python3 scripts/build_flashcards.py
 python3 scripts/build_quiz.py
 python3 scripts/build_study.py

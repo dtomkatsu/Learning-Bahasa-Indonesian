@@ -624,12 +624,30 @@ cardAudio.addEventListener('timeupdate', () => {
 
 ttsOnVoicesChanged(updatePlayRow);
 
+// Before the flip you're recalling the word, so the word is the useful
+// prompt; after it, the sentence is what's worth modelling. Returns the
+// generated clip for whichever that is, or '' when there isn't one.
+function modelSrc() {
+  if (!current) return '';
+  if (flipped && current.exampleSrc) return current.exampleSrc;
+  if (!flipped && current.wordSrc) return current.wordSrc;
+  return (current.wordSrc || current.exampleSrc || '');
+}
+
 function updatePlayRow() {
   if (!current) { playBtn.disabled = true; playNote.textContent = ''; return; }
   if (current.audio) {
     playBtn.disabled = false;
     playBtn.innerHTML = '&#9654; Hear it';
     playNote.textContent = 'real recording';
+  } else if (modelSrc()) {
+    // A generated clip is a real Indonesian voice, but it is still not these
+    // people — three sources, three labels, so none can be mistaken for another.
+    playBtn.disabled = false;
+    playBtn.innerHTML = '&#128266; Hear it';
+    playNote.textContent = flipped && current.exampleSrc
+      ? 'example sentence · studio voice, not the family'
+      : 'studio voice — not the family';
   } else if (ttsVoice) {
     playBtn.disabled = false;
     playBtn.innerHTML = '&#128266; Hear it';
@@ -659,9 +677,7 @@ function playCurrent() {
     return;
   }
   cardAudio.pause();
-  // Before the flip you're being asked to recall the word, so hearing the word
-  // is the useful prompt; after it, the sentence is what's worth modelling.
-  ttsSpeak(flipped && current.example ? current.example : current.front);
+  ttsSay(flipped && current.example ? current.example : current.front, modelSrc());
 }
 
 // Same audio as "Hear it", but always plays from the start and resolves when
@@ -671,7 +687,7 @@ function playModel() {
   if (!current) return Promise.resolve();
   if (!current.audio) {
     cardAudio.pause();
-    return ttsSpeak(flipped && current.example ? current.example : current.front);
+    return ttsSay(flipped && current.example ? current.example : current.front, modelSrc());
   }
   ttsStop();
   return new Promise(resolve => {
@@ -1041,7 +1057,26 @@ def highlight(term, sentence):
             + html_escape(sentence[b:]))
 
 
+TTS_INDEX_PATH = ROOT / "audio" / "tts" / "index.json"
+
+
+def load_tts_index():
+    """text -> generated clip filename, empty when build_tts.py hasn't run.
+
+    A partial index is normal and fine: the free tier covers roughly half the
+    deck a month, so cards without a clip simply fall back to the device voice
+    until a later run fills them in.
+    """
+    if not TTS_INDEX_PATH.exists():
+        return {}
+    try:
+        return json.loads(TTS_INDEX_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
 def load_decks():
+    tts = load_tts_index()
     rows = []
     for tsv in sorted(VOCAB_DIR.glob("*.tsv")):
         with open(tsv, encoding="utf-8") as f:
@@ -1053,12 +1088,18 @@ def load_decks():
                 if not front:
                     continue
                 card = {"front": front, "back": back, "tags": tags, "deck": tsv.stem}
+                # build_tts speaks only the first spelling of a slash front
+                spoken = front.split(" / ")[0].strip()
+                if spoken in tts:
+                    card["wordSrc"] = f"audio/tts/{tts[spoken]}"
                 tip = say_tip(front)
                 if tip:
                     card["sayTip"] = tip
                 example = row[3].strip() if len(row) > 3 else ""
                 if example:
                     card["example"] = example        # raw, for speech synthesis
+                    if example in tts:
+                        card["exampleSrc"] = f"audio/tts/{tts[example]}"
                     card["exampleHtml"] = highlight(front, example)
                     if len(row) > 4 and row[4].strip():
                         card["exampleEn"] = row[4].strip()
@@ -1174,8 +1215,12 @@ def main():
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")
+    generated = sum(1 for c in deck
+                    if not c.get("audio") and (c.get("wordSrc") or c.get("exampleSrc")))
+    fallback = len(deck) - matched - generated
     print(f"wrote {OUT} with {len(deck)} cards from {len(list(VOCAB_DIR.glob('*.tsv')))} deck(s); "
-          f"{matched} with real audio, {len(deck) - matched} rely on speech synthesis")
+          f"{matched} with real audio, {generated} with a generated voice clip, "
+          f"{fallback} rely on the device's speech synthesis")
 
 
 if __name__ == "__main__":

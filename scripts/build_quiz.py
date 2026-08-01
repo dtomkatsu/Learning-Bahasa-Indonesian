@@ -48,6 +48,7 @@ from pathlib import Path
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
 from _tts_js import TTS_JS
+from build_flashcards import load_tts_index
 from _vocab_text import bounded, find_term
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -154,7 +155,7 @@ def load_vocab():
     return rows
 
 
-def build_blank_items(vocab):
+def build_blank_items(vocab, tts=None):
     """Fill-the-blank over the written example sentences, one item per card.
 
     Word mode can only ever cover terms the family happened to say — 407 of
@@ -173,6 +174,7 @@ def build_blank_items(vocab):
     "sama … dengan …" that span a gap find_term can't point at — there is no
     single span to blank, so there is no item to build.
     """
+    tts = tts if tts is not None else load_tts_index()
     items = []
     for v in vocab:
         sentence = v["example"]
@@ -204,6 +206,8 @@ def build_blank_items(vocab):
             "translation": v["example_en"],
             "source": v["deck"].replace("-", " "),
         })
+        if sentence in tts:
+            items[-1]["sentenceSrc"] = f"audio/tts/{tts[sentence]}"
     return items
 
 
@@ -770,7 +774,7 @@ function gradeAnswer(item, typed) {
 // still appears afterwards — the grader knows whether you were right, but only
 // you know whether it was effortless.
 function renderBlankCard(promptText, hintLine, revealInner) {
-  const canHear = !!ttsVoice;
+  const canHear = !!ttsVoice || !!current.sentenceSrc;
   cardEl.innerHTML = `
     <div class="source">${escapeHtml(current.source)} · ${escapeHtml(current.tags.join(' · '))}</div>
     <div class="prompt">${promptText}</div>
@@ -803,7 +807,7 @@ function renderBlankCard(promptText, hintLine, revealInner) {
   // also fire while it has focus.
   box.addEventListener('keydown', e => e.stopPropagation());
   document.getElementById('revealBtn').addEventListener('click', () => showBlankAnswer(null));
-  document.getElementById('playBtn').addEventListener('click', () => ttsSpeak(current.sentence));
+  document.getElementById('playBtn').addEventListener('click', () => ttsSay(current.sentence, current.sentenceSrc));
   [1, 2, 3, 4].forEach(g => {
     document.getElementById('btn' + g).addEventListener('click', () => rate(g));
   });
@@ -988,7 +992,7 @@ function playLine() {
   if (!current) return;
   // Fill-the-blank sentences were written for the deck, not spoken by anyone,
   // so there is no clip to seek to — synthesis is the only option.
-  if (!current.audio) { ttsSpeak(current.sentence); return; }
+  if (!current.audio) { ttsSay(current.sentence, current.sentenceSrc); return; }
   if (isWithinCurrentClip()) {
     if (audio.paused) { stopAt = current.nextSec; audio.play(); } else { audio.pause(); }
     return;
@@ -1014,7 +1018,7 @@ function updatePlayBtnLabel() {
 // otherwise be stuck with a permanently disabled play button.
 ttsOnVoicesChanged(() => {
   const btn = document.getElementById('playBtn');
-  if (btn && current && !current.audio) btn.disabled = !ttsVoice;
+  if (btn && current && !current.audio) btn.disabled = !ttsVoice && !current.sentenceSrc;
 });
 
 audio.addEventListener('play', updatePlayBtnLabel);

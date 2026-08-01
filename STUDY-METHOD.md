@@ -194,6 +194,27 @@ mistaken for how this family really talks. If the device has no Indonesian voice
 disabled and says so, rather than reading Indonesian with English phonics and teaching you the wrong
 pronunciation.
 
+**Giving the silent cards a voice.** `scripts/build_tts.py` generates an Indonesian clip for every card word
+and example sentence via ElevenLabs, writing content-hashed mp3s into `audio/tts/` plus an `index.json` the page
+builders read. It runs at build time, never in the browser: an ElevenLabs key is a billable credential and would
+sit readable in the page source of a public static site, so it lives in your shell for one run and is never
+written anywhere. Because the filename is `sha1(text|voice|model)`, editing one sentence regenerates exactly one
+clip and everything else is skipped — which also means a first full pass can be spread across two free months
+with `--limit`, since the free tier's 10,000 credits cover about half the deck at a time. `--dry-run` reports the
+cost before spending anything; `--prune` clears clips orphaned by an edited sentence or a changed voice.
+
+It uses `eleven_flash_v2_5` with `language_code: "id"` — chosen for a deck-specific reason rather than its
+half-price billing. The `language_code` pin isn't supported on `multilingual_v2`, and 17 example sentences carry
+tokens like *HP*, *AC*, *SD* and *seafood* that a language-guessing synthesiser reads with English phonics when
+they have to come out *ha-pe*, *a-se*, *es-de*. See
+[`notes/elevenlabs-pronunciation-scope.md`](notes/elevenlabs-pronunciation-scope.md) for the full reasoning and
+the cost maths, and note the free tier requires attributing elevenlabs.io and forbids commercial use.
+
+That makes **three** audio sources, each labelled differently on purpose — *"real recording"* for the family,
+*"studio voice — not the family"* for a generated clip, *"synthesized — not from the recording"* for the
+device's own voice. The whole premise of this project is that a machine never gets to pass as these people, and
+a better synthetic voice makes that more important, not less.
+
 **Finding things.** flashcards.html has a **Filter** panel (search box + multi-select category chips with card
 counts) and a **Browse** list showing every card in the current filter with its scheduling state — new /
 due now / in N days / mastered. Click any row to study that card immediately. quiz.html uses the same chip

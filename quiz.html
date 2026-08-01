@@ -703,6 +703,52 @@ const ttsHasSupport = typeof window.speechSynthesis !== 'undefined'
   && typeof window.SpeechSynthesisUtterance !== 'undefined';
 let ttsVoice = null;
 
+// A pre-generated clip (scripts/build_tts.py) beats the device's own voice
+// wherever one exists: it's a real Indonesian voice rather than whatever the
+// OS happens to ship, it sounds the same on every device, and on desktop
+// browsers with no Indonesian voice installed it's the difference between
+// audio and a disabled button. Falls back to synthesis when a card has no clip
+// — a partial run is a valid state, since the free tier's monthly allowance
+// only covers about half the deck at a time.
+const ttsClipAudio = typeof Audio !== 'undefined' ? new Audio() : null;
+
+function ttsHasClip(src) { return !!(src && ttsClipAudio); }
+
+// Same contract as ttsSpeak: resolves when the audio finishes, so callers can
+// sequence against it without caring which of the two sources played.
+function ttsPlayClip(src) {
+  if (!ttsHasClip(src)) return Promise.resolve(false);
+  ttsStop();
+  return new Promise(resolve => {
+    let settled = false;
+    const done = ok => {
+      if (settled) return;
+      settled = true;
+      ttsClipAudio.removeEventListener('ended', onEnd);
+      ttsClipAudio.removeEventListener('error', onErr);
+      resolve(ok);
+    };
+    const onEnd = () => done(true);
+    const onErr = () => done(false);
+    ttsClipAudio.addEventListener('ended', onEnd);
+    ttsClipAudio.addEventListener('error', onErr);
+    ttsClipAudio.src = src;
+    ttsClipAudio.currentTime = 0;
+    ttsClipAudio.play().catch(() => done(false));
+  });
+}
+
+function ttsStopClip() {
+  if (ttsClipAudio) { ttsClipAudio.pause(); ttsClipAudio.currentTime = 0; }
+}
+
+// The one call sites should use: prefer the generated clip, fall back to the
+// device voice, so no page has to branch on which source it got.
+function ttsSay(text, src, rate) {
+  if (ttsHasClip(src)) return ttsPlayClip(src);
+  return ttsSpeak(text, rate);
+}
+
 // Voices load asynchronously in most browsers, and an Indonesian voice may
 // simply not be installed — in which case the default voice would read
 // Indonesian with English phonics and teach the wrong pronunciation. Callers
@@ -725,6 +771,7 @@ function ttsOnVoicesChanged(cb) {
 
 function ttsStop() {
   if (ttsHasSupport) window.speechSynthesis.cancel();
+  if (typeof ttsStopClip === 'function') ttsStopClip();
 }
 
 // Slightly under normal speed: fast enough to sound like speech, slow enough
@@ -949,7 +996,7 @@ function gradeAnswer(item, typed) {
 // still appears afterwards — the grader knows whether you were right, but only
 // you know whether it was effortless.
 function renderBlankCard(promptText, hintLine, revealInner) {
-  const canHear = !!ttsVoice;
+  const canHear = !!ttsVoice || !!current.sentenceSrc;
   cardEl.innerHTML = `
     <div class="source">${escapeHtml(current.source)} · ${escapeHtml(current.tags.join(' · '))}</div>
     <div class="prompt">${promptText}</div>
@@ -982,7 +1029,7 @@ function renderBlankCard(promptText, hintLine, revealInner) {
   // also fire while it has focus.
   box.addEventListener('keydown', e => e.stopPropagation());
   document.getElementById('revealBtn').addEventListener('click', () => showBlankAnswer(null));
-  document.getElementById('playBtn').addEventListener('click', () => ttsSpeak(current.sentence));
+  document.getElementById('playBtn').addEventListener('click', () => ttsSay(current.sentence, current.sentenceSrc));
   [1, 2, 3, 4].forEach(g => {
     document.getElementById('btn' + g).addEventListener('click', () => rate(g));
   });
@@ -1167,7 +1214,7 @@ function playLine() {
   if (!current) return;
   // Fill-the-blank sentences were written for the deck, not spoken by anyone,
   // so there is no clip to seek to — synthesis is the only option.
-  if (!current.audio) { ttsSpeak(current.sentence); return; }
+  if (!current.audio) { ttsSay(current.sentence, current.sentenceSrc); return; }
   if (isWithinCurrentClip()) {
     if (audio.paused) { stopAt = current.nextSec; audio.play(); } else { audio.pause(); }
     return;
@@ -1193,7 +1240,7 @@ function updatePlayBtnLabel() {
 // otherwise be stuck with a permanently disabled play button.
 ttsOnVoicesChanged(() => {
   const btn = document.getElementById('playBtn');
-  if (btn && current && !current.audio) btn.disabled = !ttsVoice;
+  if (btn && current && !current.audio) btn.disabled = !ttsVoice && !current.sentenceSrc;
 });
 
 audio.addEventListener('play', updatePlayBtnLabel);
