@@ -119,11 +119,33 @@ def api_request(path, api_key, data=None, params=None, timeout=60):
         return resp.read()
 
 
+class BlockedError(RuntimeError):
+    """An egress proxy refused to open a tunnel to the API.
+
+    Distinct from a network blip because it is not transient: retrying a
+    policy denial just sleeps through the backoff and fails identically, and
+    the fix is never in this script.
+    """
+
+
+def _policy_denial(reason):
+    """Whether a URLError reason is a proxy refusing the CONNECT.
+
+    A corporate or sandboxed egress proxy answers CONNECT with 403 (host not
+    on the allowlist) or 407 (credentials required). urllib surfaces both as
+    'Tunnel connection failed: <code> ...' rather than as an HTTPError, since
+    the failure happened before any HTTP request reached the origin.
+    """
+    text = str(reason)
+    return "tunnel connection failed" in text.lower() and ("403" in text or "407" in text)
+
+
 def synthesize(text, voice, model, api_key, retries=4):
     """Speak one string, with backoff on rate limits and transient failures.
 
     Raises on a 4xx that isn't 429 — a bad key or an unknown voice should stop
-    the run immediately rather than burn through the whole deck failing.
+    the run immediately rather than burn through the whole deck failing — and
+    likewise on a proxy policy denial, which no amount of waiting fixes.
     """
     payload = {"text": text, "model_id": model, "language_code": LANGUAGE}
     delay = 2
@@ -145,11 +167,48 @@ def synthesize(text, voice, model, api_key, retries=4):
             time.sleep(delay)
             delay *= 2
         except urllib.error.URLError as e:
+            if _policy_denial(e.reason):
+                raise BlockedError(
+                    f"the egress proxy refused a tunnel to {API_ROOT} "
+                    f"({e.reason}).\n"
+                    "  This is a network policy decision, not a problem with your key\n"
+                    "  or this script — the host is not on the allowlist for this\n"
+                    "  environment. Run it from a machine that can reach\n"
+                    "  api.elevenlabs.io, or have the host allowlisted."
+                ) from None
             if attempt == retries:
                 raise RuntimeError(f"network error for {text!r}: {e.reason}") from None
             time.sleep(delay)
             delay *= 2
     raise RuntimeError("unreachable")
+
+
+def preflight(api_key):
+    """Fail fast and legibly if the API isn't reachable at all.
+
+    Without this, a blocked host shows up as a failure on the first clip after
+    the run has already printed a plan and looked like it was starting — and
+    with retries, several seconds of pointless backoff first.
+    """
+    try:
+        api_request("/models", api_key, timeout=20)
+        return
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            raise RuntimeError(
+                "the API rejected the key (HTTP %d). Check ELEVENLABS_API_KEY." % e.code
+            ) from None
+        return          # any other response still proves the host is reachable
+    except urllib.error.URLError as e:
+        if _policy_denial(e.reason):
+            raise BlockedError(
+                f"cannot reach {API_ROOT} — the egress proxy refused the tunnel "
+                f"({e.reason}).\n"
+                "  This is a network policy decision, not a problem with your key\n"
+                "  or this script. Run it from a machine that can reach\n"
+                "  api.elevenlabs.io, or have the host allowlisted."
+            ) from None
+        raise RuntimeError(f"cannot reach {API_ROOT}: {e.reason}") from None
 
 
 def list_voices(api_key, query_language="id"):
@@ -164,6 +223,13 @@ def list_voices(api_key, query_language="id"):
         try:
             raw = api_request("/shared-voices", api_key,
                               params={"language": value, "page_size": 30})
+        except urllib.error.URLError as e:
+            if _policy_denial(getattr(e, "reason", "")):
+                sys.exit(f"\ncannot reach {API_ROOT} — the egress proxy refused the "
+                         f"tunnel ({e.reason}).\n  Run this from a machine that can "
+                         f"reach api.elevenlabs.io.")
+            print(f"  query language={value!r} failed: {e}")
+            continue
         except Exception as e:
             print(f"  query language={value!r} failed: {e}")
             continue
@@ -289,6 +355,11 @@ def main():
     if not api_key:
         sys.exit("ELEVENLABS_API_KEY is not set.")
 
+    try:
+        preflight(api_key)
+    except RuntimeError as e:
+        sys.exit(f"\n{e}")
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     done = 0
     spent = 0
@@ -309,6 +380,8 @@ def main():
             print(f"  [{done}/{len(missing)}] {r['kind']:8} {r['text'][:52]}")
     except KeyboardInterrupt:
         print("\nInterrupted — clips already written are kept.")
+    except BlockedError as e:
+        print(f"\nStopped: {e}", file=sys.stderr)
     except RuntimeError as e:
         print(f"\nStopped: {e}", file=sys.stderr)
     finally:
