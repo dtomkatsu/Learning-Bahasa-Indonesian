@@ -31,7 +31,6 @@ Usage:
 """
 import csv
 import json
-import re
 from html import escape as html_escape
 from pathlib import Path
 
