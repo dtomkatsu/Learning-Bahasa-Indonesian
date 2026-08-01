@@ -1,84 +1,84 @@
-kan	tag question / seeking agreement — "right?"	particle
-sih	softener / mild emphasis or curiosity	particle
-dong	insistence — "come on, obviously"	particle
-loh / lho	mild surprise, "you know"	particle
-nih	here — draws attention to something close	particle
-kok	how come? — surprise or mild complaint	particle
-deh	softening a suggestion / conceding a point	particle
-gitu / begitu	like that — trails off a sentence	particle
-banget	very / so — intensifier	particle
-mendingan	better off, rather — for comparing options	particle
-entar	colloquial for "nanti" — later	particle
-makanya	that's why	particle,connector
-atuh	Sundanese softener/emphasis particle, no direct translation	particle_sundanese
-mah	Sundanese topic marker, roughly "as for..."	particle_sundanese
-udah	colloquial "sudah" — already	grammar
-belum	not yet	grammar
-nggak / enggak	colloquial "tidak" — not, no	grammar
-iya	yes / right (softer than "ya")	grammar
-kalau	if / when (conditional)	grammar,connector
-soalnya	because, the thing is...	grammar
-kayaknya	it seems like, I think	grammar
-gimana	colloquial "bagaimana" — how	grammar
-biar	so that / "in order to"	grammar
-Mami	Mom (used directly, not "Ibu")	family
-Papi / Bapak	Dad	family
-Mbak	older sister / polite term for young woman	family
-Dek / Adek	younger sibling, term of endearment	family
-sayangku	my love/darling — affectionate term	family
-salim	hand-to-forehead greeting gesture for elders	family
-assalamualaikum	Islamic greeting, "peace be upon you" — used casually arriving/leaving	family
-tahu	tofu	food
-lele	catfish	food
-santan	coconut milk	food
-bayam	spinach	food
-ayam	chicken	food
-nasi	rice	food
-enak	tasty, delicious	food,adjective
-kupingmu	your ear — used scoldingly re: earbuds/headphones	tech
-aplikasi	application, app	tech
-unduh / download	to download	tech
-ngecas	colloquial — to charge (a device)	tech
-kupas / patok	landmark / marker (for giving directions)	errands
-belok kanan	turn right	errands
-belok kiri	turn left	errands
-lurus	straight (ahead); to straighten	errands,verb,handling
-bensin	gasoline	errands
-gang	small alley/lane	errands
-jemput	to pick (someone) up	errands,verb,motion
-tiduran	to lie down	home
-ganti baju	to change clothes	home
-mati lampu	power outage	home
-nyala	on / lit (of power, lights)	home
-sedih	sad	emotion,adjective
-takut	scared	emotion,adjective
-bahaya	dangerous	emotion
-seram	scary, creepy	emotion
-aduh	ouch/oh no — general exclamation	emotion
-astaga	oh my god — mild exclamation	emotion
-manis	sweet (also: cute)	emotion,adjective
-mantap	awesome, solid — approval	emotion
-asik	fun, enjoyable	emotion
-lumayan	decent, not bad, pretty good	emotion
-gila	crazy — used as an intensifier exclamation	emotion
-suku	ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)	culture
-keturunan	descent, lineage	culture
-Ini dari sana?	Is this from there?	phrase
-Nggak apa-apa	It's okay / no worries / it doesn't matter	phrase
-Ayo kita nonton	Let's go watch [something]	phrase
-Sudah semakin lancar	[You're] getting more fluent already	phrase
-Tahu kan berapa nih harganya?	You know how much this costs, right?	phrase
-Kalau tak dengar suaramu	If I don't hear your voice (song lyric quoted mid-conversation)	phrase
-Jangan ganggu	Don't disturb [me]	phrase
-Sabar	Be patient / hang on	phrase
-Ya udah	Alright then / fine, okay — resigned agreement	phrase
-Nggak seru	Not fun / that's no fun	phrase
-Apa namanya?	What's it called again? — filler while searching for a word	phrase
-Kamu mau download di anu, di laptopmu?	Do you want to download it on your laptop?	phrase
-Ini di atas dia menunjukkan Indonesia	Up here it shows Indonesian [on screen]	phrase
-Nggak keaslian	It's not the real/original one	phrase
-Terlalu maksa	That's too forced / trying too hard	phrase
-Kok aneh	That's weird, huh	phrase
-Can I ask a question?	code-switch: Dila asks permission mid-Indonesian-sentence in English	codeswitch
-Reprimanded	code-switch: Devin supplies the English legal term Dila reaches for	codeswitch
-sayangku's kids' ankle	running joke/mishearing during the recording — good example of ASR mangling affectionate teasing	codeswitch
+kan	tag question / seeking agreement — "right?"	particle	Kamu sudah makan, kan?	You've eaten, right?
+sih	softener / mild emphasis or curiosity	particle	Kenapa sih kamu diam saja?	Why are you just staying quiet?
+dong	insistence — "come on, obviously"	particle	Ayo dong, cepat sedikit!	Come on, hurry it up a bit!
+loh / lho	mild surprise, "you know"	particle	Loh, kok kamu sudah pulang?	Huh, how come you're back already?
+nih	here — draws attention to something close	particle	Nih, buat kamu.	Here, this is for you.
+kok	how come? — surprise or mild complaint	particle	Kok kamu tahu?	How do you know that?
+deh	softening a suggestion / conceding a point	particle	Ya sudah deh, ikut saja.	Fine then, just come along.
+gitu / begitu	like that — trails off a sentence	particle	Jangan gitu sama adikmu.	Don't be like that with your little brother.
+banget	very / so — intensifier	particle	Enak banget masakannya!	The food is so good!
+mendingan	better off, rather — for comparing options	particle	Mendingan kita naik ojek daripada jalan kaki.	We're better off taking an ojek than walking.
+entar	colloquial for "nanti" — later	particle	Entar dulu, saya belum siap.	Hold on a sec, I'm not ready yet.
+makanya	that's why	particle,connector	Makanya, jangan tidur larut malam.	That's why — don't stay up so late.
+atuh	Sundanese softener/emphasis particle, no direct translation	particle_sundanese	Ayo atuh, cepat sedikit!	Come on then, hurry up!
+mah	Sundanese topic marker, roughly "as for..."	particle_sundanese	Saya mah nggak ikut, capek.	Me, I'm not coming — I'm tired.
+udah	colloquial "sudah" — already	grammar	Udah, jangan dipikirin lagi.	Enough, stop thinking about it.
+belum	not yet	grammar	Saya belum makan dari pagi.	I haven't eaten since this morning.
+nggak / enggak	colloquial "tidak" — not, no	grammar	Aku nggak bisa datang besok.	I can't come tomorrow.
+iya	yes / right (softer than "ya")	grammar	Iya, nanti saya kabari.	Yeah, I'll let you know later.
+kalau	if / when (conditional)	grammar,connector	Kalau hujan, kita di rumah saja.	If it rains, let's just stay home.
+soalnya	because, the thing is...	grammar	Saya pulang duluan, soalnya besok kerja pagi.	I'm heading home first, because I start early tomorrow.
+kayaknya	it seems like, I think	grammar	Kayaknya dia lupa deh.	I think he forgot.
+gimana	colloquial "bagaimana" — how	grammar	Gimana kabarmu?	How have you been?
+biar	so that / "in order to"	grammar	Pelan-pelan biar nggak tumpah.	Slowly, so it doesn't spill.
+Mami	Mom (used directly, not "Ibu")	family	Mami, aku pulang!	Mom, I'm home!
+Papi / Bapak	Dad	family	Papi lagi di luar, nanti pulang.	Dad's out; he'll be back later.
+Mbak	older sister / polite term for young woman	family	Mbak, boleh minta air putih?	Miss, could I get some water?
+Dek / Adek	younger sibling, term of endearment	family	Dek, ayo makan dulu.	Hey kiddo, come eat first.
+sayangku	my love/darling — affectionate term	family	Selamat pagi, sayangku.	Good morning, my love.
+salim	hand-to-forehead greeting gesture for elders	family	Anak-anak salim dulu sama nenek.	The kids kiss their grandmother's hand first.
+assalamualaikum	Islamic greeting, "peace be upon you" — used casually arriving/leaving	family	Assalamualaikum, saya pulang!	Assalamualaikum — I'm home!
+tahu	tofu	food	Tahu goreng ini enak sekali.	This fried tofu is really good.
+lele	catfish	food	Malam ini kita makan pecel lele.	Tonight we're having pecel lele.
+santan	coconut milk	food	Sayurnya pakai santan biar gurih.	The dish uses coconut milk so it's rich.
+bayam	spinach	food	Ibu masak sayur bayam bening.	Mum made clear spinach soup.
+ayam	chicken	food	Saya pesan ayam goreng satu.	I'll order one fried chicken.
+nasi	rice	food	Nasinya masih hangat.	The rice is still warm.
+enak	tasty, delicious	food,adjective	Masakannya enak sekali.	The cooking is really tasty.
+kupingmu	your ear — used scoldingly re: earbuds/headphones	tech	Copot dulu, nanti kupingmu sakit.	Take them out, or your ears will hurt.
+aplikasi	application, app	tech	Aplikasinya harus diunduh dulu.	You have to download the app first.
+unduh / download	to download	tech	Saya mau unduh filmnya dulu.	I want to download the film first.
+ngecas	colloquial — to charge (a device)	tech	HP-ku lagi ngecas, sebentar ya.	My phone is charging, hang on.
+kupas / patok	landmark / marker (for giving directions)	errands	Patokannya masjid biru di ujung jalan.	The landmark is the blue mosque at the end of the street.
+belok kanan	turn right	errands	Nanti di lampu merah belok kanan.	At the traffic light, turn right.
+belok kiri	turn left	errands	Belok kiri setelah warung itu.	Turn left after that warung.
+lurus	straight (ahead); to straighten	errands,verb,handling	Lurus saja dulu, nanti ada gang kecil.	Just keep going straight; there'll be a small alley.
+bensin	gasoline	errands	Isi bensin dulu, tinggal sedikit.	Let's fill up first; there's not much left.
+gang	small alley/lane	errands	Rumahnya di gang sebelah kanan.	His house is in the alley on the right.
+jemput	to pick (someone) up	errands,verb,motion	Nanti saya jemput kamu jam lima.	I'll pick you up at five.
+tiduran	to lie down	home	Dia lagi tiduran di sofa.	He's lying down on the sofa.
+ganti baju	to change clothes	home	Saya ganti baju dulu, keringatan.	Let me change clothes first; I'm sweaty.
+mati lampu	power outage	home	Semalam mati lampu tiga jam.	Last night the power was out for three hours.
+nyala	on / lit (of power, lights)	home	Lampunya sudah nyala lagi.	The lights are back on.
+sedih	sad	emotion,adjective	Dia sedih karena kucingnya hilang.	She's sad because her cat is missing.
+takut	scared	emotion,adjective	Aku takut nonton film horor sendirian.	I'm scared to watch horror films alone.
+bahaya	dangerous	emotion	Awas, di situ bahaya!	Watch out, it's dangerous there!
+seram	scary, creepy	emotion	Rumah tua itu seram kalau malam.	That old house is creepy at night.
+aduh	ouch/oh no — general exclamation	emotion	Aduh, saya lupa bawa kunci!	Oh no, I forgot to bring the keys!
+astaga	oh my god — mild exclamation	emotion	Astaga, sudah jam berapa ini?	Oh my god, what time is it?
+manis	sweet (also: cute)	emotion,adjective	Tehnya terlalu manis buat saya.	The tea is too sweet for me.
+mantap	awesome, solid — approval	emotion	Mantap, hasilnya bagus banget!	Awesome, the result is really good!
+asik	fun, enjoyable	emotion	Asik, besok libur!	Nice, tomorrow's a day off!
+lumayan	decent, not bad, pretty good	emotion	Rasanya lumayan, tidak mengecewakan.	It tastes decent — not disappointing.
+gila	crazy — used as an intensifier exclamation	emotion	Gila, ramai banget di sini!	Crazy, it's so packed here!
+suku	ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)	culture	Dia dari suku Sasak di Lombok.	He's from the Sasak people in Lombok.
+keturunan	descent, lineage	culture	Dia keturunan Jawa dari pihak ibunya.	He's of Javanese descent on his mother's side.
+Ini dari sana?	Is this from there?	phrase	Ini dari sana? Oleh-oleh dari Bali?	Is this from there? A souvenir from Bali?
+Nggak apa-apa	It's okay / no worries / it doesn't matter	phrase	“Maaf ya, saya terlambat.” “Nggak apa-apa, santai saja.”	“Sorry I'm late.” “It's fine, no worries.”
+Ayo kita nonton	Let's go watch [something]	phrase	Ayo kita nonton, filmnya mulai jam tujuh.	Let's go watch — the film starts at seven.
+Sudah semakin lancar	[You're] getting more fluent already	phrase	Bahasa Indonesiamu sudah semakin lancar.	Your Indonesian is getting more fluent already.
+Tahu kan berapa nih harganya?	You know how much this costs, right?	phrase	Tahu kan berapa nih harganya? Mahal banget.	You know how much this costs, right? Really expensive.
+Kalau tak dengar suaramu	If I don't hear your voice (song lyric quoted mid-conversation)	phrase	Kalau tak dengar suaramu, aku rindu.	If I don't hear your voice, I miss you.
+Jangan ganggu	Don't disturb [me]	phrase	Jangan ganggu, aku lagi kerja.	Don't bother me, I'm working.
+Sabar	Be patient / hang on	phrase	Sabar, sebentar lagi sampai.	Hang on, we're almost there.
+Ya udah	Alright then / fine, okay — resigned agreement	phrase	Ya udah, besok saja kalau begitu.	Alright then, tomorrow in that case.
+Nggak seru	Not fun / that's no fun	phrase	Nggak seru kalau kamu nggak ikut.	It's no fun if you don't come.
+Apa namanya?	What's it called again? — filler while searching for a word	phrase	Itu, apa namanya, yang buat potong kuku.	That thing — what's it called — the one for cutting nails.
+Kamu mau download di anu, di laptopmu?	Do you want to download it on your laptop?	phrase	Kamu mau download di anu, di laptopmu? Biar lebih cepat.	Do you want to download it on, um, your laptop? It'd be faster.
+Ini di atas dia menunjukkan Indonesia	Up here it shows Indonesian [on screen]	phrase	Ini di atas dia menunjukkan Indonesia, yang di bawah bahasa Inggris.	Up here it shows Indonesian; the one underneath is English.
+Nggak keaslian	It's not the real/original one	phrase	Ini nggak keaslian, cuma tiruan.	This isn't the genuine one, just a copy.
+Terlalu maksa	That's too forced / trying too hard	phrase	Jangan terlalu maksa, nanti dia malah kesal.	Don't push it too hard, or he'll just get annoyed.
+Kok aneh	That's weird, huh	phrase	Kok aneh ya rasanya?	Weird — it tastes off, doesn't it?
+Can I ask a question?	code-switch: Dila asks permission mid-Indonesian-sentence in English	codeswitch	Jadi kalau misalnya — can I ask a question? — itu gimana?	So if, say — can I ask a question? — how does that work?
+Reprimanded	code-switch: Devin supplies the English legal term Dila reaches for	codeswitch	Dia kena apa itu, reprimanded, di kantornya.	He got, what is it, reprimanded at his office.
+sayangku's kids' ankle	running joke/mishearing during the recording — good example of ASR mangling affectionate teasing	codeswitch	Yang dimaksud sebenarnya “sayangku” — mesinnya yang salah dengar.	What was actually said was “sayangku” (my darling) — the machine misheard it.

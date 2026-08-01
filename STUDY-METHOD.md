@@ -38,9 +38,17 @@ particle-heavy, and specific to the people and places in your actual life. The g
    everything, the audio quality/heuristic needs a look.
 3. Skim the clean transcript once and write a `notes/<name>-notes.md` like the one for Conversation 1: speaker
    map, topic timeline with timestamps, anything culturally/grammatically notable.
-4. Mine vocab into `vocab/<name>-vocab.tsv` (three columns: Indonesian, English/notes, tags) — only add things you
+4. Mine vocab into `vocab/<name>-vocab.tsv` (five columns: Indonesian, English/notes, tags, an example sentence
+   in Indonesian, that sentence's English translation) — only add things you
    didn't already know cold. The tags column is a **comma-separated list** (`emotion,adjective`), so one card can
-   live in several categories; a plain single tag is just the one-element case. Don't re-log particles you've
+   live in several categories; a plain single tag is just the one-element case.
+
+   The example sentence is what the flashcard shows on its back, with the term bolded. Write it yourself, short
+   and idiomatic — the highlighter is affix-aware, so `tangkap` still gets bolded when the sentence says
+   `menangkap`, and you should use whatever form is actually grammatical rather than forcing the bare root in.
+   The last two columns are optional as far as the builder is concerned (a three-column row still loads), but a
+   card without one is a card that teaches a gloss instead of a sentence, so treat them as required. Don't re-log
+   particles you've
    already logged once; cross-check against every existing `vocab/*.tsv` first (`build_flashcards.py` dedupes by
    front, first file read wins alphabetically, so a genuine collision silently keeps whichever file sorts first —
    check, don't rely on that; if a word genuinely belongs to a new deck's theme too, add the new tag to its
@@ -63,6 +71,18 @@ particle-heavy, and specific to the people and places in your actual life. The g
    already existed rather than inventing near-duplicates. Six verbs already lived in other decks and were
    merged in place rather than duplicated; five of those are real polysemy, so the gloss carries both senses
    (`jadi` — "so / therefore; to become", tagged `connector,verb,change`).
+
+   Eleven further reference decks cover the everyday-conversation ground the recordings happen not to reach —
+   the family talks about what it talks about, so whole domains you'd need on day one simply never come up.
+   `greetings-politeness.tsv` (38, tag `greeting`), `numbers.tsv` (34, `number`), `days-months.tsv`
+   (39, `calendar`), `food-drink.tsv` (48, `food`), `house-objects.tsv` (47, `household`), `body-health.tsv`
+   (40, `health`), `places-transport.tsv` (48, `places`/`transport`), `shopping-money.tsv` (30, `money`),
+   `weather-nature.tsv` (32, `nature`), `work-school.tsv` (34, `work`/`school`) and `clothing.tsv`
+   (22, `clothing`), plus `small-talk.tsv` (32, `smalltalk`) for the fixed exchanges that open every
+   conversation — *Mau ke mana?*, *Sudah makan?*, *Dari mana?*. None of these words appear in the transcripts
+   often enough to be mined from them, and none collide with an existing front. They take the deck to 997 cards,
+   so expect the daily due count to climb; the category chips are the lever if you want to work through one
+   domain at a time rather than all at once.
 
    You don't have to go through a TSV + rebuild for a quick vocab dump, either: flashcards.html's **"+ Add
    list"** button (next to "+ Add card") takes a paste in the exact same `front – back` format used above, one
@@ -154,10 +174,21 @@ progress bar. What the daily cap used to buy you was spreading a big deck over a
 cards at once means FSRS schedules their first reviews at roughly the same time (day ~1, then ~3, then ~10…), so
 they bunch up for a few weeks afterward. Choosing a smaller session size is the lever for that now.
 
-**Hearing every card.** Each flashcard has a **Hear it** button (shortcut `p`). About 105 of the 274 cards use
-a word that actually occurs in the recording — those play the family saying it, in context, and show that line
-plus its translation on the back of the card. The other ~169 are from the standalone reference decks
-(adjectives, comparisons, connectors), which aren't drawn from the conversation; those use the device's
+**Seeing every card in a sentence.** The back of a flashcard is the term, its gloss, its tags, and then a
+written **example sentence** with the term bolded inside it — every card has one. That's the whole point: a
+gloss tells you what a word maps to, a sentence tells you where it goes. For roots the sentence often shows an
+affixed form (`tangkap` → *Polisi **menangkap** pencurinya semalam*), because that's the form you'd actually
+hear; the highlighter strips prefixes and suffixes, including the nasal ones that swallow the root's first
+consonant, so the bolding still lands on the right word.
+
+**Hearing every card.** Each flashcard has a **Hear it** button (shortcut `p`). About 430 of the 997 cards use
+a word that actually occurs in the recording — those play the family saying it, and quote that line under
+*"Heard in the recording"*, below the written example and visually dimmed: it's unedited speech, sometimes a
+fragment and sometimes mistranscribed, so it's shown as evidence rather than as a model sentence. The builder
+scores every occurrence of the word and keeps the best one (short, translated, not capitalised mid-sentence
+like a proper noun), and drops the quote entirely rather than teach the wrong sense — which is why `malu` has
+no recording even though the string appears in Conversation 1, as a place name. The other ~570 cards are from
+the standalone reference decks, which aren't drawn from the conversation; those use the device's
 Indonesian speech synthesis and are labelled *"synthesized — not from the recording"* so a robot voice is never
 mistaken for how this family really talks. If the device has no Indonesian voice installed the button is
 disabled and says so, rather than reading Indonesian with English phonics and teaching you the wrong

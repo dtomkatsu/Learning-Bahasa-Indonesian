@@ -76,6 +76,10 @@ PAGE = """<!doctype html>
   .reveal .id { font-size:1.05rem; margin-bottom:4px; }
   .reveal .id b { color:var(--accent); }
   .reveal .en { color:var(--muted); font-size:0.9rem; }
+  .reveal .ex { margin-top:10px; padding-top:9px; border-top:1px dashed var(--line);
+    font-size:0.88rem; line-height:1.5; }
+  .reveal .ex b { color:var(--accent); }
+  .reveal .ex .exEn { color:var(--muted); font-size:0.8rem; margin-top:3px; }
   button.revealBtn { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--line);
     background:var(--bg); color:var(--fg); cursor:pointer; }
   .rate { display:flex; gap:8px; margin-top:4px; }
@@ -259,7 +263,12 @@ function renderCard() {
   let promptHtml, hintLine = '', revealInner, playRow = '';
   if (item.kind === 'flash') {
     promptHtml = escapeHtml(item.front);
-    revealInner = `<div class="id">${escapeHtml(item.back)}</div><div class="en">${escapeHtml(item.tags.join(' · '))}</div>`;
+    // Same as flashcards.html: the answer, then the word used in a sentence,
+    // so recall is always checked against the word in context and not a gloss.
+    revealInner = `<div class="id">${escapeHtml(item.back)}</div><div class="en">${escapeHtml(item.tags.join(' · '))}</div>`
+      + (item.exampleHtml
+          ? `<div class="ex">${item.exampleHtml}${item.exampleEn ? `<div class="exEn">${escapeHtml(item.exampleEn)}</div>` : ''}</div>`
+          : '');
   } else if (item.kind === 'word') {
     promptHtml = item.mode === 'cloze'
       ? escapeHtml(item.cloze).replace('_____', '<span class="blank">_____</span>')

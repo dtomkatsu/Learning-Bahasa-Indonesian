@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """
 Build flashcards.html — a self-contained flip-card vocab trainer over every
-vocab/*.tsv deck (Indonesian / English+notes / tag columns, no header).
+vocab/*.tsv deck (Indonesian / English+notes / tag / example sentence /
+example translation columns, no header).
+
+Every card carries a hand-written example sentence in columns 4 and 5, shown
+on the back so the word is always revealed inside a real sentence rather than
+as a bare gloss. Cards whose word also occurs in one of the transcripts get
+that line too, under a separate "Heard in the recording" heading — authentic
+but unedited family speech, kept clearly apart from the clean example.
 
 Uses real spaced repetition — FSRS-5 (see scripts/_srs_js.py), the same
 algorithm Anki itself recommends as its default over the older SM-2 family.
@@ -97,11 +104,17 @@ PAGE = """<!doctype html>
   #card .back .q { color:var(--muted); font-size:0.95rem; margin-bottom:10px; }
   #card .back .en { font-size:1.25rem; font-weight:600; margin-bottom:6px; }
   #card .back .tag { color:var(--muted); font-size:0.78rem; }
-  #card .back .ex { margin-top:14px; padding-top:12px; border-top:1px dashed var(--line);
-    font-size:0.88rem; line-height:1.5; }
-  #card .back .ex b { color:var(--accent); }
-  #card .back .ex .exEn { color:var(--muted); font-size:0.8rem; margin-top:3px; }
-  #card .back .ex:empty { display:none; }
+  #card .back .ex, #card .back .heard { margin-top:14px; padding-top:12px;
+    border-top:1px dashed var(--line); font-size:0.88rem; line-height:1.5; }
+  #card .back .ex b, #card .back .heard b { color:var(--accent); }
+  #card .back .ex .exEn, #card .back .heard .exEn { color:var(--muted); font-size:0.8rem; margin-top:3px; }
+  #card .back .ex:empty, #card .back .heard:empty { display:none; }
+  /* The recording is unedited family speech — often a fragment, sometimes
+     mistranscribed. Labelled and dimmed so it reads as evidence, not as the
+     model sentence sitting above it. */
+  #card .back .heard { color:var(--muted); font-size:0.82rem; }
+  #card .back .heard .heardLbl { font-size:0.66rem; letter-spacing:0.06em;
+    text-transform:uppercase; opacity:0.75; margin-bottom:4px; }
   .playRow { display:flex; align-items:center; gap:10px; justify-content:center;
     margin:-6px 0 14px; }
   button.playBtn { font-size:0.82rem; padding:7px 13px; border-radius:8px;
@@ -206,7 +219,7 @@ atau – or"></textarea>
       <button class="plain" id="bulkCancelBtn">Cancel</button>
     </div>
   </div>
-  <div id="card"><div class="front"></div><div class="back"><div class="q"></div><div class="en"></div><div class="tag"></div><div class="ex"></div></div></div>
+  <div id="card"><div class="front"></div><div class="back"><div class="q"></div><div class="en"></div><div class="tag"></div><div class="ex"></div><div class="heard"></div></div></div>
   <div class="playRow">
     <button class="playBtn" id="playBtn">&#9654; Hear it</button>
     <span class="playNote" id="playNote"></span>
@@ -392,15 +405,20 @@ function showCard(card) {
   flipped = false;
   cardEl.className = '';
   cardEl.innerHTML = '<div class="front"></div><div class="back"><div class="q"></div>' +
-    '<div class="en"></div><div class="tag"></div><div class="ex"></div></div>';
+    '<div class="en"></div><div class="tag"></div><div class="ex"></div><div class="heard"></div></div>';
   cardEl.querySelector('.front').textContent = current.front;
   cardEl.querySelector('.q').textContent = current.front;
   cardEl.querySelector('.en').textContent = current.back;
   cardEl.querySelector('.tag').textContent = current.tags.join(' · ');
-  // The real line the word came from, shown only on the back so it can't give
-  // the answer away before you've committed to one.
+  // Both the written example and the real line are back-only, so neither can
+  // give the answer away before you've committed to one.
+  if (current.exampleHtml) {
+    cardEl.querySelector('.ex').innerHTML = current.exampleHtml +
+      (current.exampleEn ? `<div class="exEn">${escapeHtml(current.exampleEn)}</div>` : '');
+  }
   if (current.sentenceHtml) {
-    cardEl.querySelector('.ex').innerHTML = current.sentenceHtml +
+    cardEl.querySelector('.heard').innerHTML = '<div class="heardLbl">Heard in the recording</div>' +
+      current.sentenceHtml +
       (current.exTranslation ? `<div class="exEn">${escapeHtml(current.exTranslation)}</div>` : '');
   }
   rateRow.hidden = true;
@@ -835,6 +853,100 @@ def parse_tags(raw):
     return tags or ["untagged"]
 
 
+# --- highlighting the term inside its example sentence -----------------------
+#
+# Indonesian affixation means the card's dictionary form is often not the
+# surface form in the sentence: "tangkap" shows up as "menangkap", "kunjung"
+# as "mengunjungi". The meN-/peN- prefixes also swallow the root's initial
+# consonant (k, s, t, p), so a plain substring test misses those outright.
+# Rather than build a stemmer, we walk the sentence and ask of each word:
+# "could this be the card's word wearing affixes?" — stripping known prefixes
+# and suffixes and restoring the elided consonant where the prefix implies one.
+
+_PREFIXES = [
+    "memper", "member", "menge", "meng", "meny", "mem", "men", "me",
+    "penge", "peng", "peny", "pem", "pen", "pe",
+    "diper", "di", "ter", "ber", "be", "se", "ke",
+]
+# Which initial root consonant each nasal prefix absorbs (meng- + kirim -> mengirim)
+_ELIDED = {"meng": "k", "peng": "k", "meny": "s", "peny": "s",
+           "men": "t", "pen": "t", "mem": "p", "pem": "p"}
+_SUFFIXES = ["kannya", "annya", "inya", "nya", "kan", "an", "lah", "i"]
+
+_WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]+(?:-[A-Za-zÀ-ÿ]+)*")
+
+
+def _possible_roots(word):
+    """Every dictionary form the given surface word could be an inflection of."""
+    w = word.lower()
+    stems = {w}
+    for pre in _PREFIXES:
+        if w.startswith(pre) and len(w) > len(pre) + 1:
+            rest = w[len(pre):]
+            stems.add(rest)
+            if pre in _ELIDED:
+                stems.add(_ELIDED[pre] + rest)
+    roots = set(stems)
+    for s in stems:
+        for suf in _SUFFIXES:
+            if s.endswith(suf) and len(s) > len(suf) + 1:
+                roots.add(s[: -len(suf)])
+    return roots
+
+
+_TRAILING_SUFFIX = r"(?:nya|ku|mu|kan|an|lah)?"
+
+
+def _bounded(term):
+    """Regex matching the term as a whole span in running text.
+
+    Three wrinkles the naive \\b version gets wrong: fronts that end in
+    punctuation ("Apa namanya?") — \\b can't sit after a "?"; fronts written
+    with an ellipsis placeholder ("Di mana…?"); and multi-word fronts whose
+    last word picks up a clitic in a real sentence ("kamar mandi" surfacing as
+    "kamar mandinya").
+    """
+    core = re.sub(r"[…?!.]+\s*$", "", term.strip())
+    words = core.split()
+    if not words:
+        return re.compile(r"(?!x)x")     # never matches
+    body = r"\s+".join(re.escape(w) for w in words)
+    lead = r"(?<!\w)" if re.match(r"\w", core) else ""
+    trail = (_TRAILING_SUFFIX + r"(?!\w)") if re.search(r"\w$", core) else ""
+    return re.compile(lead + body + trail, re.IGNORECASE)
+
+
+def highlight(term, sentence):
+    """Bold the card's term inside its example sentence, as HTML.
+
+    Tries the literal phrase first (which also covers multi-word fronts and
+    whole-phrase cards), then falls back to the affix-aware word match. If
+    neither hits — the deck has a handful of fronts like "sama … dengan …"
+    that no single span corresponds to — the sentence is returned unbolded
+    rather than mangled.
+    """
+    variants = [v.strip() for v in term.split(" / ") if v.strip()]
+    for v in variants:
+        # A trailing "…" is just a placeholder for the rest of the sentence and
+        # gets stripped; an interior one ("sama … dengan …") means the front
+        # spans a gap, and no single run of text corresponds to it.
+        if "…" in re.sub(r"[…?!.\s]+$", "", v):
+            continue
+        m = _bounded(v).search(sentence)
+        if m:
+            return (html_escape(sentence[: m.start()])
+                    + "<b>" + html_escape(sentence[m.start(): m.end()]) + "</b>"
+                    + html_escape(sentence[m.end():]))
+    targets = {v.lower() for v in variants if " " not in v}
+    if targets:
+        for m in _WORD_RE.finditer(sentence):
+            if _possible_roots(m.group(0)) & targets:
+                return (html_escape(sentence[: m.start()])
+                        + "<b>" + html_escape(m.group(0)) + "</b>"
+                        + html_escape(sentence[m.end():]))
+    return html_escape(sentence)
+
+
 def load_decks():
     rows = []
     for tsv in sorted(VOCAB_DIR.glob("*.tsv")):
@@ -844,8 +956,15 @@ def load_decks():
                 if len(row) < 3:
                     continue
                 front, back, tags = row[0].strip(), row[1].strip(), parse_tags(row[2])
-                if front:
-                    rows.append({"front": front, "back": back, "tags": tags, "deck": tsv.stem})
+                if not front:
+                    continue
+                card = {"front": front, "back": back, "tags": tags, "deck": tsv.stem}
+                example = row[3].strip() if len(row) > 3 else ""
+                if example:
+                    card["exampleHtml"] = highlight(front, example)
+                    if len(row) > 4 and row[4].strip():
+                        card["exampleEn"] = row[4].strip()
+                rows.append(card)
     # dedupe by front, first occurrence wins
     seen = set()
     deduped = []
@@ -857,15 +976,47 @@ def load_decks():
     return deduped
 
 
+MIN_HEARD_SCORE = 0     # below this, no transcript line is worth quoting
+
+
+def _heard_score(term, text, match, has_en):
+    """How good a transcript line is as the "heard in the recording" quote.
+
+    The old rule — take the first line containing the word — pulled in some
+    genuinely misleading quotes: "malu" matched the place name *Malu*, "tua"
+    matched *orang tua* (parents) buried in a 20-word ramble. Scoring every
+    occurrence and keeping the best one costs one extra pass and fixes both.
+    """
+    words = len(text.split())
+    score = 0
+    if has_en:
+        score += 40          # a line with no translation is half a quote
+    if 3 <= words <= 12:
+        score += 30          # short enough to read on the back of a card
+    elif words <= 18:
+        score += 15
+    elif words <= 25:
+        score += 5
+    else:
+        score -= 10
+    surface = text[match.start(): match.end()]
+    if term[:1].islower() and surface[:1].isupper() and match.start() > 0:
+        score -= 60          # capitalised mid-sentence: a name, not the word
+    if text.rstrip().endswith((".", "?", "!")):
+        score += 5
+    return score
+
+
 def attach_context(deck):
     """Give each card the family actually saying its word, where they do.
 
-    Finds the first real Indonesian transcript line containing the term and
-    attaches the clip bounds plus the sentence, so the card can play authentic
-    audio and show the word in context. Only ~104 of 274 cards match — the
-    standalone reference decks (adjectives, comparisons, connectors) mostly
-    aren't drawn from the conversation. Those get no audio fields and the page
-    falls back to speech synthesis for them.
+    Scores every real Indonesian transcript line containing the term and keeps
+    the best one (see _heard_score), attaching the clip bounds plus the
+    sentence so the card can play authentic audio alongside its written
+    example. Roughly half the deck matches — the standalone reference decks
+    (adjectives, comparisons, connectors, and the everyday-vocabulary decks)
+    mostly aren't drawn from the conversation. Those get no audio fields and
+    the page falls back to speech synthesis for them.
 
     Imported lazily so build_flashcards stays usable (minus context) even if
     the transcript/audio side of the project isn't set up.
@@ -879,21 +1030,24 @@ def attach_context(deck):
         return deck, 0
     matched = 0
     for card in deck:
-        pattern = re.compile(r"(?<!\w)" + re.escape(card["front"]) + r"(?!\w)", re.IGNORECASE)
-        hit = None
+        pattern = _bounded(card["front"])
+        best = None
         for convo in convos:
             for i, e in enumerate(convo["entries"]):
                 if e["lang"] != "Indonesian":
                     continue
                 m = pattern.search(e["text"])
-                if m:
-                    hit = (convo, i, e, m)
-                    break
-            if hit:
-                break
-        if not hit:
+                if not m:
+                    continue
+                score = _heard_score(card["front"], e["text"], m, bool(e.get("en")))
+                if best is None or score > best[0]:
+                    best = (score, convo, i, e, m)
+        if best is None or best[0] < MIN_HEARD_SCORE:
+            # Every occurrence was a bad quote — an untranslated ramble, or the
+            # word only showing up as part of a name. Better no recording than
+            # one that teaches the wrong sense; the card falls back to TTS.
             continue
-        convo, i, e, m = hit
+        _, convo, i, e, m = best
         entries = convo["entries"]
         next_sec = entries[i + 1]["sec"] if i + 1 < len(entries) else e["sec"] + 6
         card["audio"] = convo["audio"]
