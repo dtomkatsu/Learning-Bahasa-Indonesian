@@ -35,6 +35,7 @@ import re
 from html import escape as html_escape
 from pathlib import Path
 
+from _boost_js import BOOST_JS
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
 from _record_js import REC_JS
@@ -118,6 +119,10 @@ PAGE = """<!doctype html>
   #card .back .heard { color:var(--muted); font-size:0.82rem; }
   #card .back .heard .heardLbl { font-size:0.66rem; letter-spacing:0.06em;
     text-transform:uppercase; opacity:0.75; margin-bottom:4px; }
+  #card .back .heard .heardPlay { display:block; margin-top:8px; padding:4px 10px;
+    font-size:0.74rem; color:var(--muted); background:none;
+    border:1px solid var(--line); border-radius:8px; cursor:pointer; }
+  #card .back .heard .heardPlay:hover { color:var(--fg); }
   .playRow { display:flex; align-items:center; gap:10px; justify-content:center;
     margin:-6px 0 14px; }
   button.playBtn { font-size:0.82rem; padding:7px 13px; border-radius:8px;
@@ -281,6 +286,7 @@ __SRS_JS__
 __SYNC_JS__
 __TTS_JS__
 __REC_JS__
+__BOOST_JS__
 const BUILTIN_DECK = __DATA__;
 const SRS_KEY = 'bahasa:flashcards:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:flashcards:v1', 'bahasa:flashcards:srs:v1'];
@@ -448,9 +454,19 @@ function showCard(card) {
       (current.exampleEn ? `<div class="exEn">${escapeHtml(current.exampleEn)}</div>` : '');
   }
   if (current.sentenceHtml) {
+    // The quote keeps its own play control: when a clearer clip owns the main
+    // button, this is where the family's actual voice stays one tap away.
     cardEl.querySelector('.heard').innerHTML = '<div class="heardLbl">Heard in the recording</div>' +
       current.sentenceHtml +
-      (current.exTranslation ? `<div class="exEn">${escapeHtml(current.exTranslation)}</div>` : '');
+      (current.exTranslation ? `<div class="exEn">${escapeHtml(current.exTranslation)}</div>` : '') +
+      (current.audio && modelSrc()
+        ? '<button type="button" class="heardPlay">&#9654; play the family clip</button>' : '');
+    const hp = cardEl.querySelector('.heardPlay');
+    if (hp) hp.addEventListener('click', e => {
+      e.stopPropagation();                    // the card itself flips on click
+      if (!cardAudio.paused) { cardAudio.pause(); stopAt = null; return; }
+      playFamilyClip();
+    });
   }
   rateRow.hidden = true;
   cardMeta.hidden = true;
@@ -608,15 +624,19 @@ function togglePanel(id) {
 }
 
 // ---- Audio -----------------------------------------------------------------
-// Two sources, deliberately distinguishable. Cards whose word actually occurs
-// in the recording play the family saying it, in context — that's the point of
-// the project. The rest (most of the standalone reference decks) fall back to
-// the device's Indonesian speech synthesis, which is clearly labelled so a
-// synthetic voice is never mistaken for how these people really talk.
+// Up to four sources per card, deliberately distinguishable — and since the
+// 2026-08 retool, ordered by how good a *model* they are rather than by
+// authenticity. The family recordings are phone audio captured across rooms:
+// unbeatable as comprehension material, but often too faint to imitate. So
+// "Hear it" now prefers a clear clip (a real Lingua Libre volunteer where one
+// exists, else the generated studio voice), and the family line is kept as a
+// separately-played quote under "Heard in the recording" — demoted, never
+// hidden, and each source still says plainly what it is.
 const cardAudio = document.getElementById('cardAudio');
 const playBtn = document.getElementById('playBtn');
 const playNote = document.getElementById('playNote');
 let stopAt = null;
+boostAttach(cardAudio);
 
 cardAudio.addEventListener('timeupdate', () => {
   if (stopAt !== null && cardAudio.currentTime >= stopAt) { cardAudio.pause(); stopAt = null; }
@@ -626,28 +646,34 @@ ttsOnVoicesChanged(updatePlayRow);
 
 // Before the flip you're recalling the word, so the word is the useful
 // prompt; after it, the sentence is what's worth modelling. Returns the
-// generated clip for whichever that is, or '' when there isn't one.
+// clearest clip for whichever that is — a volunteer's real voice beats the
+// studio voice for a single word — or '' when there isn't one.
 function modelSrc() {
   if (!current) return '';
   if (flipped && current.exampleSrc) return current.exampleSrc;
-  if (!flipped && current.wordSrc) return current.wordSrc;
-  return (current.wordSrc || current.exampleSrc || '');
+  if (!flipped && (current.llSrc || current.wordSrc)) return current.llSrc || current.wordSrc;
+  return (current.llSrc || current.wordSrc || current.exampleSrc || '');
 }
 
 function updatePlayRow() {
   if (!current) { playBtn.disabled = true; playNote.textContent = ''; return; }
-  if (current.audio) {
-    playBtn.disabled = false;
-    playBtn.innerHTML = '&#9654; Hear it';
-    playNote.textContent = 'real recording';
-  } else if (modelSrc()) {
-    // A generated clip is a real Indonesian voice, but it is still not these
-    // people — three sources, three labels, so none can be mistaken for another.
+  const src = modelSrc();
+  if (src) {
+    // A clear clip is the model to imitate, but it is still not these people —
+    // one label per source, so none can be mistaken for another.
     playBtn.disabled = false;
     playBtn.innerHTML = '&#128266; Hear it';
-    playNote.textContent = flipped && current.exampleSrc
-      ? 'example sentence · studio voice, not the family'
-      : 'studio voice — not the family';
+    if (!flipped && current.llSrc) {
+      playNote.textContent = 'real voice — a volunteer, not the family';
+    } else {
+      playNote.textContent = flipped && current.exampleSrc
+        ? 'example sentence · studio voice, not the family'
+        : 'studio voice — not the family';
+    }
+  } else if (current.audio) {
+    playBtn.disabled = false;
+    playBtn.innerHTML = '&#9654; Hear it';
+    playNote.textContent = 'real recording — may be faint';
   } else if (ttsVoice) {
     playBtn.disabled = false;
     playBtn.innerHTML = '&#128266; Hear it';
@@ -670,14 +696,20 @@ function stopAudio() {
 
 function playCurrent() {
   if (!current) return;
+  if (modelSrc()) {
+    cardAudio.pause();
+    stopAt = null;
+    ttsSay(flipped && current.example ? current.example : current.front, modelSrc());
+    return;
+  }
   if (current.audio) {
     ttsStop();
     if (!cardAudio.paused) { cardAudio.pause(); stopAt = null; return; }
-    playModel();
+    playFamilyClip();
     return;
   }
   cardAudio.pause();
-  ttsSay(flipped && current.example ? current.example : current.front, modelSrc());
+  ttsSay(flipped && current.example ? current.example : current.front, '');
 }
 
 // Same audio as "Hear it", but always plays from the start and resolves when
@@ -685,10 +717,19 @@ function playCurrent() {
 // before it plays your attempt back.
 function playModel() {
   if (!current) return Promise.resolve();
-  if (!current.audio) {
+  if (modelSrc() || !current.audio) {
     cardAudio.pause();
     return ttsSay(flipped && current.example ? current.example : current.front, modelSrc());
   }
+  return playFamilyClip();
+}
+
+// The family's own line, played as a clip: from this card's timestamp to the
+// next line's. Kept even where a clearer model exists — hearing how the word
+// sounds inside this family's real speech is the project's whole point; it's
+// just no longer the audio you're asked to imitate.
+function playFamilyClip() {
+  if (!current || !current.audio) return Promise.resolve();
   ttsStop();
   return new Promise(resolve => {
     let settled = false;
@@ -1058,6 +1099,7 @@ def highlight(term, sentence):
 
 
 TTS_INDEX_PATH = ROOT / "audio" / "tts" / "index.json"
+LL_INDEX_PATH = ROOT / "audio" / "ll" / "index.json"
 
 
 def load_tts_index():
@@ -1075,8 +1117,23 @@ def load_tts_index():
         return {}
 
 
+def load_ll_index():
+    """front -> Lingua Libre clip info, empty until fetch_lingualibre.py runs.
+
+    Same partial-index philosophy as the TTS index: whatever volunteer
+    recordings exist get used, everything else falls through the chain.
+    """
+    if not LL_INDEX_PATH.exists():
+        return {}
+    try:
+        return json.loads(LL_INDEX_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
 def load_decks():
     tts = load_tts_index()
+    ll = load_ll_index()
     rows = []
     for tsv in sorted(VOCAB_DIR.glob("*.tsv")):
         with open(tsv, encoding="utf-8") as f:
@@ -1092,6 +1149,10 @@ def load_decks():
                 spoken = front.split(" / ")[0].strip()
                 if spoken in tts:
                     card["wordSrc"] = f"audio/tts/{tts[spoken]}"
+                # A real volunteer's voice outranks the studio voice for the
+                # word itself; the page prefers llSrc when both exist.
+                if spoken.lower() in ll:
+                    card["llSrc"] = f"audio/ll/{ll[spoken.lower()]['file']}"
                 tip = say_tip(front)
                 if tip:
                     card["sayTip"] = tip
@@ -1211,16 +1272,20 @@ def main():
         .replace("__SYNC_JS__", SYNC_JS)
         .replace("__TTS_JS__", TTS_JS)
         .replace("__REC_JS__", REC_JS)
+        .replace("__BOOST_JS__", BOOST_JS)
         .replace("__VOCAB_JS__", VOCAB_JS)
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")
-    generated = sum(1 for c in deck
-                    if not c.get("audio") and (c.get("wordSrc") or c.get("exampleSrc")))
-    fallback = len(deck) - matched - generated
+    volunteer = sum(1 for c in deck if c.get("llSrc"))
+    clip = sum(1 for c in deck
+               if c.get("llSrc") or c.get("wordSrc") or c.get("exampleSrc"))
+    fallback = sum(1 for c in deck
+                   if not (c.get("llSrc") or c.get("wordSrc") or c.get("exampleSrc")
+                           or c.get("audio")))
     print(f"wrote {OUT} with {len(deck)} cards from {len(list(VOCAB_DIR.glob('*.tsv')))} deck(s); "
-          f"{matched} with real audio, {generated} with a generated voice clip, "
-          f"{fallback} rely on the device's speech synthesis")
+          f"{clip} with a clear clip ({volunteer} volunteer-recorded), "
+          f"{matched} with family audio, {fallback} rely on the device's speech synthesis")
 
 
 if __name__ == "__main__":

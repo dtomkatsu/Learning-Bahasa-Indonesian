@@ -124,6 +124,25 @@ tier still covers it — verify at signup rather than assuming the earlier
 doc's free-tier recommendation automatically extends to a multi-voice
 feature it didn't originally scope.
 
+**Confirmed directly against the live API, 2026-08-01** (this account was on
+free tier at the time): the third-party reporting above had the wrong shape.
+Voice Library *search* (`GET v1/shared-voices`) is NOT paid-gated — it
+returned real results on free tier with no error. The actual wall is at
+*generation*: `POST v1/text-to-speech/{voice_id}` against any Voice Library
+voice_id returns `402 payment_required` —
+`"Free users cannot use library voices via the API. Please upgrade your
+subscription to use this voice."` — even for a single word, so it's not a
+credit-quota effect either. This happened even after that voice_id showed up
+in this account's own `GET v1/voices` list (category `professional`), so
+being listed there doesn't imply the plan will let you generate with it.
+ElevenLabs' own **premade** voices (the stock catalogue in `GET v1/voices`
+with category `premade` — Adam, Alice, Sarah, etc.) generated Indonesian
+speech on free tier without issue, `language_code: "id"` included. Net: on
+free tier you can browse the library and prototype the pipeline with a
+premade voice, but you cannot generate with a real Indonesian community
+voice via the API at any volume — that specifically requires a paid plan,
+independent of both the credit math and the voice-slot-cap question above.
+
 **One thing I looked into and am recommending against outright**: Instant
 Voice Cloning (`POST v1/voices/add` with `files`) could technically clone a
 real person's voice from a short recording — including, mechanically

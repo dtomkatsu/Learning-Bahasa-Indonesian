@@ -48,6 +48,7 @@ from pathlib import Path
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
 from _tts_js import TTS_JS
+from _boost_js import BOOST_JS
 from build_flashcards import load_tts_index
 from _vocab_text import bounded, find_term
 
@@ -583,11 +584,13 @@ PAGE = """<!doctype html>
 __SRS_JS__
 __SYNC_JS__
 __TTS_JS__
+__BOOST_JS__
 const ITEMS = __DATA__;
 const SRS_KEY = 'bahasa:quiz:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:quiz:v1', 'bahasa:quiz:srs:v1'];
 // FLAG_KEY comes from the shared sync module above.
 const audio = document.getElementById('qaudio');
+boostAttach(audio);   // family phone audio only — TTS clips are already at studio level
 
 let srs = srsMigrateLegacy(SRS_KEY, LEGACY_KEYS);
 let practiceAhead = false;
@@ -1167,6 +1170,7 @@ def main():
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
         .replace("__TTS_JS__", TTS_JS)
+        .replace("__BOOST_JS__", BOOST_JS)
         .replace("__DATA__", json.dumps(items, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")

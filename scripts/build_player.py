@@ -23,6 +23,7 @@ from html import escape
 from pathlib import Path
 
 from _sync_js import SYNC_JS
+from _boost_js import BOOST_JS
 
 ENTRY_RE = re.compile(
     r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(Speaker \d+):\s*\n\[(\w+)\]\s*\"(.*)\"",
@@ -150,8 +151,10 @@ PAGE = """<!doctype html>
 <div id="list"></div>
 <script>
 __SYNC_JS__
+__BOOST_JS__
 const DATA = __DATA__;
 const audio = document.getElementById('audio');
+boostAttach(audio);   // lifts the across-the-room speech to a workable level
 const list = document.getElementById('list');
 let loopIdx = null;
 
@@ -396,6 +399,7 @@ def main():
 
     html = (
         PAGE.replace("__SYNC_JS__", SYNC_JS)
+        .replace("__BOOST_JS__", BOOST_JS)
         .replace("__TITLE__", escape(args.title))
         .replace("__AUDIO__", escape(args.audio_path))
         .replace("__DATA__", json.dumps(entries, ensure_ascii=False))
