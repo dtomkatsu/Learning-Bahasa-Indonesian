@@ -187,6 +187,8 @@ PAGE = """<!doctype html>
   button.plain:disabled { opacity:0.4; cursor:default; }
   button.plain.active { border-color:var(--accent); color:var(--accent); }
   button.plain.danger:hover { border-color:var(--again); color:var(--again); }
+  .speedGroup { display:inline-flex; gap:4px; margin-left:auto; }
+  .speedGroup button { padding:6px 8px; }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -213,6 +215,12 @@ PAGE = """<!doctype html>
     <button class="plain" id="browseToggleBtn">Browse</button>
     <button class="plain" id="addToggleBtn">+ Card</button>
     <button class="plain" id="bulkToggleBtn">+ List</button>
+    <span class="speedGroup" id="speedGroup" title="Speed of generated/volunteer clips — real family audio is unaffected">
+      <button class="plain" data-rate="0.75">0.75x</button>
+      <button class="plain active" data-rate="0.9">0.9x</button>
+      <button class="plain" data-rate="1">1x</button>
+      <button class="plain" data-rate="1.25">1.25x</button>
+    </span>
   </div>
   <div class="panel" id="filterPanel" hidden>
     <input id="searchBox" placeholder="Search Indonesian or English…">
@@ -652,6 +660,16 @@ cardAudio.addEventListener('timeupdate', () => {
 });
 
 ttsOnVoicesChanged(updatePlayRow);
+
+// Speed applies to generated and volunteer clips only (see _tts_js.py) — real
+// family recordings play at their own pace, unaffected.
+document.querySelectorAll('#speedGroup button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#speedGroup button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    ttsSetRate(parseFloat(b.dataset.rate));
+  });
+});
 
 // Before the flip you're recalling the word, so the word is the useful
 // prompt; after it, the sentence is what's worth modelling. Returns the

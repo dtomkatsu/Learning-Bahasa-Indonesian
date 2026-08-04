@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
 """
-Pre-generate spoken audio for every vocab card, using ElevenLabs, at build
-time — so the shipped site is static files and no API key ever reaches a
-browser.
+Pre-generate spoken audio for every card's example sentence, using
+ElevenLabs, at build time — so the shipped site is static files and no API
+key ever reaches a browser.
 
-Why this exists: 568 of the 997 flashcards and all 984 fill-the-blank items
-have no recording of the family behind them, because the family never happened
-to say those words. Those cards fall back to the device's own speech
-synthesis, which on a typical desktop browser means no Indonesian voice at all
-and a disabled button. This fills that gap.
+Why this exists: the example sentences were written for this deck, so no
+recording of them exists or ever could — not in the family audio, not in any
+corpus of real speech. They currently fall back to the device's own speech
+synthesis, which on a typical desktop browser means no Indonesian voice at
+all and a disabled button. That covers the ~570 flashcard backs and all 984
+fill-the-blank items whose only audio is their sentence.
+
+Sentences only, deliberately — see load_texts() for why the bare card words
+are not generated, and notes/audio-retool.md for the source hierarchy that
+already gives 577 of those words a real volunteer recording instead.
+
+Generated at the model's natural speaking rate on purpose. Slower audio does
+help L2 listening, but the evidence favours giving the *learner* the control
+(Zhao 1997) over baking one fixed rate in, and artificially slowing synthesis
+risks flattening exactly the syllable-timed rhythm that scripts/_rhythm_tip.py
+teaches — so speed is a playback-side control, not a generation-side one.
 
 Why build-time and not a call from the page: an ElevenLabs key is a billable
 credential. Calling the API from the browser would work, but the key would sit
@@ -69,46 +80,30 @@ OUTPUT_FORMAT = "mp3_22050_32"
 CREDITS_PER_CHAR = 0.5
 
 
-LL_INDEX_PATH = ROOT / "audio" / "ll" / "index.json"
-
-
-def load_ll_words():
-    """Fronts already covered by a real Lingua Libre volunteer recording.
-
-    Since the 2026-08 audio retool, flashcards prefer a real volunteer clip
-    over a generated one for the word itself (see notes/audio-retool.md) — a
-    generated clip for one of these fronts would never be played, so it isn't
-    worth the credits. Sentences aren't in this index at all (Lingua Libre
-    only has isolated words), so they're never affected by this.
-    """
-    if not LL_INDEX_PATH.exists():
-        return set()
-    try:
-        return set(json.loads(LL_INDEX_PATH.read_text(encoding="utf-8")))
-    except (json.JSONDecodeError, OSError):
-        return set()
-
-
 def load_texts():
-    """Every distinct string worth speaking: each card's word and its example.
+    """Every example sentence — and deliberately NOT the bare card words.
+
+    Sentences only, decided 2026-08-03 after tracing where generated word
+    audio was actually consumed: `wordSrc` reaches exactly one control, the
+    front-of-card "Hear it" button in flashcards.html, and nothing else.
+    modelSrc() prefers the sentence clip the moment the card is flipped, so
+    say-it-yourself never uses it; Catch it, Minimal pairs and every quiz
+    mode ignore it entirely (grep for wordSrc — quiz/study/index have zero
+    references). Real Lingua Libre volunteer recordings already cover 577 of
+    the fronts for that one button anyway, and voicing single words also cuts
+    against this deck's own rule that a word is never learned as a bare gloss.
+    ~8% of the spend for a feature nothing depends on.
 
     Same source and same reading as build_flashcards.load_decks, deliberately
     kept to a plain re-read rather than an import — this script has to stay
     runnable even if the rest of the build is mid-edit.
     """
-    ll_words = load_ll_words()
     seen = {}
     for tsv in sorted(VOCAB_DIR.glob("*.tsv")):
         with open(tsv, encoding="utf-8") as f:
             for row in csv.reader(f, delimiter="\t"):
                 if len(row) < 3 or not row[0].strip():
                     continue
-                # A slash-separated front ("loh / lho", "tetapi / tapi") is two
-                # spellings of one word; speaking the slash aloud would be
-                # nonsense, so only the first is voiced.
-                front = row[0].split(" / ")[0].strip()
-                if front and front.lower() not in ll_words:
-                    seen.setdefault(front, "word")
                 if len(row) > 3 and row[3].strip():
                     seen.setdefault(row[3].strip(), "sentence")
     return seen
@@ -347,8 +342,7 @@ def main():
     missing = [r for r in rows if not r["exists"]]
     chars = sum(len(r["text"]) for r in missing)
 
-    print(f"{len(rows)} clips wanted ({sum(1 for r in rows if r['kind'] == 'word')} words, "
-          f"{sum(1 for r in rows if r['kind'] == 'sentence')} sentences)")
+    print(f"{len(rows)} example sentences wanted")
     print(f"{len(rows) - len(missing)} already generated, {len(missing)} missing "
           f"({chars:,} characters -> ~{chars * CREDITS_PER_CHAR:,.0f} credits "
           f"on {args.model})")

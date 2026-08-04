@@ -31,6 +31,21 @@ let ttsVoice = null;
 // only covers about half the deck at a time.
 const ttsClipAudio = typeof Audio !== 'undefined' ? new Audio() : null;
 
+// Learner-controlled playback speed. Research on this specifically (Zhao
+// 1997; see notes/sentence-pronunciation-scope.md) found giving listeners
+// control over rate improved L2 comprehension, and that this beat any single
+// fixed rate imposed on them — so this is a page-level setting the learner
+// picks, not a generation-time choice. Deliberately NOT applied to real
+// family clips: those already have their own rate control in the player,
+// and slowing a generated voice is a much smaller risk to naturalness than
+// slowing real speech would be.
+let ttsRate = 0.9;
+
+function ttsSetRate(rate) {
+  ttsRate = rate;
+  if (ttsClipAudio) ttsClipAudio.playbackRate = rate;
+}
+
 function ttsHasClip(src) { return !!(src && ttsClipAudio); }
 
 // Same contract as ttsSpeak: resolves when the audio finishes, so callers can
@@ -52,6 +67,7 @@ function ttsPlayClip(src) {
     ttsClipAudio.addEventListener('ended', onEnd);
     ttsClipAudio.addEventListener('error', onErr);
     ttsClipAudio.src = src;
+    ttsClipAudio.playbackRate = ttsRate;
     ttsClipAudio.currentTime = 0;
     ttsClipAudio.play().catch(() => done(false));
   });
@@ -107,7 +123,7 @@ function ttsSpeak(text, rate) {
     const u = new SpeechSynthesisUtterance(text);
     u.voice = ttsVoice;
     u.lang = ttsVoice.lang;
-    u.rate = rate || 0.9;
+    u.rate = rate || ttsRate;
     // 'end' fires on cancel() too, so an interrupted utterance still settles
     // rather than leaving the caller's await hanging forever.
     u.addEventListener('end', () => resolve(true));

@@ -137,6 +137,8 @@
   button.plain:disabled { opacity:0.4; cursor:default; }
   button.plain.active { border-color:var(--accent); color:var(--accent); }
   button.plain.danger:hover { border-color:var(--again); color:var(--again); }
+  .speedGroup { display:inline-flex; gap:4px; margin-left:auto; }
+  .speedGroup button { padding:6px 8px; }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -163,6 +165,12 @@
     <button class="plain" id="browseToggleBtn">Browse</button>
     <button class="plain" id="addToggleBtn">+ Card</button>
     <button class="plain" id="bulkToggleBtn">+ List</button>
+    <span class="speedGroup" id="speedGroup" title="Speed of generated/volunteer clips — real family audio is unaffected">
+      <button class="plain" data-rate="0.75">0.75x</button>
+      <button class="plain active" data-rate="0.9">0.9x</button>
+      <button class="plain" data-rate="1">1x</button>
+      <button class="plain" data-rate="1.25">1.25x</button>
+    </span>
   </div>
   <div class="panel" id="filterPanel" hidden>
     <input id="searchBox" placeholder="Search Indonesian or English…">
@@ -808,6 +816,21 @@ let ttsVoice = null;
 // only covers about half the deck at a time.
 const ttsClipAudio = typeof Audio !== 'undefined' ? new Audio() : null;
 
+// Learner-controlled playback speed. Research on this specifically (Zhao
+// 1997; see notes/sentence-pronunciation-scope.md) found giving listeners
+// control over rate improved L2 comprehension, and that this beat any single
+// fixed rate imposed on them — so this is a page-level setting the learner
+// picks, not a generation-time choice. Deliberately NOT applied to real
+// family clips: those already have their own rate control in the player,
+// and slowing a generated voice is a much smaller risk to naturalness than
+// slowing real speech would be.
+let ttsRate = 0.9;
+
+function ttsSetRate(rate) {
+  ttsRate = rate;
+  if (ttsClipAudio) ttsClipAudio.playbackRate = rate;
+}
+
 function ttsHasClip(src) { return !!(src && ttsClipAudio); }
 
 // Same contract as ttsSpeak: resolves when the audio finishes, so callers can
@@ -829,6 +852,7 @@ function ttsPlayClip(src) {
     ttsClipAudio.addEventListener('ended', onEnd);
     ttsClipAudio.addEventListener('error', onErr);
     ttsClipAudio.src = src;
+    ttsClipAudio.playbackRate = ttsRate;
     ttsClipAudio.currentTime = 0;
     ttsClipAudio.play().catch(() => done(false));
   });
@@ -884,7 +908,7 @@ function ttsSpeak(text, rate) {
     const u = new SpeechSynthesisUtterance(text);
     u.voice = ttsVoice;
     u.lang = ttsVoice.lang;
-    u.rate = rate || 0.9;
+    u.rate = rate || ttsRate;
     // 'end' fires on cancel() too, so an interrupted utterance still settles
     // rather than leaving the caller's await hanging forever.
     u.addEventListener('end', () => resolve(true));
@@ -1408,6 +1432,16 @@ cardAudio.addEventListener('timeupdate', () => {
 });
 
 ttsOnVoicesChanged(updatePlayRow);
+
+// Speed applies to generated and volunteer clips only (see _tts_js.py) — real
+// family recordings play at their own pace, unaffected.
+document.querySelectorAll('#speedGroup button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#speedGroup button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    ttsSetRate(parseFloat(b.dataset.rate));
+  });
+});
 
 // Before the flip you're recalling the word, so the word is the useful
 // prompt; after it, the sentence is what's worth modelling. Returns the

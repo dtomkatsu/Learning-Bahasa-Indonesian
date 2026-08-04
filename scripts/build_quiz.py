@@ -643,6 +643,8 @@ PAGE = """<!doctype html>
   button.plain:disabled { opacity:0.4; cursor:default; }
   button.plain.active { border-color:var(--accent); color:var(--accent); }
   button.plain.danger:hover { border-color:var(--again); color:var(--again); }
+  .speedGroup { display:inline-flex; gap:4px; }
+  .speedGroup button { padding:6px 8px; }
   .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
   .panel { border:1px solid var(--line); border-radius:10px; background:var(--card);
     padding:12px; margin-bottom:16px; }
@@ -674,6 +676,12 @@ PAGE = """<!doctype html>
     <button class="modeBtn" data-mode="sentence">Sentence</button>
     <button class="modeBtn" data-mode="listening">Listening</button>
   </div>
+  <span class="speedGroup" id="speedGroup" title="Speed of generated/volunteer clips — real family audio is unaffected">
+    <button class="plain" data-rate="0.75">0.75x</button>
+    <button class="plain active" data-rate="0.9">0.9x</button>
+    <button class="plain" data-rate="1">1x</button>
+    <button class="plain" data-rate="1.25">1.25x</button>
+  </span>
   <div class="modeHint" id="modeHint"></div>
   <div class="stats" id="stats"></div>
   <div class="controls">
@@ -822,6 +830,16 @@ function setMode(m) {
 
 document.querySelectorAll('.modeBtn').forEach(b => {
   b.addEventListener('click', () => { setMode(b.dataset.mode); pickNext(); });
+});
+
+// Speed applies to generated and volunteer clips only (see _tts_js.py) — real
+// family recordings (Catch it, Sentence, Listening) play at their own pace.
+document.querySelectorAll('#speedGroup button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('#speedGroup button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    ttsSetRate(parseFloat(b.dataset.rate));
+  });
 });
 
 modeHintEl.textContent = MODE_HINTS[mode];
