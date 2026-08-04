@@ -57,6 +57,7 @@ from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
 from _tts_js import TTS_JS
 from _boost_js import BOOST_JS
+from _rhythm_tip import RHYTHM_TIP_TEXT
 from build_flashcards import load_tts_index, load_ll_index
 from _vocab_text import bounded, find_term
 
@@ -578,6 +579,12 @@ PAGE = """<!doctype html>
   .prompt { font-size:1.15rem; line-height:1.5; margin-bottom:6px; }
   .prompt .blank { color:var(--blank); font-weight:700; letter-spacing:1px; }
   .hint { color:var(--muted); font-size:0.82rem; margin-bottom:16px; }
+  .rhythmTip { max-width:460px; margin:0 auto 16px; padding:9px 12px; border-radius:8px;
+    background:var(--card); border:1px solid var(--line); color:var(--muted);
+    font-size:0.78rem; line-height:1.5; text-align:left; }
+  .rhythmTip b { color:var(--accent); }
+  .rhythmTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
+    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
   .playrow { margin-bottom:14px; }
   button.play { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--accent);
     background:transparent; color:var(--accent); cursor:pointer; }
@@ -695,6 +702,7 @@ __SYNC_JS__
 __TTS_JS__
 __BOOST_JS__
 const ITEMS = __DATA__;
+const RHYTHM_TIP_HTML = '<div class="rhythmTip"><span class="lbl">Sentence rhythm</span>__RHYTHM_TIP__</div>';
 const SRS_KEY = 'bahasa:quiz:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:quiz:v1', 'bahasa:quiz:srs:v1'];
 // FLAG_KEY comes from the shared sync module above.
@@ -1104,14 +1112,17 @@ function renderCard() {
     promptText = srsIsTouch()
       ? '🎧 Listen — no peeking. Tap play and try to catch the whole line.'
       : '🎧 Listen — no peeking. Press play (or "p") and try to catch the whole line.';
-    hintLine = '';
+    // A standing reminder about Indonesian's rhythm, not per-line content —
+    // it's the same for every item, so it gives nothing about this specific
+    // line away and doesn't compromise "no peeking".
+    hintLine = RHYTHM_TIP_HTML;
     revealInner = `
       <div class="id">${current.sentenceHtml}</div>
       <div class="en">${escapeHtml(current.translation)}</div>
     `;
   } else if (current.kind === 'sentence') {
     promptText = current.sentenceHtml;
-    hintLine = '';
+    hintLine = RHYTHM_TIP_HTML;
     revealInner = `<div class="en">${escapeHtml(current.translation)}</div>`;
   } else {
     promptText = current.mode === 'cloze'
@@ -1353,6 +1364,7 @@ def main():
         .replace("__SYNC_JS__", SYNC_JS)
         .replace("__TTS_JS__", TTS_JS)
         .replace("__BOOST_JS__", BOOST_JS)
+        .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
         .replace("__DATA__", json.dumps(items, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")

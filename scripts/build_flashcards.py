@@ -36,6 +36,7 @@ from html import escape as html_escape
 from pathlib import Path
 
 from _boost_js import BOOST_JS
+from _rhythm_tip import RHYTHM_TIP_TEXT
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
 from _record_js import REC_JS
@@ -151,6 +152,13 @@ PAGE = """<!doctype html>
   .sayTip b { color:var(--accent); }
   .sayTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
     text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
+  .rhythmTip { max-width:460px; margin:0 auto 16px; padding:9px 12px; border-radius:8px;
+    background:var(--card); border:1px solid var(--line); color:var(--muted);
+    font-size:0.78rem; line-height:1.5; text-align:left; }
+  .rhythmTip[hidden] { display:none; }
+  .rhythmTip b { color:var(--accent); }
+  .rhythmTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
+    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
   .rate { display:flex; gap:8px; }
   button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
@@ -258,6 +266,7 @@ atau – or"></textarea>
     <span class="sayNote" id="sayNote"></span>
   </div>
   <div class="sayTip" id="sayTip" hidden></div>
+  <div class="rhythmTip" id="rhythmTip" hidden><span class="lbl">Sentence rhythm</span>__RHYTHM_TIP__</div>
   <div class="hint" id="hint"></div>
   <div class="rate" id="rateRow" hidden>
     <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
@@ -767,6 +776,7 @@ function playFamilyClip() {
 // which is what sayTip carries. The clip never leaves the page.
 const sayRow = document.getElementById('sayRow');
 const sayTipEl = document.getElementById('sayTip');
+const rhythmTipEl = document.getElementById('rhythmTip');
 const sayNote = document.getElementById('sayNote');
 const recBtn = document.getElementById('recBtn');
 const cmpBtn = document.getElementById('cmpBtn');
@@ -783,6 +793,10 @@ function updateSayRow() {
   }
   cmpBtn.disabled = !recHasClip() || comparing;
   recBtn.disabled = comparing;
+  // Independent of mic support — useful whether or not you can record, since
+  // it applies to reading/listening/shadowing the sentence too, not just the
+  // compare loop.
+  rhythmTipEl.hidden = !(flipped && current && current.example);
 }
 
 function resetSay() {
@@ -1287,6 +1301,7 @@ def main():
         .replace("__TTS_JS__", TTS_JS)
         .replace("__REC_JS__", REC_JS)
         .replace("__BOOST_JS__", BOOST_JS)
+        .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
         .replace("__VOCAB_JS__", VOCAB_JS)
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
     )

@@ -63,6 +63,13 @@
   body.show-flagged .row.flagged .rowbtns { opacity:1; }
   .row.flagged .flagbtn { background:var(--bad); color:#fff; border-color:var(--bad); }
   #hint { max-width:900px; margin:10px auto 0; padding:0 14px; font-size:0.78rem; color:var(--muted); }
+  #rhythmTip { max-width:900px; margin:10px auto 0; padding:9px 14px; border-radius:8px;
+    background:var(--bg); border:1px solid var(--line); color:var(--muted);
+    font-size:0.78rem; line-height:1.5; }
+  #rhythmTip[hidden] { display:none; }
+  #rhythmTip b { color:var(--accent); }
+  #rhythmTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
+    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
 </style>
 </head>
 <body>
@@ -84,6 +91,7 @@
   </div>
 </div>
 <div id="hint">Click any line to jump the audio there. Hover a line for "loop" (repeat one line), "+ card" (turn this line's vocab into a flashcard), or "flag" (hide silent/garbled junk). "Shadow" auto-pauses after every line so you can repeat it aloud. "Show translations" reveals an English gloss under each Indonesian line.</div>
+<div id="rhythmTip" hidden><span class="lbl">Sentence rhythm</span>Indonesian is <b>syllable-timed</b>: every syllable gets roughly equal length and weight. English is stress-timed and compresses unstressed syllables toward “duh” to keep a beat — that instinct will speed up and swallow parts of this sentence that Indonesian keeps full.</div>
 <div id="list"></div>
 <script>
 
@@ -511,9 +519,11 @@ function shadowRecalc() {
   shadowStopAt = nxt ? nxt.sec : null;
 }
 const toggleShadowBtn = document.getElementById('toggleShadow');
+const rhythmTipEl = document.getElementById('rhythmTip');
 toggleShadowBtn.addEventListener('click', () => {
   shadowOn = !shadowOn;
   toggleShadowBtn.classList.toggle('active', shadowOn);
+  rhythmTipEl.hidden = !shadowOn;
   clearTimeout(shadowTimer);
   if (shadowOn) {
     loopIdx = null;

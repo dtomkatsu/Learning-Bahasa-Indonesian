@@ -24,6 +24,7 @@ from pathlib import Path
 
 from _sync_js import SYNC_JS
 from _boost_js import BOOST_JS
+from _rhythm_tip import RHYTHM_TIP_TEXT
 
 ENTRY_RE = re.compile(
     r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(Speaker \d+):\s*\n\[(\w+)\]\s*\"(.*)\"",
@@ -127,6 +128,13 @@ PAGE = """<!doctype html>
   body.show-flagged .row.flagged .rowbtns { opacity:1; }
   .row.flagged .flagbtn { background:var(--bad); color:#fff; border-color:var(--bad); }
   #hint { max-width:900px; margin:10px auto 0; padding:0 14px; font-size:0.78rem; color:var(--muted); }
+  #rhythmTip { max-width:900px; margin:10px auto 0; padding:9px 14px; border-radius:8px;
+    background:var(--bg); border:1px solid var(--line); color:var(--muted);
+    font-size:0.78rem; line-height:1.5; }
+  #rhythmTip[hidden] { display:none; }
+  #rhythmTip b { color:var(--accent); }
+  #rhythmTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
+    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
 </style>
 </head>
 <body>
@@ -148,6 +156,7 @@ PAGE = """<!doctype html>
   </div>
 </div>
 <div id="hint">Click any line to jump the audio there. Hover a line for "loop" (repeat one line), "+ card" (turn this line's vocab into a flashcard), or "flag" (hide silent/garbled junk). "Shadow" auto-pauses after every line so you can repeat it aloud. "Show translations" reveals an English gloss under each Indonesian line.</div>
+<div id="rhythmTip" hidden><span class="lbl">Sentence rhythm</span>__RHYTHM_TIP__</div>
 <div id="list"></div>
 <script>
 __SYNC_JS__
@@ -283,9 +292,11 @@ function shadowRecalc() {
   shadowStopAt = nxt ? nxt.sec : null;
 }
 const toggleShadowBtn = document.getElementById('toggleShadow');
+const rhythmTipEl = document.getElementById('rhythmTip');
 toggleShadowBtn.addEventListener('click', () => {
   shadowOn = !shadowOn;
   toggleShadowBtn.classList.toggle('active', shadowOn);
+  rhythmTipEl.hidden = !shadowOn;
   clearTimeout(shadowTimer);
   if (shadowOn) {
     loopIdx = null;
@@ -400,6 +411,7 @@ def main():
     html = (
         PAGE.replace("__SYNC_JS__", SYNC_JS)
         .replace("__BOOST_JS__", BOOST_JS)
+        .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
         .replace("__TITLE__", escape(args.title))
         .replace("__AUDIO__", escape(args.audio_path))
         .replace("__DATA__", json.dumps(entries, ensure_ascii=False))
