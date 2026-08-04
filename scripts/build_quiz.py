@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Build quiz.html — comprehension exercises generated from real transcript
-lines, with inline audio playback of the source line. Five modes:
+lines, with inline audio playback of the source line. Six modes:
 
 - Word (cloze/recall): cross-references every vocab/*.tsv term against each
   conversation's Indonesian-language lines. A term that appears inside a
@@ -20,6 +20,14 @@ lines, with inline audio playback of the source line. Five modes:
   than one mouth — the High Variability Phonetic Training protocol, which
   is the best-evidenced technique in the pronunciation literature and the
   reason this drill uses real speakers rather than synthesis.
+- Minimal pairs: forced-choice discrimination between two real words that
+  differ by exactly one documented or near-documented English->Indonesian
+  trouble spot (schwa vs full vowel, voiced/voiceless stops, the final -k
+  glottal stop, plus general vowel/consonant contrasts). Same HVPT protocol
+  as Catch it, but isolated single words from scripts/fetch_lingualibre.py's
+  real volunteer recordings rather than a whole transcript line, and scoped
+  to a specific phonetic axis rather than general word recognition. See
+  build_pair_items() for how the item pool and audio are chosen.
 - Sentence: every Indonesian line with a translation and at least
   MIN_SENTENCE_WORDS words becomes a whole-sentence comprehension check —
   read/listen to the real line, then reveal the translation and self-rate.
@@ -49,7 +57,7 @@ from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
 from _tts_js import TTS_JS
 from _boost_js import BOOST_JS
-from build_flashcards import load_tts_index
+from build_flashcards import load_tts_index, load_ll_index
 from _vocab_text import bounded, find_term
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -336,6 +344,106 @@ def build_hear_items(vocab, convos, per_term=2):
     return items
 
 
+def _classify_pair(a, b):
+    """What one-letter substitution separates two same-length words, if any.
+
+    Same-length-only is deliberate: a substitution isolates one phonetic
+    difference cleanly, where an insertion/deletion (mata/matang) changes
+    syllable count too and confounds the thing being tested. Labelled with
+    whether notes/pronunciation-training-scope.md §3 documents this specific
+    contrast for English->Indonesian (pepet/taling, stop voicing, final -k)
+    versus a general vowel/consonant contrast with no specific citation —
+    same "don't oversell an inferred finding" discipline as SAY_TIPS.
+    """
+    if len(a) != len(b):
+        return None
+    diff = [i for i in range(len(a)) if a[i] != b[i]]
+    if len(diff) != 1:
+        return None
+    i = diff[0]
+    s = frozenset((a[i], b[i]))
+    if s in ({"e", "a"}, {"e", "i"}, {"e", "u"}):
+        return ("pepet/taling — schwa vs. full vowel", True)
+    if s in ({"p", "b"}, {"t", "d"}, {"k", "g"}):
+        return ("voiced vs. voiceless stop", True)
+    if i == len(a) - 1 and "k" in s:
+        return ("final -k glottal stop", True)
+    if s <= set("aiueo"):
+        return ("vowel contrast", False)
+    # Deliberately no general consonant-swap catch-all: an arbitrary single-
+    # letter substitution (ada/aja, agak/anak) isn't a documented or even a
+    # plausible English-L1 confusion just because it's one edit away — it's
+    # noise that would dilute the pool with pairs nobody actually mishears.
+    # Only the vowel-identity case above is kept as "general" without a
+    # specific citation; every consonant contrast in the item pool traces to
+    # a named finding in notes/pronunciation-training-scope.md §3.
+    return None
+
+
+def build_pair_items(vocab, ll_index):
+    """Minimal-pair discrimination from real Lingua Libre recordings.
+
+    HVPT's evidenced effect is training a phonetic *contrast* across real
+    talkers, same as Catch it — the difference here is the contrast is
+    chosen deliberately (one substituted sound) rather than "these two
+    words happen to sound similar", and the audio is a clean isolated word
+    rather than a whole transcript line, so nothing except the target sound
+    varies within a single clip.
+
+    Both halves of a pair must have a real volunteer recording — this never
+    falls back to a generated or device voice, same reasoning as Catch it:
+    the one study that tested synthetic-voice variability as an HVPT source
+    found no multi-talker benefit (notes/hvpt-elevenlabs-build.md).
+
+    Voice-confound note, not hidden from future maintainers: a single trial
+    is one clip judged against two options, so within that trial there is no
+    "compare two voices" leak. Across a pair's full trial set the risk is a
+    learner keying on voice identity rather than the sound if one word's
+    speakers and the other's never overlap — checked directly (2026-08-03):
+    16 of 34 voiced pairs share at least one speaker who said both words, the
+    strongest trials for this reason. The rest still draw from each word's
+    own 1-3 real speakers rather than a single fixed voice, which is a
+    partial mitigation, not a fix — flagged here rather than asserted clean.
+    """
+    fronts = {v["front"].split(" / ")[0].strip().lower(): v for v in vocab}
+    words = sorted(w for w in fronts if w.isalpha() and len(w) >= 3 and w in ll_index)
+
+    def clips(word):
+        e = ll_index[word]
+        out = [{"speaker": e["author"], "file": e["file"]}]
+        out += [{"speaker": a["author"], "file": a["file"]} for a in e.get("alts", [])]
+        return out
+
+    items = []
+    for i, a in enumerate(words):
+        for b in words[i + 1:]:
+            result = _classify_pair(a, b)
+            if not result:
+                continue
+            contrast, documented = result
+            clips_a, clips_b = clips(a), clips(b)
+            shared = {c["speaker"] for c in clips_a} & {c["speaker"] for c in clips_b}
+            trials = (
+                [{"answer": a, "src": f"audio/ll/{c['file']}", "speaker": c["speaker"]}
+                 for c in clips_a]
+                + [{"answer": b, "src": f"audio/ll/{c['file']}", "speaker": c["speaker"]}
+                   for c in clips_b]
+            )
+            va, vb = fronts[a], fronts[b]
+            items.append({
+                "id": f"pairs::{a}::{b}",
+                "kind": "pairs",
+                "options": [a, b],
+                "hints": {a: va["back"], b: vb["back"]},
+                "contrast": contrast,
+                "documented": documented,
+                "sharedSpeaker": bool(shared),
+                "tags": sorted(set(va["tags"]) | set(vb["tags"])),
+                "trials": trials,
+            })
+    return items
+
+
 def build_quiz_items(vocab, convos):
     items = []
     for v in vocab:
@@ -555,6 +663,7 @@ PAGE = """<!doctype html>
     <button class="modeBtn active" data-mode="word">Word</button>
     <button class="modeBtn" data-mode="blank">Fill the blank</button>
     <button class="modeBtn" data-mode="hear">Catch it</button>
+    <button class="modeBtn" data-mode="pairs">Minimal pairs</button>
     <button class="modeBtn" data-mode="sentence">Sentence</button>
     <button class="modeBtn" data-mode="listening">Listening</button>
   </div>
@@ -635,6 +744,7 @@ const MODE_HINTS = {
   word: 'One word blanked out of a real sentence — recall it from context.',
   blank: 'Type the missing word into the example sentence. Covers the whole deck, not just words the family happened to say — so no audio from the recording, only synthesis.',
   hear: 'A real clip plays — pick which word was in it. Every word here is one at least two different people in the recordings say, so you hear it out of more than one mouth.',
+  pairs: 'A real volunteer says one of two similar words — which one? Each pair differs by exactly one sound, often the specific thing English speakers mishear in Indonesian.',
   sentence: 'A whole real line — read or listen, then reveal the translation and rate yourself on the whole thing, not just one word.',
   listening: 'Ears only: the clip plays with the text hidden. Understand it by ear, then reveal and rate. This is the actual target skill.',
 };
@@ -907,9 +1017,78 @@ function answerHear(picked) {
   reveal();
 }
 
+// Minimal pairs. A random trial (one specific word x speaker recording) is
+// drawn fresh every time this pair comes up for review, not fixed at build
+// time — so which of the two words is "the answer" and whose voice you hear
+// both vary across repeat exposures of the same pair.
+let currentTrial = null;
+
+function renderPairsCard() {
+  currentTrial = current.trials[Math.floor(Math.random() * current.trials.length)];
+  const opts = current.options.slice();
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  cardEl.innerHTML = `
+    <div class="source">${escapeHtml(current.contrast)}${current.documented ? '' : ' · general practice'}</div>
+    <div class="prompt">🎧 Listen for it — which word is this?</div>
+    <div class="playrow"><button class="play" id="playBtn">&#9654; Play word</button></div>
+    <div class="opts" id="opts">
+      ${opts.map(o => `<button class="opt" data-opt="${escapeHtml(o)}">${escapeHtml(o)}</button>`).join('')}
+    </div>
+    <div class="verdict" id="verdict" hidden></div>
+    <div class="reveal" id="revealBox">
+      <div class="id">${current.options.map(o =>
+        (o === currentTrial.answer ? '<b>' : '') + escapeHtml(o) + ' — ' + escapeHtml(current.hints[o])
+        + (o === currentTrial.answer ? '</b>' : '')).join('<br>')}</div>
+    </div>
+    <div class="rate" id="rateRow" hidden>
+      <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
+      <button class="rate-btn hard" id="btn2"><span class="lbl">Hard</span><span class="prev" id="prev2"></span></button>
+      <button class="rate-btn good" id="btn3"><span class="lbl">Good</span><span class="prev" id="prev3"></span></button>
+      <button class="rate-btn easy" id="btn4"><span class="lbl">Easy</span><span class="prev" id="prev4"></span></button>
+    </div>
+  `;
+  document.getElementById('playBtn').addEventListener('click', playPairTrial);
+  cardEl.querySelectorAll('.opt').forEach(b => {
+    b.addEventListener('click', () => answerPair(b.dataset.opt));
+  });
+  [1, 2, 3, 4].forEach(g => {
+    document.getElementById('btn' + g).addEventListener('click', () => rate(g));
+  });
+}
+
+function playPairTrial() {
+  if (!currentTrial) return;
+  ttsStop();
+  ttsPlayClip(currentTrial.src);
+}
+
+function answerPair(picked) {
+  if (revealed) return;
+  const ok = picked === currentTrial.answer;
+  cardEl.querySelectorAll('.opt').forEach(b => {
+    b.disabled = true;
+    const o = b.dataset.opt;
+    if (o === currentTrial.answer) b.classList.add('right');
+    else if (o === picked) b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
+  const el = document.getElementById('verdict');
+  el.hidden = false;
+  el.className = 'verdict ' + (ok ? 'right' : 'wrong');
+  el.innerHTML = ok
+    ? `✓ <b>${escapeHtml(currentTrial.answer)}</b> — ${escapeHtml(current.hints[currentTrial.answer])}`
+    : `✗ It was <b>${escapeHtml(currentTrial.answer)}</b> — ${escapeHtml(current.hints[currentTrial.answer])}` +
+      '<span class="sub">Play it once more now you know which word to hear.</span>';
+  reveal();
+}
+
 function renderCard() {
   let promptText, hintLine, revealInner;
   if (current.kind === 'hear') { renderHearCard(); return; }
+  if (current.kind === 'pairs') { renderPairsCard(); return; }
   if (current.kind === 'blank') {
     promptText = escapeHtml(current.cloze).replace('_____', '<span class="blank">_____</span>');
     hintLine = `<div class="hint">${escapeHtml(current.translation || '')}` +
@@ -993,6 +1172,7 @@ function isWithinCurrentClip() {
 
 function playLine() {
   if (!current) return;
+  if (current.kind === 'pairs') { playPairTrial(); return; }
   // Fill-the-blank sentences were written for the deck, not spoken by anyone,
   // so there is no clip to seek to — synthesis is the only option.
   if (!current.audio) { ttsSay(current.sentence, current.sentenceSrc); return; }
@@ -1093,7 +1273,7 @@ function pickNext() {
     revealed = false;
     renderCard();
     renderStats();
-    if ((current.kind === 'listening' || current.kind === 'hear') && userInteracted) playLine();
+    if (['listening', 'hear', 'pairs'].includes(current.kind) && userInteracted) playLine();
     return;
   }
   // Reviews first, then any brand-new item; practice-ahead ignores the
@@ -1109,7 +1289,7 @@ function pickNext() {
   revealed = false;
   renderCard();
   renderStats();
-  if ((current.kind === 'listening' || current.kind === 'hear') && userInteracted) playLine();
+  if (['listening', 'hear', 'pairs'].includes(current.kind) && userInteracted) playLine();
 }
 
 function renderStats() {
@@ -1117,7 +1297,7 @@ function renderStats() {
   const dueReviews = modeItems.filter(d => srs[d.id] && srsIsDue(srs[d.id])).length;
   const fresh = modeItems.filter(d => !srs[d.id]).length;
   const mature = modeItems.filter(d => srsIsMature(srs[d.id])).length;
-  const label = { word: 'word items', blank: 'blanks to fill', hear: 'clips to catch', sentence: 'sentences', listening: 'listening clips' }[mode];
+  const label = { word: 'word items', blank: 'blanks to fill', hear: 'clips to catch', pairs: 'minimal pairs', sentence: 'sentences', listening: 'listening clips' }[mode];
   document.getElementById('stats').textContent =
     `${modeItems.length} ${label} — ${dueReviews} to review, ${fresh} new, ${mature} mastered (21d+)`;
   document.getElementById('deckInfo').textContent = pool.length + ' in current filter';
@@ -1160,12 +1340,14 @@ pickNext();
 def main():
     vocab = load_vocab()
     convos = load_conversations()
+    ll_index = load_ll_index()
     word_items = build_quiz_items(vocab, convos)
     blank_items = build_blank_items(vocab)
     hear_items = build_hear_items(vocab, convos)
+    pair_items = build_pair_items(vocab, ll_index)
     sentence_items = build_sentence_items(convos)
     listening_items = build_listening_items(sentence_items)
-    items = word_items + blank_items + hear_items + sentence_items + listening_items
+    items = word_items + blank_items + hear_items + pair_items + sentence_items + listening_items
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
@@ -1176,10 +1358,13 @@ def main():
     OUT.write_text(html, encoding="utf-8")
     cloze_n = sum(1 for i in word_items if i["mode"] == "cloze")
     affixed = sum(1 for i in blank_items if len(i["accepts"]) > 1)
+    documented = sum(1 for i in pair_items if i["documented"])
     print(f"wrote {OUT}: {len(word_items)} word items ({cloze_n} cloze, {len(word_items)-cloze_n} recall) "
           f"from {len(vocab)} vocab terms, {len(blank_items)} fill-the-blank items "
           f"({affixed} where the sentence uses an affixed form), {len(hear_items)} catch-it clips "
-          f"over {len({i[chr(39)+chr(39)] if False else i['answer'] for i in hear_items})} multi-speaker words, {len(sentence_items)} sentence items, "
+          f"over {len({i[chr(39)+chr(39)] if False else i['answer'] for i in hear_items})} multi-speaker words, "
+          f"{len(pair_items)} minimal pairs ({documented} on a documented contrast, "
+          f"{sum(len(i['trials']) for i in pair_items)} trials), {len(sentence_items)} sentence items, "
           f"{len(listening_items)} listening items, across {len(convos)} conversation(s)")
 
 

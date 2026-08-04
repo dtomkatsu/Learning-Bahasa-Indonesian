@@ -1062,6 +1062,20 @@ SAY_TIPS = [
     (re.compile(r"^[ptk]", re.I),
      "Starts with <b>p/t/k</b> — no puff of air. English aspirates these "
      "(“pot”, “top”, “cat”); Indonesian doesn't."),
+    # The single most-documented English-L1 trouble spot in this project's own
+    # research (notes/pronunciation-training-scope.md §3) had no rule here at
+    # all until 2026-08-03 — found by checking coverage, not assumed present.
+    # Placed above the generic final-vowel rule (which is inferred, not cited)
+    # since this is the specific, documented case; below ng-/ny-/final-k/
+    # initial-ptk since those are more locally salient when they also apply.
+    # Can't detect the sound from spelling — Indonesian orthography doesn't
+    # mark pepet vs. taling, both are just "e" — so the tip names the
+    # ambiguity itself rather than claiming a sound the text can't confirm.
+    (re.compile(r"e", re.I),
+     "Contains <b>e</b>, which hides two different sounds: pepet (a schwa, "
+     "like the ‘a’ in “sofa”) and taling (a clear <i>é</i>, like “day”). "
+     "Spelling doesn't tell you which — listen for the one this word actually "
+     "uses rather than guessing."),
     (re.compile(r"[aiueo]$", re.I),
      "Ends in a vowel — keep it full and clean. English would weaken a final "
      "unstressed vowel toward “uh”; Indonesian vowels stay the same everywhere."),

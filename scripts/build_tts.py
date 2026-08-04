@@ -69,6 +69,26 @@ OUTPUT_FORMAT = "mp3_22050_32"
 CREDITS_PER_CHAR = 0.5
 
 
+LL_INDEX_PATH = ROOT / "audio" / "ll" / "index.json"
+
+
+def load_ll_words():
+    """Fronts already covered by a real Lingua Libre volunteer recording.
+
+    Since the 2026-08 audio retool, flashcards prefer a real volunteer clip
+    over a generated one for the word itself (see notes/audio-retool.md) — a
+    generated clip for one of these fronts would never be played, so it isn't
+    worth the credits. Sentences aren't in this index at all (Lingua Libre
+    only has isolated words), so they're never affected by this.
+    """
+    if not LL_INDEX_PATH.exists():
+        return set()
+    try:
+        return set(json.loads(LL_INDEX_PATH.read_text(encoding="utf-8")))
+    except (json.JSONDecodeError, OSError):
+        return set()
+
+
 def load_texts():
     """Every distinct string worth speaking: each card's word and its example.
 
@@ -76,6 +96,7 @@ def load_texts():
     kept to a plain re-read rather than an import — this script has to stay
     runnable even if the rest of the build is mid-edit.
     """
+    ll_words = load_ll_words()
     seen = {}
     for tsv in sorted(VOCAB_DIR.glob("*.tsv")):
         with open(tsv, encoding="utf-8") as f:
@@ -86,7 +107,7 @@ def load_texts():
                 # spellings of one word; speaking the slash aloud would be
                 # nonsense, so only the first is voiced.
                 front = row[0].split(" / ")[0].strip()
-                if front:
+                if front and front.lower() not in ll_words:
                     seen.setdefault(front, "word")
                 if len(row) > 3 and row[3].strip():
                     seen.setdefault(row[3].strip(), "sentence")
