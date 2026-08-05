@@ -25,6 +25,7 @@ from pathlib import Path
 from _sync_js import SYNC_JS
 from _boost_js import BOOST_JS
 from _rhythm_tip import RHYTHM_TIP_TEXT
+from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
 
 ENTRY_RE = re.compile(
     r"\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(Speaker \d+):\s*\n\[(\w+)\]\s*\"(.*)\"",
@@ -67,7 +68,8 @@ PAGE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+__PWA_META__
 <title>__TITLE__ — synced player</title>
 <style>
   :root {
@@ -376,6 +378,7 @@ document.getElementById('search').addEventListener('keydown', (ev) => {
     setTimeout(() => rows[hit].style.outline = '', 1200);
   }
 });
+__PWA_SW__
 </script>
 </body>
 </html>
@@ -411,6 +414,8 @@ def main():
     html = (
         PAGE.replace("__SYNC_JS__", SYNC_JS)
         .replace("__BOOST_JS__", BOOST_JS)
+        .replace("__PWA_META__", PWA_META_TAGS)
+        .replace("__PWA_SW__", PWA_SW_JS)
         .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
         .replace("__TITLE__", escape(args.title))
         .replace("__AUDIO__", escape(args.audio_path))

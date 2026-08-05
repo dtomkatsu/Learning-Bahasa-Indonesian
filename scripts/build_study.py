@@ -22,6 +22,7 @@ from pathlib import Path
 
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
+from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
 from build_flashcards import load_decks
 from build_quiz import (
     load_vocab, load_conversations,
@@ -35,7 +36,8 @@ PAGE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+__PWA_META__
 <title>Study — Learning Bahasa Indonesian</title>
 <style>
   :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb;
@@ -497,6 +499,7 @@ syncRemoteAutoPull(() => {
   // half-finished session out from under them.
   if (tallies[1] + tallies[2] + tallies[3] + tallies[4] === 0) { buildSession(false); next(); }
 }, setSyncState);
+__PWA_SW__
 </script>
 </body>
 </html>
@@ -515,6 +518,8 @@ def main():
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
+        .replace("__PWA_META__", PWA_META_TAGS)
+        .replace("__PWA_SW__", PWA_SW_JS)
         .replace("__FLASH__", json.dumps(flash, ensure_ascii=False))
         .replace("__QUIZ__", json.dumps(quiz_items, ensure_ascii=False))
     )

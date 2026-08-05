@@ -60,6 +60,7 @@ from _boost_js import BOOST_JS
 from _rhythm_tip import RHYTHM_TIP_TEXT
 from build_flashcards import load_tts_index, load_ll_index
 from _vocab_text import bounded, find_term
+from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
 
 ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
@@ -547,7 +548,8 @@ PAGE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+__PWA_META__
 <title>Quiz — Learning Bahasa Indonesian</title>
 <style>
   :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb;
@@ -1360,6 +1362,7 @@ document.getElementById('undoBtn').addEventListener('click', undoLast);
 
 updateUnflagCount();
 pickNext();
+__PWA_SW__
 </script>
 </body>
 </html>
@@ -1382,6 +1385,8 @@ def main():
         .replace("__SYNC_JS__", SYNC_JS)
         .replace("__TTS_JS__", TTS_JS)
         .replace("__BOOST_JS__", BOOST_JS)
+        .replace("__PWA_META__", PWA_META_TAGS)
+        .replace("__PWA_SW__", PWA_SW_JS)
         .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
         .replace("__DATA__", json.dumps(items, ensure_ascii=False))
     )

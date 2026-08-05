@@ -11,6 +11,7 @@ import json
 import re
 from pathlib import Path
 
+from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
 from build_flashcards import load_decks
@@ -25,9 +26,8 @@ PAGE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#D01228">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+__PWA_META__
 <title>Learning Bahasa Indonesian</title>
 <style>
   :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; --card:#f9fafb;
@@ -398,9 +398,7 @@ renderStatsPanel();
 syncRemoteAutoPull(() => { renderCounts(); renderRemote(); renderStudyMeta(); renderStatsPanel(); }, null);
 
 // ---- PWA: offline caching + installability (no-op over file://) ----
-if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+__PWA_SW__
 </script>
 </body>
 </html>
@@ -447,6 +445,8 @@ def main():
         .replace("__SYNC_JS__", SYNC_JS)
         .replace("__STUDY_META__", json.dumps(build_study_meta(), ensure_ascii=False))
         .replace("__ITEMS__", items)
+        .replace("__PWA_META__", PWA_META_TAGS)
+        .replace("__PWA_SW__", PWA_SW_JS)
     )
     out = ROOT / "index.html"
     out.write_text(html, encoding="utf-8")
