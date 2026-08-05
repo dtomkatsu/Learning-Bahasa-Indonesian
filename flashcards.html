@@ -95,6 +95,9 @@
   .sayNote { color:var(--muted); font-size:0.72rem; }
   .sayNote.model { color:var(--accent); }
   .sayNote.you { color:var(--good); }
+  .autoCmp { display:inline-flex; align-items:center; gap:4px; cursor:pointer;
+    color:var(--muted); font-size:0.72rem; user-select:none; }
+  .autoCmp input { margin:0; cursor:pointer; }
   .sayTip { max-width:460px; margin:0 auto 16px; padding:9px 12px; border-radius:8px;
     background:var(--card); border:1px solid var(--line); color:var(--muted);
     font-size:0.78rem; line-height:1.5; text-align:left; }
@@ -221,6 +224,9 @@ atau – or"></textarea>
   <div class="sayRow" id="sayRow" hidden>
     <button class="sayBtn" id="recBtn">&#127908; Say it</button>
     <button class="sayBtn" id="cmpBtn" disabled>&#8646; Compare</button>
+    <label class="autoCmp" title="Play the model-and-you comparison automatically as soon as you stop recording">
+      <input type="checkbox" id="autoCmpBox"> auto
+    </label>
     <span class="sayNote" id="sayNote"></span>
   </div>
   <div class="sayTip" id="sayTip" hidden></div>
@@ -1598,7 +1604,40 @@ const rhythmTipEl = document.getElementById('rhythmTip');
 const sayNote = document.getElementById('sayNote');
 const recBtn = document.getElementById('recBtn');
 const cmpBtn = document.getElementById('cmpBtn');
+const autoCmpBox = document.getElementById('autoCmpBox');
 let comparing = false;
+
+// Whether stopping a recording immediately plays the comparison. On by
+// default — the research this feature is built on is specifically about
+// hearing the two back to back, and a compare you have to remember to press
+// is one you'll skip. But it commits you to ~9 seconds of playback on every
+// single take, so it's a preference rather than a rule.
+//
+// Device-local, deliberately not in _sync_js.py's SYNC_KEYS: that carries
+// learning data (schedules, deck edits, flags), and this is a UI preference
+// like sessionSize and showTranslations, which are also per-device.
+const AUTO_CMP_KEY = 'bahasa:autoCompare:v1';
+
+function autoCompareOn() {
+  try { return localStorage.getItem(AUTO_CMP_KEY) !== '0'; } catch (e) { return true; }
+}
+
+autoCmpBox.checked = autoCompareOn();
+autoCmpBox.addEventListener('change', () => {
+  try { localStorage.setItem(AUTO_CMP_KEY, autoCmpBox.checked ? '1' : '0'); } catch (e) {}
+  // Unticking mid-compare should stop the one that's already playing, not
+  // just affect the next take.
+  if (!autoCmpBox.checked && comparing) {
+    // recAbortCompare only silences the recording — the model clip is the
+    // page's own audio, so stopping it has to happen here.
+    recAbortCompare();
+    stopAudio();
+    comparing = false;
+    sayNote.textContent = recHasClip() ? 'recorded — now compare' : '';
+    sayNote.className = 'sayNote';
+    updateSayRow();
+  }
+});
 
 function updateSayRow() {
   // Back of the card only: on the front you're still trying to recall the
@@ -1641,7 +1680,7 @@ async function toggleRecord() {
     sayNote.textContent = url ? 'recorded — now compare' : 'nothing recorded';
     sayNote.className = 'sayNote';
     updateSayRow();
-    if (url) compareSay();
+    if (url && autoCompareOn()) compareSay();
     return;
   }
   // Starting a new take always wins over a compare that's still playing.
