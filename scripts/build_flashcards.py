@@ -809,8 +809,10 @@ function updateSayRow() {
   if (show && current && current.sayTip) {
     sayTipEl.innerHTML = '<span class="lbl">Listen for</span>' + current.sayTip;
   }
-  cmpBtn.disabled = !recHasClip() || comparing;
-  recBtn.disabled = comparing;
+  // Neither button is disabled mid-compare. Both interrupt it: the whole
+  // reported bug was a button reading "Again" that silently did nothing for
+  // the ~9 seconds a compare takes.
+  cmpBtn.disabled = !recHasClip();
   // Independent of mic support — useful whether or not you can record, since
   // it applies to reading/listening/shadowing the sentence too, not just the
   // compare loop.
@@ -818,8 +820,10 @@ function updateSayRow() {
 }
 
 function resetSay() {
+  recAbortCompare();
   comparing = false;
   recClear();
+  recBtn.disabled = false;
   recBtn.classList.remove('recording');
   recBtn.innerHTML = '&#127908; Say it';
   sayNote.textContent = '';
@@ -828,7 +832,6 @@ function resetSay() {
 }
 
 async function toggleRecord() {
-  if (comparing) return;
   if (recIsRecording()) {
     recBtn.disabled = true;
     const url = await recStop();
@@ -841,11 +844,15 @@ async function toggleRecord() {
     if (url) compareSay();
     return;
   }
+  // Starting a new take always wins over a compare that's still playing.
+  recAbortCompare();
+  comparing = false;
   stopAudio();
   const ok = await recStart();
   if (!ok) {
     sayNote.textContent = 'microphone unavailable';
     sayNote.className = 'sayNote';
+    updateSayRow();
     return;
   }
   recBtn.classList.add('recording');
@@ -856,16 +863,21 @@ async function toggleRecord() {
 }
 
 async function compareSay() {
-  if (!recHasClip() || comparing) return;
+  if (!recHasClip()) return;
+  // Pressing Compare during a compare restarts it rather than being ignored.
+  recAbortCompare();
   comparing = true;
   updateSayRow();
-  await recCompare(playModel, step => {
+  const finished = await recCompare(playModel, step => {
     if (step === 'model') { sayNote.textContent = 'the model'; sayNote.className = 'sayNote model'; }
     else if (step === 'you') { sayNote.textContent = 'you'; sayNote.className = 'sayNote you'; }
     else { sayNote.textContent = 'again?'; sayNote.className = 'sayNote'; }
   });
-  comparing = false;
-  updateSayRow();
+  // A superseded run must not clear state its successor now owns.
+  if (finished) {
+    comparing = false;
+    updateSayRow();
+  }
 }
 
 recBtn.addEventListener('click', toggleRecord);

@@ -122,20 +122,48 @@ function recWait(ms) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+// A compare runs for several seconds (model, you, model, you) and the learner
+// must be able to cut it short — to re-record, or just to move on. Each run
+// takes a token; bumping the token strands any older run, which then returns
+// false at its next checkpoint instead of driving UI that has moved on.
+//
+// Why a token and not a flag the caller clears: a stranded run may be parked
+// on `await playModel()` forever, because pausing an <audio> fires no 'ended'
+// event and that promise simply never settles. So nothing may depend on a
+// cancelled run reaching its own cleanup — the winner owns the state, and the
+// loser is required only to stay silent.
+let recCompareToken = 0;
+
+function recAbortCompare() {
+  recCompareToken++;
+  recStopPlayback();
+}
+
 // The point of the whole module: model and attempt back to back, twice, with
 // a beat between them. Differences that vanish when you compare across a gap
 // of thirty seconds are obvious in this window. `playModel` is supplied by the
 // page (a real recording clip on some cards, speech synthesis on others) and
 // must return a promise that resolves when it has finished speaking.
+//
+// Resolves true if it ran to completion, false if it was superseded — callers
+// should only apply end-of-compare UI on true.
 async function recCompare(playModel, onStep) {
+  const token = ++recCompareToken;
+  const live = () => token === recCompareToken;
   for (let round = 0; round < 2; round++) {
+    if (!live()) return false;
     if (onStep) onStep('model');
     await playModel();
+    if (!live()) return false;
     await recWait(320);
+    if (!live()) return false;
     if (onStep) onStep('you');
     await recPlay();
+    if (!live()) return false;
     if (round === 0) await recWait(420);
   }
+  if (!live()) return false;
   if (onStep) onStep('done');
+  return true;
 }
 """
