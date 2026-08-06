@@ -74,9 +74,21 @@
      mistranscribed. Labelled and dimmed so it reads as evidence, not as the
      model sentence sitting above it. */
   #card .back .heard { color:var(--muted); font-size:0.82rem; }
-  #card .back .heard .heardLbl { font-size:0.66rem; letter-spacing:0.06em;
-    text-transform:uppercase; opacity:0.75; margin-bottom:4px; }
-  #card .back .heard .heardPlay { display:block; margin-top:8px; padding:4px 10px;
+  /* Collapsed to its label by default: 107px median (224px worst) of quoted
+     speech that pushed the rate buttons off a phone screen. The play control
+     stays on the header row, so the family's actual voice is still one tap
+     away without expanding anything. */
+  #card .back .heard .heardTop { display:flex; align-items:center;
+    justify-content:center; gap:8px; }
+  #card .back .heard .heardToggle { font-size:0.66rem; letter-spacing:0.06em;
+    text-transform:uppercase; opacity:0.75; background:none; border:none;
+    color:inherit; cursor:pointer; padding:2px 0; font-family:inherit; }
+  #card .back .heard .heardToggle::after { content:' \25BE'; }
+  #card .back .heard.open .heardToggle::after { content:' \25B4'; }
+  #card .back .heard .heardToggle:hover { opacity:1; }
+  #card .back .heard .heardBody { margin-top:6px; }
+  #card .back .heard .heardBody[hidden] { display:none; }
+  #card .back .heard .heardPlay { padding:2px 9px;
     font-size:0.74rem; color:var(--muted); background:none;
     border:1px solid var(--line); border-radius:8px; cursor:pointer; }
   #card .back .heard .heardPlay:hover { color:var(--fg); }
@@ -104,21 +116,25 @@
   .autoCmp { display:inline-flex; align-items:center; gap:4px; cursor:pointer;
     color:var(--muted); font-size:0.72rem; user-select:none; }
   .autoCmp input { margin:0; cursor:pointer; }
-  .sayTip { max-width:460px; margin:0 auto 16px; padding:9px 12px; border-radius:8px;
+  /* Both explainers collapse to a single line, expanded state remembered.
+     The rhythm tip especially: it is byte-identical on all 997 cards, so
+     after the first read its 151px is pure distance between you and the
+     rate buttons. */
+  details.tip { max-width:460px; margin:0 auto 16px; border-radius:8px;
     background:var(--card); border:1px solid var(--line); color:var(--muted);
     font-size:0.78rem; line-height:1.5; text-align:left; }
-  .sayTip[hidden] { display:none; }
-  .sayTip b { color:var(--accent); }
-  .sayTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
-    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
-  .rhythmTip { max-width:460px; margin:0 auto 16px; padding:9px 12px; border-radius:8px;
-    background:var(--card); border:1px solid var(--line); color:var(--muted);
-    font-size:0.78rem; line-height:1.5; text-align:left; }
-  .rhythmTip[hidden] { display:none; }
-  .rhythmTip b { color:var(--accent); }
-  .rhythmTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
-    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
+  details.tip[hidden] { display:none; }
+  details.tip > summary { list-style:none; cursor:pointer; padding:7px 12px;
+    font-size:0.64rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.75;
+    display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  details.tip > summary::-webkit-details-marker { display:none; }
+  details.tip > summary::after { content:'\25BE'; font-size:0.7rem; }
+  details.tip[open] > summary::after { content:'\25B4'; }
+  details.tip > summary:hover { opacity:1; }
+  details.tip .tipBody { padding:0 12px 10px; }
+  details.tip b { color:var(--accent); }
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
+  .hint[hidden] { display:none; }
   .rate { display:flex; gap:8px; }
   button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
     background:var(--card); color:var(--fg); font-size:0.85rem; cursor:pointer; display:flex;
@@ -130,6 +146,18 @@
   button.rate-btn.good { border-color:var(--good); color:var(--good); }
   button.rate-btn.easy { border-color:var(--easy); color:var(--easy); }
   .rate[hidden] { display:none; }
+  /* Phones: the rate buttons were unreachable without scrolling on every card
+     measured (0/60), because ~400px of examples, tips and tools sit between
+     the card and them. Pinning the row to the bottom decouples "can I rate
+     this" from "how long is this card", so no future addition can push them
+     off screen again. */
+  @media (max-width: 640px) {
+    .rate { position:sticky; bottom:0; z-index:5; background:var(--bg);
+      padding:8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); margin-bottom:-8px; }
+    .rate::before { content:''; position:absolute; left:0; right:0; top:-12px;
+      height:12px; pointer-events:none;
+      background:linear-gradient(to top, var(--bg), transparent); }
+  }
   /* Sits well clear of the rate buttons and right-aligned rather than centred
      under them — it used to be a full-width tap target directly beneath
      "Again", which is a thumb misfire waiting to happen on a phone. */
@@ -235,8 +263,14 @@ atau – or"></textarea>
     </label>
     <span class="sayNote" id="sayNote"></span>
   </div>
-  <div class="sayTip" id="sayTip" hidden></div>
-  <div class="rhythmTip" id="rhythmTip" hidden><span class="lbl">Sentence rhythm</span>Indonesian is <b>syllable-timed</b>: every syllable gets roughly equal length and weight. English is stress-timed and compresses unstressed syllables toward “duh” to keep a beat — that instinct will speed up and swallow parts of this sentence that Indonesian keeps full.</div>
+  <details class="tip" id="sayTip" data-tip="say" hidden>
+    <summary>Listen for</summary>
+    <div class="tipBody" id="sayTipBody"></div>
+  </details>
+  <details class="tip" id="rhythmTip" data-tip="rhythm" hidden>
+    <summary>Sentence rhythm</summary>
+    <div class="tipBody">Indonesian is <b>syllable-timed</b>: every syllable gets roughly equal length and weight. English is stress-timed and compresses unstressed syllables toward “duh” to keep a beat — that instinct will speed up and swallow parts of this sentence that Indonesian keeps full.</div>
+  </details>
   <div class="hint" id="hint"></div>
   <div class="rate" id="rateRow" hidden>
     <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
@@ -1285,14 +1319,26 @@ function showCard(card) {
   if (current.sentenceHtml) {
     // The quote keeps its own play control: when a clearer clip owns the main
     // button, this is where the family's actual voice stays one tap away.
-    cardEl.querySelector('.heard').innerHTML = '<div class="heardLbl">Heard in the recording</div>' +
-      current.sentenceHtml +
-      (current.exTranslation ? `<div class="exEn">${escapeHtml(current.exTranslation)}</div>` : '') +
-      (current.audio && modelSrc()
-        ? '<button type="button" class="heardPlay">&#9654; play the family clip</button>' : '');
-    const hp = cardEl.querySelector('.heardPlay');
+    const heardEl = cardEl.querySelector('.heard');
+    heardEl.innerHTML =
+      '<div class="heardTop">' +
+        '<button type="button" class="heardToggle">Heard in the recording</button>' +
+        (current.audio && modelSrc()
+          ? '<button type="button" class="heardPlay" title="Play the family clip">&#9654;</button>' : '') +
+      '</div>' +
+      '<div class="heardBody">' + current.sentenceHtml +
+        (current.exTranslation ? `<div class="exEn">${escapeHtml(current.exTranslation)}</div>` : '') +
+      '</div>';
+    applyHeardOpen(heardEl);
+    // Both controls stop propagation — the card itself flips on click.
+    heardEl.querySelector('.heardToggle').addEventListener('click', e => {
+      e.stopPropagation();
+      setHeardOpen(!heardOpen());
+      applyHeardOpen(heardEl);
+    });
+    const hp = heardEl.querySelector('.heardPlay');
     if (hp) hp.addEventListener('click', e => {
-      e.stopPropagation();                    // the card itself flips on click
+      e.stopPropagation();
       if (!cardAudio.paused) { cardAudio.pause(); stopAt = null; return; }
       playFamilyClip();
     });
@@ -1368,6 +1414,7 @@ function rate(grade) {
   syncRemoteQueuePush(setSyncState);
   practiceAhead = false;
   updateUndoBtn();
+  renderHint();
   pickNext();
 }
 
@@ -1652,7 +1699,7 @@ function updateSayRow() {
   sayRow.hidden = !show;
   sayTipEl.hidden = !(show && current && current.sayTip);
   if (show && current && current.sayTip) {
-    sayTipEl.innerHTML = '<span class="lbl">Listen for</span>' + current.sayTip;
+    document.getElementById('sayTipBody').innerHTML = current.sayTip;
   }
   // Neither button is disabled mid-compare. Both interrupt it: the whole
   // reported bug was a button reading "Again" that silently did nothing for
@@ -1728,8 +1775,37 @@ async function compareSay() {
 recBtn.addEventListener('click', toggleRecord);
 cmpBtn.addEventListener('click', compareSay);
 
+// ---- Collapsed-by-default text --------------------------------------------
+// Expanded state is a preference, not per-card: open "Heard in the recording"
+// once and it stays open as you move through the deck.
+const HEARD_KEY = 'bahasa:heardOpen:v1';
+function heardOpen() { return !!srsLoad(HEARD_KEY).open; }
+function setHeardOpen(v) { srsSave(HEARD_KEY, { open: !!v }); }
+function applyHeardOpen(el) {
+  const open = heardOpen();
+  el.classList.toggle('open', open);
+  const body = el.querySelector('.heardBody');
+  if (body) body.hidden = !open;
+}
+
+const TIPS_KEY = 'bahasa:tipsOpen:v1';
+document.querySelectorAll('details.tip').forEach(d => {
+  const key = d.dataset.tip;
+  d.open = !!srsLoad(TIPS_KEY)[key];
+  d.addEventListener('toggle', () => {
+    const state = srsLoad(TIPS_KEY);
+    state[key] = d.open;
+    srsSave(TIPS_KEY, state);
+  });
+});
+
 function renderHint() {
-  document.getElementById('hint').textContent = srsIsTouch()
+  const el = document.getElementById('hint');
+  // Retire it once you've plainly learned the controls. Until then it's
+  // useful; after that it's just height between the card and the buttons.
+  if (Object.keys(srsLoad(REVIEWLOG_KEY)).length >= 10) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = srsIsTouch()
     ? 'Tap the card to flip · swipe right = Good, left = Again'
     : 'Click the card (or press space) to flip · “p” to hear it · “z” to go back';
 }
