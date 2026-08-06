@@ -22,6 +22,7 @@ from pathlib import Path
 
 from _srs_js import SRS_JS
 from _sync_js import SYNC_JS
+from _mobile_ui import STICKY_RATE_CSS
 from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
 from build_flashcards import load_decks
 from build_quiz import (
@@ -85,6 +86,7 @@ __PWA_META__
   button.revealBtn { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--line);
     background:var(--bg); color:var(--fg); cursor:pointer; }
   .rate { display:flex; gap:8px; margin-top:4px; }
+__STICKY_RATE_CSS__
   .rate[hidden] { display:none; }
   button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
     background:var(--card); color:var(--fg); font-size:0.85rem; cursor:pointer; display:flex;
@@ -518,6 +520,7 @@ def main():
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
+        .replace("__STICKY_RATE_CSS__", STICKY_RATE_CSS)
         .replace("__PWA_META__", PWA_META_TAGS)
         .replace("__PWA_SW__", PWA_SW_JS)
         .replace("__FLASH__", json.dumps(flash, ensure_ascii=False))

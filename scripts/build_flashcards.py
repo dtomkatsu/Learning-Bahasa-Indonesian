@@ -42,6 +42,7 @@ from _sync_js import SYNC_JS
 from _record_js import REC_JS
 from _tts_js import TTS_JS
 from _vocab_js import VOCAB_JS
+from _mobile_ui import TIPS_CSS, TIPS_JS, STICKY_RATE_CSS
 from _vocab_text import bounded, find_term
 from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
 
@@ -162,23 +163,7 @@ __PWA_META__
   .autoCmp { display:inline-flex; align-items:center; gap:4px; cursor:pointer;
     color:var(--muted); font-size:0.72rem; user-select:none; }
   .autoCmp input { margin:0; cursor:pointer; }
-  /* Both explainers collapse to a single line, expanded state remembered.
-     The rhythm tip especially: it is byte-identical on all 997 cards, so
-     after the first read its 151px is pure distance between you and the
-     rate buttons. */
-  details.tip { max-width:460px; margin:0 auto 16px; border-radius:8px;
-    background:var(--card); border:1px solid var(--line); color:var(--muted);
-    font-size:0.78rem; line-height:1.5; text-align:left; }
-  details.tip[hidden] { display:none; }
-  details.tip > summary { list-style:none; cursor:pointer; padding:7px 12px;
-    font-size:0.64rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.75;
-    display:flex; justify-content:space-between; align-items:center; gap:8px; }
-  details.tip > summary::-webkit-details-marker { display:none; }
-  details.tip > summary::after { content:'\\25BE'; font-size:0.7rem; }
-  details.tip[open] > summary::after { content:'\\25B4'; }
-  details.tip > summary:hover { opacity:1; }
-  details.tip .tipBody { padding:0 12px 10px; }
-  details.tip b { color:var(--accent); }
+__TIPS_CSS__
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
   .hint[hidden] { display:none; }
   .rate { display:flex; gap:8px; }
@@ -192,18 +177,7 @@ __PWA_META__
   button.rate-btn.good { border-color:var(--good); color:var(--good); }
   button.rate-btn.easy { border-color:var(--easy); color:var(--easy); }
   .rate[hidden] { display:none; }
-  /* Phones: the rate buttons were unreachable without scrolling on every card
-     measured (0/60), because ~400px of examples, tips and tools sit between
-     the card and them. Pinning the row to the bottom decouples "can I rate
-     this" from "how long is this card", so no future addition can push them
-     off screen again. */
-  @media (max-width: 640px) {
-    .rate { position:sticky; bottom:0; z-index:5; background:var(--bg);
-      padding:8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); margin-bottom:-8px; }
-    .rate::before { content:''; position:absolute; left:0; right:0; top:-12px;
-      height:12px; pointer-events:none;
-      background:linear-gradient(to top, var(--bg), transparent); }
-  }
+__STICKY_RATE_CSS__
   /* Sits well clear of the rate buttons and right-aligned rather than centred
      under them — it used to be a full-width tap target directly beneath
      "Again", which is a thumb misfire waiting to happen on a phone. */
@@ -984,16 +958,7 @@ function applyHeardOpen(el) {
   if (body) body.hidden = !open;
 }
 
-const TIPS_KEY = 'bahasa:tipsOpen:v1';
-document.querySelectorAll('details.tip').forEach(d => {
-  const key = d.dataset.tip;
-  d.open = !!srsLoad(TIPS_KEY)[key];
-  d.addEventListener('toggle', () => {
-    const state = srsLoad(TIPS_KEY);
-    state[key] = d.open;
-    srsSave(TIPS_KEY, state);
-  });
-});
+__TIPS_JS__
 
 function renderHint() {
   const el = document.getElementById('hint');
@@ -1451,6 +1416,9 @@ def main():
         .replace("__BOOST_JS__", BOOST_JS)
         .replace("__PWA_META__", PWA_META_TAGS)
         .replace("__PWA_SW__", PWA_SW_JS)
+        .replace("__TIPS_CSS__", TIPS_CSS)
+        .replace("__STICKY_RATE_CSS__", STICKY_RATE_CSS)
+        .replace("__TIPS_JS__", TIPS_JS)
         .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
         .replace("__VOCAB_JS__", VOCAB_JS)
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))

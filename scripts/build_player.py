@@ -25,6 +25,7 @@ from pathlib import Path
 from _sync_js import SYNC_JS
 from _boost_js import BOOST_JS
 from _rhythm_tip import RHYTHM_TIP_TEXT
+from _mobile_ui import TIPS_CSS, TIPS_JS
 from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
 
 ENTRY_RE = re.compile(
@@ -129,14 +130,8 @@ __PWA_META__
   body.show-flagged .row.flagged { display:flex; opacity:0.55; }
   body.show-flagged .row.flagged .rowbtns { opacity:1; }
   .row.flagged .flagbtn { background:var(--bad); color:#fff; border-color:var(--bad); }
-  #hint { max-width:900px; margin:10px auto 0; padding:0 14px; font-size:0.78rem; color:var(--muted); }
-  #rhythmTip { max-width:900px; margin:10px auto 0; padding:9px 14px; border-radius:8px;
-    background:var(--bg); border:1px solid var(--line); color:var(--muted);
-    font-size:0.78rem; line-height:1.5; }
-  #rhythmTip[hidden] { display:none; }
-  #rhythmTip b { color:var(--accent); }
-  #rhythmTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
-    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
+__TIPS_CSS__
+  details.tip { max-width:900px; margin:10px auto 0; }
 </style>
 </head>
 <body>
@@ -157,11 +152,18 @@ __PWA_META__
     <input id="search" placeholder="jump to phrase…">
   </div>
 </div>
-<div id="hint">Click any line to jump the audio there. Hover a line for "loop" (repeat one line), "+ card" (turn this line's vocab into a flashcard), or "flag" (hide silent/garbled junk). "Shadow" auto-pauses after every line so you can repeat it aloud. "Show translations" reveals an English gloss under each Indonesian line.</div>
-<div id="rhythmTip" hidden><span class="lbl">Sentence rhythm</span>__RHYTHM_TIP__</div>
+<details class="tip" id="hint" data-tip="playerHelp">
+  <summary>How to use this player</summary>
+  <div class="tipBody">Click any line to jump the audio there. Hover a line for "loop" (repeat one line), "+ card" (turn this line's vocab into a flashcard), or "flag" (hide silent/garbled junk). "Shadow" auto-pauses after every line so you can repeat it aloud. "Show translations" reveals an English gloss under each Indonesian line.</div>
+</details>
+<details class="tip" id="rhythmTip" data-tip="rhythm" hidden>
+  <summary>Sentence rhythm</summary>
+  <div class="tipBody">__RHYTHM_TIP__</div>
+</details>
 <div id="list"></div>
 <script>
 __SYNC_JS__
+__TIPS_JS__
 __BOOST_JS__
 const DATA = __DATA__;
 const audio = document.getElementById('audio');
@@ -416,6 +418,8 @@ def main():
         .replace("__BOOST_JS__", BOOST_JS)
         .replace("__PWA_META__", PWA_META_TAGS)
         .replace("__PWA_SW__", PWA_SW_JS)
+        .replace("__TIPS_CSS__", TIPS_CSS)
+        .replace("__TIPS_JS__", TIPS_JS)
         .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
         .replace("__TITLE__", escape(args.title))
         .replace("__AUDIO__", escape(args.audio_path))

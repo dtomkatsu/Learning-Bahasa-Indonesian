@@ -56,6 +56,15 @@
   button.revealBtn { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--line);
     background:var(--bg); color:var(--fg); cursor:pointer; }
   .rate { display:flex; gap:8px; margin-top:4px; }
+
+  @media (max-width: 640px) {
+    .rate { position:sticky; bottom:0; z-index:5; background:var(--bg);
+      padding:8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); margin-bottom:-8px; }
+    .rate::before { content:''; position:absolute; left:0; right:0; top:-12px;
+      height:12px; pointer-events:none;
+      background:linear-gradient(to top, var(--bg), transparent); }
+  }
+
   .rate[hidden] { display:none; }
   button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
     background:var(--card); color:var(--fg); font-size:0.85rem; cursor:pointer; display:flex;

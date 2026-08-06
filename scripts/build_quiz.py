@@ -58,6 +58,7 @@ from _sync_js import SYNC_JS
 from _tts_js import TTS_JS
 from _boost_js import BOOST_JS
 from _rhythm_tip import RHYTHM_TIP_TEXT
+from _mobile_ui import TIPS_CSS, TIPS_JS, STICKY_RATE_CSS
 from build_flashcards import load_tts_index, load_ll_index
 from _vocab_text import bounded, find_term
 from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
@@ -581,12 +582,7 @@ __PWA_META__
   .prompt { font-size:1.15rem; line-height:1.5; margin-bottom:6px; }
   .prompt .blank { color:var(--blank); font-weight:700; letter-spacing:1px; }
   .hint { color:var(--muted); font-size:0.82rem; margin-bottom:16px; }
-  .rhythmTip { max-width:460px; margin:0 auto 16px; padding:9px 12px; border-radius:8px;
-    background:var(--card); border:1px solid var(--line); color:var(--muted);
-    font-size:0.78rem; line-height:1.5; text-align:left; }
-  .rhythmTip b { color:var(--accent); }
-  .rhythmTip .lbl { display:block; font-size:0.64rem; letter-spacing:0.06em;
-    text-transform:uppercase; opacity:0.75; margin-bottom:3px; }
+__TIPS_CSS__
   .playrow { margin-bottom:14px; }
   button.play { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--accent);
     background:transparent; color:var(--accent); cursor:pointer; }
@@ -629,6 +625,7 @@ __PWA_META__
     background:var(--bg); color:var(--muted); cursor:pointer; margin-left:8px; }
   button.flagLineBtn:hover { border-color:var(--bad); color:var(--bad); }
   .rate { display:flex; gap:8px; margin-top:14px; }
+__STICKY_RATE_CSS__
   .rate[hidden] { display:none; }
   button.rate-btn { flex:1; padding:10px 4px; border-radius:10px; border:1px solid var(--line);
     background:var(--card); color:var(--fg); font-size:0.85rem; cursor:pointer; display:flex;
@@ -709,10 +706,12 @@ __PWA_META__
 <script>
 __SRS_JS__
 __SYNC_JS__
+__TIPS_JS__
 __TTS_JS__
 __BOOST_JS__
 const ITEMS = __DATA__;
-const RHYTHM_TIP_HTML = '<div class="rhythmTip"><span class="lbl">Sentence rhythm</span>__RHYTHM_TIP__</div>';
+const RHYTHM_TIP_HTML = '<details class="tip" data-tip="rhythm">'
+  + '<summary>Sentence rhythm</summary><div class="tipBody">__RHYTHM_TIP__</div></details>';
 const SRS_KEY = 'bahasa:quiz:fsrs:v1';
 const LEGACY_KEYS = ['bahasa:quiz:v1', 'bahasa:quiz:srs:v1'];
 // FLAG_KEY comes from the shared sync module above.
@@ -1178,6 +1177,7 @@ function renderCard() {
     document.getElementById('btn' + g).addEventListener('click', () => rate(g));
   });
   updatePlayBtnLabel();
+  wireTips();          // the rhythm tip is re-injected with every card
 }
 
 function updatePreviews() {
@@ -1387,6 +1387,9 @@ def main():
         .replace("__BOOST_JS__", BOOST_JS)
         .replace("__PWA_META__", PWA_META_TAGS)
         .replace("__PWA_SW__", PWA_SW_JS)
+        .replace("__TIPS_CSS__", TIPS_CSS)
+        .replace("__STICKY_RATE_CSS__", STICKY_RATE_CSS)
+        .replace("__TIPS_JS__", TIPS_JS)
         .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
         .replace("__DATA__", json.dumps(items, ensure_ascii=False))
     )

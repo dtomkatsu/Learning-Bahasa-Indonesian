@@ -116,10 +116,7 @@
   .autoCmp { display:inline-flex; align-items:center; gap:4px; cursor:pointer;
     color:var(--muted); font-size:0.72rem; user-select:none; }
   .autoCmp input { margin:0; cursor:pointer; }
-  /* Both explainers collapse to a single line, expanded state remembered.
-     The rhythm tip especially: it is byte-identical on all 997 cards, so
-     after the first read its 151px is pure distance between you and the
-     rate buttons. */
+
   details.tip { max-width:460px; margin:0 auto 16px; border-radius:8px;
     background:var(--card); border:1px solid var(--line); color:var(--muted);
     font-size:0.78rem; line-height:1.5; text-align:left; }
@@ -133,6 +130,7 @@
   details.tip > summary:hover { opacity:1; }
   details.tip .tipBody { padding:0 12px 10px; }
   details.tip b { color:var(--accent); }
+
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
   .hint[hidden] { display:none; }
   .rate { display:flex; gap:8px; }
@@ -146,11 +144,7 @@
   button.rate-btn.good { border-color:var(--good); color:var(--good); }
   button.rate-btn.easy { border-color:var(--easy); color:var(--easy); }
   .rate[hidden] { display:none; }
-  /* Phones: the rate buttons were unreachable without scrolling on every card
-     measured (0/60), because ~400px of examples, tips and tools sit between
-     the card and them. Pinning the row to the bottom decouples "can I rate
-     this" from "how long is this card", so no future addition can push them
-     off screen again. */
+
   @media (max-width: 640px) {
     .rate { position:sticky; bottom:0; z-index:5; background:var(--bg);
       padding:8px 0 calc(8px + env(safe-area-inset-bottom, 0px)); margin-bottom:-8px; }
@@ -158,6 +152,7 @@
       height:12px; pointer-events:none;
       background:linear-gradient(to top, var(--bg), transparent); }
   }
+
   /* Sits well clear of the rate buttons and right-aligned rather than centred
      under them — it used to be a full-width tap target directly beneath
      "Again", which is a thumb misfire waiting to happen on a phone. */
@@ -1788,16 +1783,35 @@ function applyHeardOpen(el) {
   if (body) body.hidden = !open;
 }
 
+
+// Expanded state is a preference, not per-card: open a tip once and it stays
+// open as you move through the deck, and across pages that use the same key.
+//
+// Deliberately self-contained rather than reusing srsLoad/srsSave — the
+// conversation players embed the sync module but not the SRS one, and a tip
+// that only works on pages carrying the whole scheduler would be a trap.
 const TIPS_KEY = 'bahasa:tipsOpen:v1';
-document.querySelectorAll('details.tip').forEach(d => {
-  const key = d.dataset.tip;
-  d.open = !!srsLoad(TIPS_KEY)[key];
-  d.addEventListener('toggle', () => {
-    const state = srsLoad(TIPS_KEY);
-    state[key] = d.open;
-    srsSave(TIPS_KEY, state);
+function tipsLoad() {
+  try { return JSON.parse(localStorage.getItem(TIPS_KEY)) || {}; } catch (e) { return {}; }
+}
+function tipsSave(state) {
+  try { localStorage.setItem(TIPS_KEY, JSON.stringify(state)); } catch (e) {}
+}
+function wireTips(root) {
+  (root || document).querySelectorAll('details.tip[data-tip]').forEach(d => {
+    if (d.dataset.tipWired) return;
+    d.dataset.tipWired = '1';
+    const key = d.dataset.tip;
+    d.open = !!tipsLoad()[key];
+    d.addEventListener('toggle', () => {
+      const state = tipsLoad();
+      state[key] = d.open;
+      tipsSave(state);
+    });
   });
-});
+}
+wireTips();
+
 
 function renderHint() {
   const el = document.getElementById('hint');
