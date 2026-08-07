@@ -39,6 +39,19 @@ TIPS_CSS = r"""
   details.tip b { color:var(--accent); }
 """
 
+OFF_FILTER_CSS = r"""
+  /* Only ever shown after an undo that lands on a card outside the active
+     filter. Undo deliberately still works across a filter change — losing the
+     ability to fix a misclick because you tapped a chip would be worse — but
+     without this the card on screen silently contradicts the chips and the
+     "N in current filter" count. */
+  .offFilter { max-width:460px; margin:0 auto 10px; padding:6px 12px; border-radius:8px;
+    background:var(--card); border:1px dashed var(--line); color:var(--muted);
+    font-size:0.74rem; line-height:1.4; text-align:left; }
+  .offFilter[hidden] { display:none; }
+  .offFilter b { color:var(--fg); font-weight:600; }
+"""
+
 STICKY_RATE_CSS = r"""
   @media (max-width: 640px) {
     .rate { position:sticky; bottom:0; z-index:5; background:var(--bg);

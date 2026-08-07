@@ -58,7 +58,7 @@ from _sync_js import SYNC_JS
 from _tts_js import TTS_JS
 from _boost_js import BOOST_JS
 from _rhythm_tip import RHYTHM_TIP_TEXT
-from _mobile_ui import TIPS_CSS, TIPS_JS, STICKY_RATE_CSS
+from _mobile_ui import TIPS_CSS, TIPS_JS, STICKY_RATE_CSS, OFF_FILTER_CSS
 from build_flashcards import load_tts_index, load_ll_index
 from _vocab_text import bounded, find_term
 from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
@@ -583,6 +583,7 @@ __PWA_META__
   .prompt .blank { color:var(--blank); font-weight:700; letter-spacing:1px; }
   .hint { color:var(--muted); font-size:0.82rem; margin-bottom:16px; }
 __TIPS_CSS__
+__OFF_FILTER_CSS__
   .playrow { margin-bottom:14px; }
   button.play { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--accent);
     background:transparent; color:var(--accent); cursor:pointer; }
@@ -693,6 +694,7 @@ __STICKY_RATE_CSS__
       <button class="plain" id="clearFilterBtn">Clear filters</button>
     </div>
   </div>
+  <div class="offFilter" id="offFilter" hidden></div>
   <div id="card"></div>
   <div class="tools">
     <button class="plain" id="undoBtn" disabled>&#8630; Go back</button>
@@ -1323,7 +1325,22 @@ function pickNext() {
   if (['listening', 'hear', 'pairs'].includes(current.kind) && userInteracted) playLine();
 }
 
+// Undo can legitimately land on an item the active filter excludes (the mode
+// is restored automatically, the tag chips are not). Say so.
+function updateOffFilterNote() {
+  const el = document.getElementById('offFilter');
+  if (!el) return;
+  if (!current || !pool.length || pool.some(d => d.id === current.id)) {
+    el.hidden = true;
+    return;
+  }
+  el.innerHTML = "This item isn't in your current filter — it's tagged <b>"
+    + escapeHtml((current.tags || []).join(' · ')) + "</b>. Rate it to go back to your filter.";
+  el.hidden = false;
+}
+
 function renderStats() {
+  updateOffFilterNote();
   const modeItems = itemsForMode(mode);
   const dueReviews = modeItems.filter(d => srs[d.id] && srsIsDue(srs[d.id])).length;
   const fresh = modeItems.filter(d => !srs[d.id]).length;
@@ -1388,6 +1405,7 @@ def main():
         .replace("__PWA_META__", PWA_META_TAGS)
         .replace("__PWA_SW__", PWA_SW_JS)
         .replace("__TIPS_CSS__", TIPS_CSS)
+        .replace("__OFF_FILTER_CSS__", OFF_FILTER_CSS)
         .replace("__STICKY_RATE_CSS__", STICKY_RATE_CSS)
         .replace("__TIPS_JS__", TIPS_JS)
         .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)

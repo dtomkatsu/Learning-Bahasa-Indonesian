@@ -42,7 +42,7 @@ from _sync_js import SYNC_JS
 from _record_js import REC_JS
 from _tts_js import TTS_JS
 from _vocab_js import VOCAB_JS
-from _mobile_ui import TIPS_CSS, TIPS_JS, STICKY_RATE_CSS
+from _mobile_ui import TIPS_CSS, TIPS_JS, STICKY_RATE_CSS, OFF_FILTER_CSS
 from _vocab_text import bounded, find_term
 from _pwa_meta import PWA_META_TAGS, PWA_SW_JS
 
@@ -164,6 +164,7 @@ __PWA_META__
     color:var(--muted); font-size:0.72rem; user-select:none; }
   .autoCmp input { margin:0; cursor:pointer; }
 __TIPS_CSS__
+__OFF_FILTER_CSS__
   .hint { text-align:center; color:var(--muted); font-size:0.78rem; margin-top:-8px; margin-bottom:18px; }
   .hint[hidden] { display:none; }
   .rate { display:flex; gap:8px; }
@@ -270,6 +271,7 @@ atau – or"></textarea>
       <button class="plain" id="bulkCancelBtn">Cancel</button>
     </div>
   </div>
+  <div class="offFilter" id="offFilter" hidden></div>
   <div id="card"><div class="front"></div><div class="back"><div class="q"></div><div class="en"></div><div class="tag"></div><div class="ex"></div><div class="heard"></div></div></div>
   <div class="playRow">
     <button class="playBtn" id="playBtn">&#9654; Hear it</button>
@@ -470,6 +472,20 @@ function pickNext() {
 
 // Split out of pickNext so undo can put a specific card back on screen
 // instead of drawing a fresh random one.
+// Undo can legitimately land on a card the active filter excludes. Say so,
+// rather than letting the card silently contradict the chips.
+function updateOffFilterNote() {
+  const el = document.getElementById('offFilter');
+  if (!el) return;
+  if (!current || !pool.length || pool.some(d => d.front === current.front)) {
+    el.hidden = true;
+    return;
+  }
+  el.innerHTML = "This card isn't in your current filter — it's tagged <b>"
+    + escapeHtml(current.tags.join(' · ')) + "</b>. Rate it to go back to your filter.";
+  el.hidden = false;
+}
+
 function showCard(card) {
   current = card;
   flipped = false;
@@ -517,12 +533,14 @@ function showCard(card) {
   cardMeta.hidden = true;
   stopAudio();
   resetSay();
+  updateOffFilterNote();
   updatePlayRow();
   renderStats();
 }
 
 function renderEmpty(msg) {
   current = null;
+  updateOffFilterNote();
   stopAudio();
   updatePlayRow();
   cardEl.innerHTML = `<div class="empty">${msg}</div>`;
@@ -531,6 +549,7 @@ function renderEmpty(msg) {
 
 function renderAllCaughtUp() {
   current = null;
+  updateOffFilterNote();
   stopAudio();
   updatePlayRow();
   const now = Date.now();
@@ -1417,6 +1436,7 @@ def main():
         .replace("__PWA_META__", PWA_META_TAGS)
         .replace("__PWA_SW__", PWA_SW_JS)
         .replace("__TIPS_CSS__", TIPS_CSS)
+        .replace("__OFF_FILTER_CSS__", OFF_FILTER_CSS)
         .replace("__STICKY_RATE_CSS__", STICKY_RATE_CSS)
         .replace("__TIPS_JS__", TIPS_JS)
         .replace("__RHYTHM_TIP__", RHYTHM_TIP_TEXT)
