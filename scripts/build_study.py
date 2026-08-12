@@ -160,10 +160,8 @@ const audio = document.getElementById('qaudio');
 let srsF = srsLoad(FLASH_SRS_KEY);
 let srsQ = srsLoad(QUIZ_SRS_KEY);
 
-function setSyncState(s) {
-  const el = document.getElementById('syncState');
-  if (!syncRemoteConfigured()) { el.textContent = ''; return; }
-  el.textContent = s === 'pending' ? 'syncing…' : s === 'err' ? 'sync failed' : 'synced ✓';
+function setSyncState(s, detail) {
+  syncStatusBadge(document.getElementById('syncState'), s, detail);
 }
 
 // Same deck-layering as flashcards.html: tombstones out, custom cards in.

@@ -636,7 +636,11 @@ function syncRemoteQueuePush(statusCb) {
   _syncPushTimer = setTimeout(async () => {
     _syncPushTimer = null;
     try { await syncRemotePush(); statusCb && statusCb('ok'); }
-    catch (e) { statusCb && statusCb('err'); }
+    // The specific reason (bad token, deleted gist, network) used to be
+    // thrown away here — every page just showed "sync failed" with no way to
+    // tell a revoked token from a network blip without re-triggering a
+    // manual action on index.html. Pass it through instead.
+    catch (e) { statusCb && statusCb('err', e.message); }
   }, 2500);
 }
 
@@ -671,7 +675,24 @@ async function syncRemoteAutoPull(onMerged, statusCb) {
     const r = await syncRemotePull();
     statusCb && statusCb('ok');
     if (r.touched && onMerged) onMerged(r);
-  } catch (e) { statusCb && statusCb('err'); }
+  } catch (e) { statusCb && statusCb('err', e.message); }
+}
+
+// Shared by flashcards/quiz/study, which all show the same small "synced ✓ /
+// syncing… / sync failed" badge next to their stats line. Centralized so the
+// three pages can't drift the way the plain 'err'-with-no-detail version did
+// — tap the failed state to see the actual reason (bad token, deleted gist,
+// offline) instead of a dead end.
+function syncStatusBadge(el, s, detail) {
+  if (!el) return;
+  if (!syncRemoteConfigured()) { el.textContent = ''; el.onclick = null; el.style.cursor = ''; return; }
+  if (s === 'pending') { el.textContent = 'syncing…'; el.onclick = null; el.style.cursor = ''; return; }
+  if (s === 'ok') { el.textContent = 'synced ✓'; el.onclick = null; el.style.cursor = ''; return; }
+  el.textContent = 'sync failed (tap for why)';
+  el.style.cursor = 'pointer';
+  el.onclick = () => alert('Sync failed: ' + (detail || 'unknown error.') +
+    '\n\nIf this keeps happening, the saved GitHub token may have been revoked or expired — ' +
+    'go to the homepage sync panel, disconnect, and reconnect with a fresh token.');
 }
 
 function syncRemoteDisconnect() {
@@ -689,10 +710,8 @@ const audio = document.getElementById('qaudio');
 let srsF = srsLoad(FLASH_SRS_KEY);
 let srsQ = srsLoad(QUIZ_SRS_KEY);
 
-function setSyncState(s) {
-  const el = document.getElementById('syncState');
-  if (!syncRemoteConfigured()) { el.textContent = ''; return; }
-  el.textContent = s === 'pending' ? 'syncing…' : s === 'err' ? 'sync failed' : 'synced ✓';
+function setSyncState(s, detail) {
+  syncStatusBadge(document.getElementById('syncState'), s, detail);
 }
 
 // Same deck-layering as flashcards.html: tombstones out, custom cards in.

@@ -723,10 +723,8 @@ boostAttach(audio);   // family phone audio only — TTS clips are already at st
 let srs = srsMigrateLegacy(SRS_KEY, LEGACY_KEYS);
 let practiceAhead = false;
 
-function setSyncState(s) {
-  const el = document.getElementById('syncState');
-  if (!syncRemoteConfigured()) { el.textContent = ''; return; }
-  el.textContent = s === 'pending' ? 'syncing…' : s === 'err' ? 'sync failed' : 'synced ✓';
+function setSyncState(s, detail) {
+  syncStatusBadge(document.getElementById('syncState'), s, detail);
 }
 // Pull any progress made on another device, then refresh what's on screen.
 // (Deferred a tick so it runs after the initial render below.)

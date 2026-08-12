@@ -354,10 +354,8 @@ let current = null;
 let flipped = false;
 let practiceAhead = false;
 
-function setSyncState(s) {
-  const el = document.getElementById('syncState');
-  if (!syncRemoteConfigured()) { el.textContent = ''; return; }
-  el.textContent = s === 'pending' ? 'syncing…' : s === 'err' ? 'sync failed' : 'synced ✓';
+function setSyncState(s, detail) {
+  syncStatusBadge(document.getElementById('syncState'), s, detail);
 }
 
 const cardEl = document.getElementById('card');
