@@ -176,18 +176,22 @@ def build_blank_items(vocab, tts=None):
     that have no transcript behind them at all.
 
     The answer is the surface form actually in the sentence, not the card's
-    dictionary form: for "tangkap" the sentence says *menangkap*, and asking
-    for the affixed form is the harder and more useful exercise. The page
-    accepts either (see the `accepts` list) and points out the difference
-    when they don't match, because typing the root is a near miss worth
-    naming rather than an error.
+    dictionary form: for "tangkap" the sentence says *menangkap*. Forced
+    choice over that surface form, rather than a typed answer, so the drill
+    stays about recognising the right word for the sentence rather than
+    spelling it — distractors are built the same way "Catch the word"'s are
+    (see _confusable), from a pool of both dictionary fronts and other
+    sentences' surface forms so an affixed answer gets affixed-looking
+    wrong options instead of only bare dictionary words.
 
-    Skipped: cards with no example, and the handful of fronts like
-    "sama … dengan …" that span a gap find_term can't point at — there is no
-    single span to blank, so there is no item to build.
+    Skipped: cards with no example, the handful of fronts like
+    "sama … dengan …" that span a gap find_term can't point at (there is no
+    single span to blank), and — same bar as Catch the word — any item where
+    the deck doesn't yield at least two words confusable enough to make the
+    choice real.
     """
     tts = tts if tts is not None else load_tts_index()
-    items = []
+    raw = []
     for v in vocab:
         sentence = v["example"]
         if not sentence:
@@ -200,15 +204,11 @@ def build_blank_items(vocab, tts=None):
         # A one-word sentence blanked out leaves nothing to reason from.
         if len(sentence.split()) < 3:
             continue
-        accepts = [surface]
-        if surface.lower() != v["front"].lower():
-            accepts.append(v["front"])
-        items.append({
+        raw.append({
             "id": f"blank::{v['front']}",
             "kind": "blank",
             "term": v["front"],
             "answer": surface,
-            "accepts": accepts,
             "hint": v["back"],
             "tags": v["tags"],
             "cloze": sentence[:a] + "_____" + sentence[b:],
@@ -219,7 +219,16 @@ def build_blank_items(vocab, tts=None):
             "source": v["deck"].replace("-", " "),
         })
         if sentence in tts:
-            items[-1]["sentenceSrc"] = f"audio/tts/{tts[sentence]}"
+            raw[-1]["sentenceSrc"] = f"audio/tts/{tts[sentence]}"
+
+    pool = sorted({v["front"] for v in vocab} | {it["answer"] for it in raw})
+    items = []
+    for it in raw:
+        distractors = _confusable(it["answer"], pool, it["sentence"])
+        if len(distractors) < 2:
+            continue          # nothing confusable enough to make it a real choice
+        it["options"] = sorted([it["answer"]] + distractors)
+        items.append(it)
     return items
 
 
@@ -588,17 +597,6 @@ __OFF_FILTER_CSS__
   button.play { font-size:0.85rem; padding:8px 14px; border-radius:8px; border:1px solid var(--accent);
     background:transparent; color:var(--accent); cursor:pointer; }
   button.play:hover { background:var(--accent); color:#fff; }
-  /* Fill-the-blank: typed answer, so the verdict is objective rather than
-     self-assessed. The input sits where the blank is being asked about. */
-  .answerRow { display:flex; gap:8px; margin-bottom:12px; }
-  input.answerBox { flex:1; min-width:0; font-size:1rem; border-radius:8px;
-    border:1px solid var(--line); background:var(--bg); color:var(--fg); padding:9px 11px; }
-  input.answerBox:focus { outline:none; border-color:var(--accent); }
-  input.answerBox:disabled { opacity:0.7; }
-  button.checkBtn { font-size:0.85rem; padding:8px 14px; border-radius:8px;
-    border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; }
-  button.checkBtn:disabled { background:transparent; border-color:var(--line);
-    color:var(--muted); cursor:default; }
   .verdict { font-size:0.9rem; margin-bottom:12px; font-weight:600; }
   .verdict.right { color:var(--good); }
   .verdict.wrong { color:var(--again); }
@@ -759,7 +757,7 @@ const modeHintEl = document.getElementById('modeHint');
 
 const MODE_HINTS = {
   word: 'One word blanked out of a real sentence — recall it from context.',
-  blank: 'Type the missing word into the example sentence. Covers the whole deck, not just words the family happened to say — so no audio from the recording, only synthesis.',
+  blank: 'Pick the missing word for the example sentence. Covers the whole deck, not just words the family happened to say — so no audio from the recording, only synthesis.',
   hear: 'A real clip plays — pick which word was in it. Every word here is one at least two different people in the recordings say, so you hear it out of more than one mouth.',
   pairs: 'A real volunteer says one of two similar words — which one? Each pair differs by exactly one sound, often the specific thing English speakers mishear in Indonesian.',
   sentence: 'A whole real line — read or listen, then reveal the translation and rate yourself on the whole thing, not just one word.',
@@ -868,66 +866,26 @@ function renderAllCaughtUp() {
   document.getElementById('aheadBtn').addEventListener('click', () => { practiceAhead = true; pickNext(); });
 }
 
-// Indonesian spelling is regular enough that a typed answer can be graded
-// honestly, but not so regular that a stray accent or trailing period should
-// count against you. Everything here is about stripping the things that aren't
-// the answer.
-function normalizeAnswer(s) {
-  return (s || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\\s-]/g, '')
-    .replace(/\\s+/g, ' ')
-    .trim();
-}
-
-// One-edit distance, capped — enough to tell "typo" from "different word".
-function withinOneEdit(a, b) {
-  if (Math.abs(a.length - b.length) > 1) return false;
-  let i = 0, j = 0, edits = 0;
-  while (i < a.length && j < b.length) {
-    if (a[i] === b[j]) { i++; j++; continue; }
-    if (++edits > 1) return false;
-    if (a.length > b.length) i++;
-    else if (a.length < b.length) j++;
-    else { i++; j++; }
-  }
-  return edits + (a.length - i) + (b.length - j) <= 1;
-}
-
-// Returns how the typed answer relates to what the sentence wanted, so the
-// verdict can say something more useful than right/wrong: typing the
-// dictionary form when the sentence inflects it is a near miss worth naming.
-function gradeAnswer(item, typed) {
-  const got = normalizeAnswer(typed);
-  if (!got) return { ok: false, kind: 'empty' };
-  const wanted = normalizeAnswer(item.answer);
-  if (got === wanted) return { ok: true, kind: 'exact' };
-  for (const alt of item.accepts || []) {
-    if (got === normalizeAnswer(alt)) return { ok: true, kind: 'dictionary' };
-  }
-  if (got.length >= 4 && withinOneEdit(got, wanted)) return { ok: true, kind: 'typo' };
-  return { ok: false, kind: 'wrong' };
-}
-
-// Fill-the-blank gets its own renderer because it has a step the other modes
-// don't: you commit to an answer before anything is revealed. The rate row
-// still appears afterwards — the grader knows whether you were right, but only
-// you know whether it was effortless.
+// Fill-the-blank: forced choice over the surface form the sentence actually
+// uses, distractors built the same way "Catch the word"'s are (see
+// _confusable in build_quiz.py). Its own renderer because the prompt is a
+// cloze sentence rather than a played clip.
 function renderBlankCard(promptText, hintLine, revealInner) {
   const canHear = !!ttsVoice || !!current.sentenceSrc;
+  const opts = current.options.slice();
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
   cardEl.innerHTML = `
     <div class="source">${escapeHtml(current.source)} · ${escapeHtml(current.tags.join(' · '))}</div>
     <div class="prompt">${promptText}</div>
     ${hintLine}
-    <div class="answerRow">
-      <input class="answerBox" id="answerBox" type="text" autocomplete="off"
-             autocapitalize="off" autocorrect="off" spellcheck="false"
-             placeholder="type the missing word">
-      <button class="checkBtn" id="checkBtn">Check</button>
+    <div class="opts" id="opts">
+      ${opts.map(o => `<button class="opt" data-opt="${escapeHtml(o)}">${escapeHtml(o)}</button>`).join('')}
     </div>
     <div class="verdict" id="verdict" hidden></div>
     <div class="playrow"><button class="play" id="playBtn"${canHear ? '' : ' disabled'}>&#128266; Hear the sentence</button></div>
-    <button class="revealBtn" id="revealBtn">I don't know &mdash; show it</button>
     <div class="reveal" id="revealBox">${revealInner}</div>
     <div class="rate" id="rateRow" hidden>
       <button class="rate-btn again" id="btn1"><span class="lbl">Again</span><span class="prev" id="prev1"></span></button>
@@ -936,48 +894,29 @@ function renderBlankCard(promptText, hintLine, revealInner) {
       <button class="rate-btn easy" id="btn4"><span class="lbl">Easy</span><span class="prev" id="prev4"></span></button>
     </div>
   `;
-  const box = document.getElementById('answerBox');
-  document.getElementById('checkBtn').addEventListener('click', checkAnswer);
-  box.addEventListener('keydown', e => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    if (revealed) rate(3); else checkAnswer();
-  });
-  // Typing goes to the box, so the global 1/2/3/4 and "p" shortcuts must not
-  // also fire while it has focus.
-  box.addEventListener('keydown', e => e.stopPropagation());
-  document.getElementById('revealBtn').addEventListener('click', () => showBlankAnswer(null));
   document.getElementById('playBtn').addEventListener('click', () => ttsSay(current.sentence, current.sentenceSrc));
+  cardEl.querySelectorAll('.opt').forEach(b => {
+    b.addEventListener('click', () => answerBlank(b.dataset.opt));
+  });
   [1, 2, 3, 4].forEach(g => {
     document.getElementById('btn' + g).addEventListener('click', () => rate(g));
   });
-  if (!srsIsTouch()) box.focus();
 }
 
-function checkAnswer() {
+function answerBlank(picked) {
   if (!current || revealed) return;
-  showBlankAnswer(gradeAnswer(current, document.getElementById('answerBox').value));
-}
-
-// `result` is null when the answer was skipped rather than attempted — the
-// sentence still gets revealed, but claiming a verdict would be a lie.
-function showBlankAnswer(result) {
-  const box = document.getElementById('answerBox');
+  const ok = picked === current.answer;
+  cardEl.querySelectorAll('.opt').forEach(b => {
+    b.disabled = true;
+    const o = b.dataset.opt;
+    if (o === current.answer) b.classList.add('right');
+    else if (o === picked) b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
   const el = document.getElementById('verdict');
-  box.disabled = true;
-  document.getElementById('checkBtn').disabled = true;
-  if (result && result.kind !== 'empty') {
-    el.hidden = false;
-    el.className = 'verdict ' + (result.ok ? 'right' : 'wrong');
-    if (result.kind === 'exact') el.textContent = '✓ Correct.';
-    else if (result.kind === 'typo') el.innerHTML = '✓ Close enough — the spelling is ' +
-      `<b>${escapeHtml(current.answer)}</b>.`;
-    else if (result.kind === 'dictionary') el.innerHTML = '✓ Right word — ' +
-      `but in this sentence it takes affixes: <b>${escapeHtml(current.answer)}</b>.` +
-      '<span class="sub">Rate yourself on whether you\\'d have produced that form.</span>';
-    else el.innerHTML = `✗ The answer was <b>${escapeHtml(current.answer)}</b>.`;
-  }
-  document.getElementById('revealBtn').hidden = true;
+  el.hidden = false;
+  el.className = 'verdict ' + (ok ? 'right' : 'wrong');
+  el.innerHTML = ok ? '✓ Correct.' : `✗ The answer was <b>${escapeHtml(current.answer)}</b>.`;
   reveal();
 }
 
@@ -1411,7 +1350,7 @@ def main():
     )
     OUT.write_text(html, encoding="utf-8")
     cloze_n = sum(1 for i in word_items if i["mode"] == "cloze")
-    affixed = sum(1 for i in blank_items if len(i["accepts"]) > 1)
+    affixed = sum(1 for i in blank_items if i["answer"].lower() != i["term"].lower())
     documented = sum(1 for i in pair_items if i["documented"])
     print(f"wrote {OUT}: {len(word_items)} word items ({cloze_n} cloze, {len(word_items)-cloze_n} recall) "
           f"from {len(vocab)} vocab terms, {len(blank_items)} fill-the-blank items "
