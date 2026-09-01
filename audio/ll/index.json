@@ -2,12 +2,12 @@
 "abang": {
 "alts": [
 {
-"author": "Dvnfit",
-"file": "abang-Dvnfit.m4a"
-},
-{
 "author": "Writingtradition",
 "file": "abang-Writingtradi.m4a"
+},
+{
+"author": "Dvnfit",
+"file": "abang-Dvnfit.m4a"
 }
 ],
 "author": "Xbypass",
@@ -51,6 +51,16 @@
 "author": "Xbypass",
 "file": "adik-Xbypass.m4a"
 },
+"adil": {
+"alts": [
+{
+"author": "Hzu Hzu",
+"file": "adil-HzuHzu.m4a"
+}
+],
+"author": "Xbypass",
+"file": "adil-Xbypass.m4a"
+},
 "aduh": {
 "alts": [
 {
@@ -64,6 +74,11 @@
 ],
 "author": "Xbypass",
 "file": "aduh-Xbypass.m4a"
+},
+"aduk": {
+"alts": [],
+"author": "Iripseudocorus",
+"file": "aduk-Iripseudocor.m4a"
 },
 "agak": {
 "alts": [],
@@ -89,6 +104,20 @@
 "alts": [],
 "author": "Diahasy",
 "file": "aja-Diahasy.m4a"
+},
+"akar": {
+"alts": [
+{
+"author": "Kume Gucci",
+"file": "akar-KumeGucci.m4a"
+},
+{
+"author": "Bangrapip",
+"file": "akar-Bangrapip.m4a"
+}
+],
+"author": "Xbypass",
+"file": "akar-Xbypass.m4a"
 },
 "akhirnya": {
 "alts": [],
@@ -364,6 +393,11 @@
 "author": "Pitchrigi",
 "file": "atur-Pitchrigi.m4a"
 },
+"awak": {
+"alts": [],
+"author": "Romo Eko (Amidaxaviera)",
+"file": "awak-RomoEkoAmida.m4a"
+},
 "awal": {
 "alts": [],
 "author": "Xbypass",
@@ -402,6 +436,16 @@
 "author": "Alfiyah Rizzy Afdiquni",
 "file": "ayo-AlfiyahRizzy.m4a"
 },
+"babak": {
+"alts": [
+{
+"author": "Bangrapip",
+"file": "babak-Bangrapip.m4a"
+}
+],
+"author": "Alfiyah Rizzy Afdiquni",
+"file": "babak-AlfiyahRizzy.m4a"
+},
 "baca": {
 "alts": [
 {
@@ -415,6 +459,16 @@
 ],
 "author": "Xbypass",
 "file": "baca-Xbypass.m4a"
+},
+"badak": {
+"alts": [
+{
+"author": "Kume Gucci",
+"file": "badak-KumeGucci.m4a"
+}
+],
+"author": "Xbypass",
+"file": "badak-Xbypass.m4a"
 },
 "badan": {
 "alts": [
@@ -520,6 +574,11 @@
 "author": "Xbypass",
 "file": "baik-Xbypass.m4a"
 },
+"bait": {
+"alts": [],
+"author": "Writingtradition",
+"file": "bait-Writingtradi.m4a"
+},
 "baju": {
 "alts": [
 {
@@ -527,12 +586,32 @@
 "file": "baju-SofiSolihah.m4a"
 },
 {
-"author": "Dvnfit",
-"file": "baju-Dvnfit.m4a"
+"author": "Writingtradition",
+"file": "baju-Writingtradi.m4a"
 }
 ],
 "author": "Xbypass",
 "file": "baju-Xbypass.m4a"
+},
+"bak": {
+"alts": [
+{
+"author": "Writingtradition",
+"file": "bak-Writingtradi.m4a"
+}
+],
+"author": "Sofi Solihah",
+"file": "bak-SofiSolihah.m4a"
+},
+"baki": {
+"alts": [
+{
+"author": "Writingtradition",
+"file": "baki-Writingtradi.m4a"
+}
+],
+"author": "Sofi Solihah",
+"file": "baki-SofiSolihah.m4a"
 },
 "balik": {
 "alts": [
@@ -547,6 +626,11 @@
 ],
 "author": "Xbypass",
 "file": "balik-Xbypass.m4a"
+},
+"bang": {
+"alts": [],
+"author": "Alfiyah Rizzy Afdiquni",
+"file": "bang-AlfiyahRizzy.m4a"
 },
 "bangkit": {
 "alts": [
@@ -635,6 +719,20 @@
 "author": "Xbypass",
 "file": "bapak-Xbypass.m4a"
 },
+"barat": {
+"alts": [
+{
+"author": "Iripseudocorus",
+"file": "barat-Iripseudocor.m4a"
+},
+{
+"author": "Hzu Hzu",
+"file": "barat-HzuHzu.m4a"
+}
+],
+"author": "Xbypass",
+"file": "barat-Xbypass.m4a"
+},
 "baru": {
 "alts": [
 {
@@ -667,6 +765,16 @@
 "alts": [],
 "author": "Hzu Hzu",
 "file": "batik-HzuHzu.m4a"
+},
+"batin": {
+"alts": [
+{
+"author": "Hzu Hzu",
+"file": "batin-HzuHzu.m4a"
+}
+],
+"author": "Iripseudocorus",
+"file": "batin-Iripseudocor.m4a"
 },
 "batuk": {
 "alts": [
@@ -727,6 +835,16 @@
 "author": "Writingtradition",
 "file": "becak-Writingtradi.m4a"
 },
+"becek": {
+"alts": [
+{
+"author": "Writingtradition",
+"file": "becek-Writingtradi.m4a"
+}
+],
+"author": "Alfiyah Rizzy Afdiquni",
+"file": "becek-AlfiyahRizzy.m4a"
+},
 "begini": {
 "alts": [],
 "author": "Writingtradition",
@@ -751,6 +869,11 @@
 ],
 "author": "Iripseudocorus",
 "file": "bekerja-Iripseudocor.m4a"
+},
+"beku": {
+"alts": [],
+"author": "Writingtradition",
+"file": "beku-Writingtradi.m4a"
 },
 "belajar": {
 "alts": [
@@ -903,6 +1026,11 @@
 "alts": [],
 "author": "Hzu Hzu",
 "file": "bersih-HzuHzu.m4a"
+},
+"besan": {
+"alts": [],
+"author": "Hzu Hzu",
+"file": "besan-HzuHzu.m4a"
 },
 "besar": {
 "alts": [
@@ -1060,6 +1188,11 @@
 "author": "Alfiyah Rizzy Afdiquni",
 "file": "bungkus-AlfiyahRizzy.m4a"
 },
+"buruh": {
+"alts": [],
+"author": "Sofi Solihah",
+"file": "buruh-SofiSolihah.m4a"
+},
 "buruk": {
 "alts": [
 {
@@ -1128,6 +1261,11 @@
 "author": "Xbypass",
 "file": "cantik-Xbypass.m4a"
 },
+"capai": {
+"alts": [],
+"author": "Hzu Hzu",
+"file": "capai-HzuHzu.m4a"
+},
 "cara": {
 "alts": [
 {
@@ -1194,6 +1332,11 @@
 ],
 "author": "Alfiyah Rizzy Afdiquni",
 "file": "cerah-AlfiyahRizzy.m4a"
+},
+"ceri": {
+"alts": [],
+"author": "Titanboo",
+"file": "ceri-Titanboo.m4a"
 },
 "cermin": {
 "alts": [
@@ -1378,6 +1521,16 @@
 "author": "Cloudy (Losstreak)",
 "file": "daripada-CloudyLosstr.m4a"
 },
+"data": {
+"alts": [
+{
+"author": "Sandi rambe",
+"file": "data-Sandirambe.m4a"
+}
+],
+"author": "Kume Gucci",
+"file": "data-KumeGucci.m4a"
+},
 "datang": {
 "alts": [
 {
@@ -1518,6 +1671,11 @@
 ],
 "author": "Xbypass",
 "file": "dingin-Xbypass.m4a"
+},
+"dipan": {
+"alts": [],
+"author": "Sofi Solihah",
+"file": "dipan-SofiSolihah.m4a"
 },
 "dokter": {
 "alts": [
@@ -1756,6 +1914,16 @@
 "alts": [],
 "author": "Sofi Solihah",
 "file": "hadir-SofiSolihah.m4a"
+},
+"hak": {
+"alts": [
+{
+"author": "Iripseudocorus",
+"file": "hak-Iripseudocor.m4a"
+}
+],
+"author": "Xbypass",
+"file": "hak-Xbypass.m4a"
 },
 "hal": {
 "alts": [
@@ -2190,6 +2358,16 @@
 "author": "Alfiyah Rizzy Afdiquni",
 "file": "kagum-AlfiyahRizzy.m4a"
 },
+"kakak": {
+"alts": [
+{
+"author": "Sofi Solihah",
+"file": "kakak-SofiSolihah.m4a"
+}
+],
+"author": "Xbypass",
+"file": "kakak-Xbypass.m4a"
+},
 "kakek": {
 "alts": [],
 "author": "Xbypass",
@@ -2392,6 +2570,11 @@
 "author": "Xbypass",
 "file": "kedua-Xbypass.m4a"
 },
+"kelak": {
+"alts": [],
+"author": "Iripseudocorus",
+"file": "kelak-Iripseudocor.m4a"
+},
 "kelapa": {
 "alts": [],
 "author": "Xbypass",
@@ -2446,6 +2629,11 @@
 "alts": [],
 "author": "Xbypass",
 "file": "kepala-Xbypass.m4a"
+},
+"kerang": {
+"alts": [],
+"author": "Cloudy (Losstreak)",
+"file": "kerang-CloudyLosstr.m4a"
 },
 "keras": {
 "alts": [],
@@ -2680,6 +2868,20 @@
 "author": "Xbypass",
 "file": "lagi-Xbypass.m4a"
 },
+"laki": {
+"alts": [
+{
+"author": "AmeliaWardani-laki",
+"file": "laki-AmeliaWardan.m4a"
+},
+{
+"author": "Iripseudocorus-laki",
+"file": "laki-Iripseudocor.m4a"
+}
+],
+"author": "Xbypass",
+"file": "laki-Xbypass.m4a"
+},
 "lalu": {
 "alts": [],
 "author": "Cloudy (Losstreak)",
@@ -2733,6 +2935,11 @@
 "alts": [],
 "author": "S Kartika",
 "file": "lari-SKartika.m4a"
+},
+"lauk": {
+"alts": [],
+"author": "Cloudy (Losstreak)",
+"file": "lauk-CloudyLosstr.m4a"
 },
 "laut": {
 "alts": [
@@ -3117,6 +3324,11 @@
 "author": "Mutumanikam (Akbar Soepadhi)",
 "file": "mendung-MutumanikamA.m4a"
 },
+"mengadakan": {
+"alts": [],
+"author": "Cloudy (Losstreak)",
+"file": "mengadakan-CloudyLosstr.m4a"
+},
 "mengatakan": {
 "alts": [],
 "author": "Alfiyah Rizzy Afdiquni",
@@ -3174,6 +3386,11 @@
 ],
 "author": "MuRiIrUm",
 "file": "merah-MuRiIrUm.m4a"
+},
+"merak": {
+"alts": [],
+"author": "Xbypass",
+"file": "merak-Xbypass.m4a"
 },
 "meskipun": {
 "alts": [],
@@ -3307,6 +3524,16 @@
 "alts": [],
 "author": "Alfiyah Rizzy Afdiquni",
 "file": "murid-AlfiyahRizzy.m4a"
+},
+"musik": {
+"alts": [
+{
+"author": "Iripseudocorus",
+"file": "musik-Iripseudocor.m4a"
+}
+],
+"author": "Xbypass",
+"file": "musik-Xbypass.m4a"
 },
 "musim": {
 "alts": [
@@ -3496,6 +3723,11 @@
 "author": "Iripseudocorus",
 "file": "panci-Iripseudocor.m4a"
 },
+"pandai": {
+"alts": [],
+"author": "Iripseudocorus",
+"file": "pandai-Iripseudocor.m4a"
+},
 "panjang": {
 "alts": [],
 "author": "Nasyaale",
@@ -3549,6 +3781,11 @@
 "alts": [],
 "author": "Xbypass",
 "file": "pelabuhan-Xbypass.m4a"
+},
+"pelajar": {
+"alts": [],
+"author": "Iripseudocorus",
+"file": "pelajar-Iripseudocor.m4a"
 },
 "pelajaran": {
 "alts": [],
@@ -3816,6 +4053,11 @@
 "author": "Sofi Solihah",
 "file": "ratusan-SofiSolihah.m4a"
 },
+"remah": {
+"alts": [],
+"author": "Sofi Solihah",
+"file": "remah-SofiSolihah.m4a"
+},
 "rendah": {
 "alts": [],
 "author": "Iripseudocorus",
@@ -3925,14 +4167,15 @@
 {
 "author": "Iripseudocorus",
 "file": "sama-Iripseudocor.m4a"
-},
-{
-"author": "Sofi Solihah-sama",
-"file": "sama-SofiSolihahs.m4a"
 }
 ],
 "author": "Xbypass",
 "file": "sama-Xbypass.m4a"
+},
+"sama-sama": {
+"alts": [],
+"author": "Sofi Solihah",
+"file": "sama_sama-SofiSolihah.m4a"
 },
 "sampai": {
 "alts": [],
@@ -4213,6 +4456,11 @@
 "author": "Alfiyah Rizzy Afdiquni",
 "file": "semoga-AlfiyahRizzy.m4a"
 },
+"sempet": {
+"alts": [],
+"author": "Eryantii",
+"file": "sempet-Eryantii.m4a"
+},
 "sempit": {
 "alts": [],
 "author": "AmeliaWardani",
@@ -4262,6 +4510,11 @@
 "author": "Xbypass",
 "file": "sendok-Xbypass.m4a"
 },
+"seni": {
+"alts": [],
+"author": "Iripseudocorus",
+"file": "seni-Iripseudocor.m4a"
+},
 "senin": {
 "alts": [],
 "author": "Diahasy",
@@ -4286,6 +4539,11 @@
 "alts": [],
 "author": "Sofi Solihah",
 "file": "seperti-SofiSolihah.m4a"
+},
+"sepi": {
+"alts": [],
+"author": "Alfiyah Rizzy Afdiquni",
+"file": "sepi-AlfiyahRizzy.m4a"
 },
 "september": {
 "alts": [],
@@ -4512,6 +4770,11 @@
 "author": "Xbypass",
 "file": "takut-Xbypass.m4a"
 },
+"taman": {
+"alts": [],
+"author": "Xbypass",
+"file": "taman-Xbypass.m4a"
+},
 "tanah": {
 "alts": [
 {
@@ -4570,6 +4833,11 @@
 ],
 "author": "Xbypass",
 "file": "tanya-Xbypass.m4a"
+},
+"tari": {
+"alts": [],
+"author": "Iripseudocorus",
+"file": "tari-Iripseudocor.m4a"
 },
 "tas": {
 "alts": [],
@@ -4701,6 +4969,11 @@
 "author": "Iripseudocorus",
 "file": "terus-Iripseudocor.m4a"
 },
+"tes": {
+"alts": [],
+"author": "Cloudy (Losstreak)",
+"file": "tes-CloudyLosstr.m4a"
+},
 "tetapi": {
 "alts": [
 {
@@ -4712,14 +4985,14 @@
 "file": "tetapi-Xbypass.m4a"
 },
 "tiba": {
-"alts": [],
+"alts": [
+{
+"author": "Alfiyah Rizzy Afdiquni-tiba",
+"file": "tiba-AlfiyahRizzy.m4a"
+}
+],
 "author": "Romo Eko (Amidaxaviera)",
 "file": "tiba-RomoEkoAmida.m4a"
-},
-"tiba-tiba": {
-"alts": [],
-"author": "Alfiyah Rizzy Afdiquni",
-"file": "tiba_tiba-AlfiyahRizzy.m4a"
 },
 "tidak": {
 "alts": [

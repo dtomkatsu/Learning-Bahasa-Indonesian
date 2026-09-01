@@ -95,8 +95,28 @@ def list_recordings():
         time.sleep(1.0)
 
 
+def load_foils():
+    """Discrimination foils — real words that are never flashcards.
+
+    They still need a recording, because a minimal pair is only usable if
+    BOTH halves have real audio; a foil with no clip silently drops the pair
+    it was added for. Shared reader with build_quiz.load_foils by convention
+    rather than import, same standalone-runnability rule as everywhere else
+    in scripts/.
+    """
+    path = ROOT / "contrast" / "foils.tsv"
+    if not path.exists():
+        return {}
+    out = {}
+    with open(path, encoding="utf-8") as f:
+        for row in csv.reader(f, delimiter="\t"):
+            if row and row[0].strip() and not row[0].startswith("#"):
+                out[row[0].strip().lower()] = row[1].strip() if len(row) > 1 else ""
+    return out
+
+
 def deck_fronts():
-    fronts = set()
+    fronts = set(load_foils())
     for tsv in sorted(VOCAB_DIR.glob("*.tsv")):
         with open(tsv, encoding="utf-8") as f:
             for row in csv.reader(f, delimiter="\t"):

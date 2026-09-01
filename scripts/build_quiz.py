@@ -392,7 +392,29 @@ def _classify_pair(a, b):
     return None
 
 
-def build_pair_items(vocab, ll_index):
+def load_foils():
+    """Discrimination foils: real words that exist only to be the wrong option.
+
+    Kept out of vocab/ on purpose, because everything in vocab/ becomes a
+    flashcard and these should not be. The Minimal pairs pool is capped by
+    what the deck happens to contain, and the deck is built from what one
+    family talked about — so the contrast a learner most needs to hear
+    (becak/becek, sapi/sepi, taman/teman) is often missing not because no
+    recording exists but because the *other* word was never worth a card.
+    A foil closes that gap without adding a review obligation.
+    """
+    path = ROOT / "contrast" / "foils.tsv"
+    if not path.exists():
+        return {}
+    out = {}
+    with open(path, encoding="utf-8") as f:
+        for row in csv.reader(f, delimiter="\t"):
+            if row and row[0].strip() and not row[0].startswith("#"):
+                out[row[0].strip().lower()] = row[1].strip() if len(row) > 1 else ""
+    return out
+
+
+def build_pair_items(vocab, ll_index, foils=None):
     """Minimal-pair discrimination from real Lingua Libre recordings.
 
     HVPT's evidenced effect is training a phonetic *contrast* across real
@@ -417,8 +439,14 @@ def build_pair_items(vocab, ll_index):
     own 1-3 real speakers rather than a single fixed voice, which is a
     partial mitigation, not a fix — flagged here rather than asserted clean.
     """
+    foils = foils or {}
     fronts = {v["front"].split(" / ")[0].strip().lower(): v for v in vocab}
-    words = sorted(w for w in fronts if w.isalpha() and len(w) >= 3 and w in ll_index)
+    gloss = {w: v["back"] for w, v in fronts.items()}
+    tagsof = {w: v["tags"] for w, v in fronts.items()}
+    for w, g in foils.items():
+        gloss.setdefault(w, g)
+        tagsof.setdefault(w, [])
+    words = sorted(w for w in gloss if w.isalpha() and len(w) >= 3 and w in ll_index)
 
     def clips(word):
         e = ll_index[word]
@@ -429,6 +457,11 @@ def build_pair_items(vocab, ll_index):
     items = []
     for i, a in enumerate(words):
         for b in words[i + 1:]:
+            # Never foil-vs-foil: the drill is worth doing when one option is
+            # a word you are learning, and two unknown words tests nothing but
+            # raw acoustics against two glosses read for the first time.
+            if a in foils and b in foils:
+                continue
             result = _classify_pair(a, b)
             if not result:
                 continue
@@ -441,16 +474,16 @@ def build_pair_items(vocab, ll_index):
                 + [{"answer": b, "src": f"audio/ll/{c['file']}", "speaker": c["speaker"]}
                    for c in clips_b]
             )
-            va, vb = fronts[a], fronts[b]
             items.append({
                 "id": f"pairs::{a}::{b}",
                 "kind": "pairs",
                 "options": [a, b],
-                "hints": {a: va["back"], b: vb["back"]},
+                "hints": {a: gloss[a], b: gloss[b]},
                 "contrast": contrast,
                 "documented": documented,
                 "sharedSpeaker": bool(shared),
-                "tags": sorted(set(va["tags"]) | set(vb["tags"])),
+                "tags": sorted(set(tagsof[a]) | set(tagsof[b])),
+                "foil": a if a in foils else (b if b in foils else None),
                 "trials": trials,
             })
     return items
@@ -1330,7 +1363,7 @@ def main():
     word_items = build_quiz_items(vocab, convos)
     blank_items = build_blank_items(vocab)
     hear_items = build_hear_items(vocab, convos)
-    pair_items = build_pair_items(vocab, ll_index)
+    pair_items = build_pair_items(vocab, ll_index, load_foils())
     sentence_items = build_sentence_items(convos)
     listening_items = build_listening_items(sentence_items)
     items = word_items + blank_items + hear_items + pair_items + sentence_items + listening_items
