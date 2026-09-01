@@ -59,6 +59,7 @@ ROOT = Path(__file__).resolve().parent.parent
 VOCAB_DIR = ROOT / "vocab"
 OUT_DIR = ROOT / "audio" / "tts"
 INDEX = OUT_DIR / "index.json"
+LL_INDEX = ROOT / "audio" / "ll" / "index.json"
 
 API_ROOT = "https://api.elevenlabs.io/v1"
 
@@ -75,29 +76,56 @@ LANGUAGE = "id"
 # needs; at 32kbps the whole deck is ~13 MB.
 OUTPUT_FORMAT = "mp3_22050_32"
 
-# Flash and Turbo bill at half a credit per character; the full-price models
-# bill at one. Used only for the estimate the script prints.
-CREDITS_PER_CHAR = 0.5
+# Measured, not quoted: the 414-word run on 2026-08-31 moved this account's
+# character_count by 844 for 3,349 characters — 0.252 credits/char on Flash,
+# half the 0.5 the pricing write-ups reported and this constant used to
+# assume. Only affects the estimate printed below, so an overestimate was
+# harmless; it did make the budget look twice as tight as it is. Note the
+# subscription counter is eventually consistent and climbs for a minute or
+# two after a run, so re-read it before trusting a delta.
+CREDITS_PER_CHAR = 0.25
+
+
+# One card front is English on purpose — a code-switch card recording that
+# Dila asked her question in English mid-Indonesian-sentence. An Indonesian
+# voice pinned to language_code="id" would read it with Indonesian phonics,
+# teaching the opposite of what the card exists to show.
+SKIP_WORDS = {"Can I ask a question?"}
+
+
+def load_ll_index():
+    """Lowercased word -> volunteer recording, or {} if none were ever fetched.
+
+    Re-read rather than imported, same reason as the vocab read below: this
+    script has to stay runnable even if the rest of the build is mid-edit.
+    """
+    if not LL_INDEX.exists():
+        return {}
+    try:
+        return json.loads(LL_INDEX.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
 
 
 def load_texts():
-    """Every example sentence — and deliberately NOT the bare card words.
+    """Every example sentence, plus the card fronts no volunteer ever recorded.
 
-    Sentences only, decided 2026-08-03 after tracing where generated word
-    audio was actually consumed: `wordSrc` reaches exactly one control, the
-    front-of-card "Hear it" button in flashcards.html, and nothing else.
-    modelSrc() prefers the sentence clip the moment the card is flipped, so
-    say-it-yourself never uses it; Catch it, Minimal pairs and every quiz
-    mode ignore it entirely (grep for wordSrc — quiz/study/index have zero
-    references). Real Lingua Libre volunteer recordings already cover 577 of
-    the fronts for that one button anyway, and voicing single words also cuts
-    against this deck's own rule that a word is never learned as a bare gloss.
-    ~8% of the spend for a feature nothing depends on.
+    Sentences are unconditional. Words come back marked kind="word" and are
+    only *generated* under --words — but they are always planned and always
+    indexed, so a later plain run can neither drop them from index.json nor
+    --prune the clips a --words run paid for.
 
-    Same source and same reading as build_flashcards.load_decks, deliberately
-    kept to a plain re-read rather than an import — this script has to stay
-    runnable even if the rest of the build is mid-edit.
+    Which words: only fronts with no Lingua Libre recording. The original call
+    here (2026-08-03) was to voice no words at all, because `wordSrc` reaches
+    exactly one control — the front-of-card "Hear it" button — and volunteer
+    recordings already covered the fronts. That second half is what changed:
+    415 fronts have no volunteer recording, and on a desktop browser with no
+    Indonesian speechSynthesis voice their button is disabled outright. This
+    is that uncovered remainder, not the duplicate set rejected then; where a
+    volunteer recording exists it still outranks the studio voice in
+    build_flashcards.load_decks and nothing is generated for it.
     """
+    ll = load_ll_index()
     seen = {}
     for tsv in sorted(VOCAB_DIR.glob("*.tsv")):
         with open(tsv, encoding="utf-8") as f:
@@ -106,6 +134,12 @@ def load_texts():
                     continue
                 if len(row) > 3 and row[3].strip():
                     seen.setdefault(row[3].strip(), "sentence")
+                # build_flashcards speaks only the first spelling of a slash
+                # front and looks the clip up under exactly that string, so
+                # the key here has to be that same substring.
+                spoken = row[0].split(" / ")[0].strip()
+                if spoken and spoken not in SKIP_WORDS and spoken.lower() not in ll:
+                    seen.setdefault(spoken, "word")
     return seen
 
 
@@ -317,6 +351,10 @@ def main():
                          "credits/month, i.e. 20,000 characters on a half-rate model")
     ap.add_argument("--dry-run", action="store_true",
                     help="report what's missing and what it would cost, generate nothing")
+    ap.add_argument("--words", action="store_true",
+                    help="also voice the card fronts that have no Lingua Libre "
+                         "volunteer recording — without this they are planned "
+                         "and indexed but never generated")
     ap.add_argument("--prune", action="store_true",
                     help="also delete clips no card refers to any more")
     ap.add_argument("--list-voices", action="store_true",
@@ -339,13 +377,27 @@ def main():
     # report against filenames the real run would never produce.
     voice = args.voice or "VOICE_UNSET"
     rows = plan(texts, voice, args.model)
-    missing = [r for r in rows if not r["exists"]]
-    chars = sum(len(r["text"]) for r in missing)
 
-    print(f"{len(rows)} example sentences wanted")
-    print(f"{len(rows) - len(missing)} already generated, {len(missing)} missing "
-          f"({chars:,} characters -> ~{chars * CREDITS_PER_CHAR:,.0f} credits "
-          f"on {args.model})")
+    def report(kind, label):
+        group = [r for r in rows if r["kind"] == kind]
+        gone = [r for r in group if not r["exists"]]
+        chars = sum(len(r["text"]) for r in gone)
+        print(f"{len(group)} {label} wanted; {len(group) - len(gone)} already "
+              f"generated, {len(gone)} missing ({chars:,} characters -> "
+              f"~{chars * CREDITS_PER_CHAR:,.0f} credits on {args.model})")
+
+    report("sentence", "example sentences")
+    report("word", "unrecorded card fronts")
+
+    # Words are planned and indexed unconditionally so that a plain run never
+    # drops or prunes them, but they are only paid for when asked for.
+    missing = [r for r in rows if not r["exists"]
+               and (args.words or r["kind"] != "word")]
+    chars = sum(len(r["text"]) for r in missing)
+    if not args.words and any(r["kind"] == "word" and not r["exists"] for r in rows):
+        print("--words not set, so the card fronts above will be skipped.")
+    print(f"this run would generate {len(missing)} clip(s), {chars:,} characters "
+          f"(~{chars * CREDITS_PER_CHAR:,.0f} credits)")
 
     if args.dry_run:
         if not args.voice:
