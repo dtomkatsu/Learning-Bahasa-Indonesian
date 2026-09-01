@@ -74,6 +74,11 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-agak.wav"
  },
+ "agar-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-agar.wav"
+ },
  "agustus-Diahasy.m4a": {
   "author": "Diahasy",
   "license": "CC BY-SA 4.0",
@@ -444,6 +449,21 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-badan.wav"
  },
+ "bagaimana-AmeliaWardan.m4a": {
+  "author": "AmeliaWardani",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-AmeliaWardani-bagaimana.wav"
+ },
+ "bagaimana-KumeGucci.m4a": {
+  "author": "Kume Gucci",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Kume_Gucci-bagaimana.wav"
+ },
+ "bagaimana-SofiSolihah.m4a": {
+  "author": "Sofi Solihah",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Sofi_Solihah-bagaimana.wav"
+ },
  "bagi-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
   "license": "CC BY-SA 4.0",
@@ -734,6 +754,11 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Writingtradition-becak.wav"
  },
+ "begini-Writingtradi.m4a": {
+  "author": "Writingtradition",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Writingtradition-begini.wav"
+ },
  "begitu-CloudyLosstr.m4a": {
   "author": "Cloudy (Losstreak)",
   "license": "CC BY-SA 4.0",
@@ -743,6 +768,16 @@
   "author": "Writingtradition",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Writingtradition-begitu.wav"
+ },
+ "bekerja-Diahasy.m4a": {
+  "author": "Diahasy",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Diahasy-Bekerja.wav"
+ },
+ "bekerja-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-bekerja.wav"
  },
  "belajar-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
@@ -803,6 +838,11 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-benar.wav"
+ },
+ "benci-Diahasy.m4a": {
+  "author": "Diahasy",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Diahasy-benci.wav"
  },
  "bengkel-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
@@ -1094,6 +1134,11 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-busuk.wav"
  },
+ "butuh-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-butuh.wav"
+ },
  "cabai-HzuHzu.m4a": {
   "author": "Hzu Hzu",
   "license": "CC BY-SA 4.0",
@@ -1113,6 +1158,21 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-cantik.wav"
+ },
+ "cara-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-cara.wav"
+ },
+ "cara-HzuHzu.m4a": {
+  "author": "Hzu Hzu",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Hzu_Hzu-cara.wav"
+ },
+ "cara-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-cara.wav"
  },
  "cari-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
@@ -1459,6 +1519,16 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Titanboo-detik.wav"
  },
+ "di-Swarabakti.m4a": {
+  "author": "Swarabakti",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Swarabakti-di.wav"
+ },
+ "di-Titanboo.m4a": {
+  "author": "Titanboo",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Titanboo-di.wav"
+ },
  "dia-Nasyaale.m4a": {
   "author": "Nasyaale",
   "license": "CC BY-SA 4.0",
@@ -1543,6 +1613,16 @@
   "author": "Diahasy",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Diahasy-duh.wav"
+ },
+ "ekor-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-ekor.wav"
+ },
+ "ekor-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-ekor.wav"
  },
  "ember-SofiSolihah.m4a": {
   "author": "Sofi Solihah",
@@ -1724,6 +1804,16 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Sofi_Solihah-hadir.wav"
  },
+ "hal-Iripseudocor.m4a": {
+  "author": "Iripseudocorus-hal",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-hal-hal.wav"
+ },
+ "hal-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-hal.wav"
+ },
  "halaman-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
   "license": "CC BY-SA 4.0",
@@ -1758,6 +1848,11 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-handuk.wav"
+ },
+ "hanya-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-hanya.wav"
  },
  "harga-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
@@ -1903,6 +1998,16 @@
   "author": "Alfiyah Rizzy Afdiquni",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-ingat.wav"
+ },
+ "ingin-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-ingin.wav"
+ },
+ "ingin-SofiSolihah.m4a": {
+  "author": "Sofi Solihah",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Sofi_Solihah-ingin.wav"
  },
  "ini-SofiSolihah.m4a": {
   "author": "Sofi Solihah",
@@ -2164,6 +2269,11 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-kalau.wav"
  },
+ "kali-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-kali.wav"
+ },
  "kamar-Dvnfit.m4a": {
   "author": "Dvnfit",
   "license": "CC BY-SA 4.0",
@@ -2298,6 +2408,11 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-kata.wav"
+ },
+ "ke-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-ke.wav"
  },
  "kebun-Xbypass.m4a": {
   "author": "Xbypass",
@@ -2874,6 +2989,11 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-makanan.wav"
  },
+ "malah-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-malah.wav"
+ },
  "malam-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
   "license": "CC BY-SA 4.0",
@@ -3009,6 +3129,11 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-mati.wav"
  },
+ "mau-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-mau.wav"
+ },
  "mei-Diahasy.m4a": {
   "author": "Diahasy",
   "license": "CC BY-SA 4.0",
@@ -3023,6 +3148,11 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-meja.wav"
+ },
+ "memang-SofiSolihah.m4a": {
+  "author": "Sofi Solihah",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Sofi_Solihah-memang.wav"
  },
  "membaca-Diahasy.m4a": {
   "author": "Diahasy",
@@ -3053,6 +3183,11 @@
   "author": "Mutumanikam (Akbar Soepadhi)",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Mutumanikam_(Akbar_Soepadhi)-mendung.wav"
+ },
+ "mengatakan-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-mengatakan.wav"
  },
  "mengerti-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
@@ -3354,6 +3489,11 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-olahraga.wav"
  },
+ "oleh-SofiSolihah.m4a": {
+  "author": "Sofi Solihah",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Sofi_Solihah-oleh.wav"
+ },
  "ongkos-SofiSolihah.m4a": {
   "author": "Sofi Solihah",
   "license": "CC BY-SA 4.0",
@@ -3373,6 +3513,11 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-orang.wav"
+ },
+ "pada-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-pada.wav"
  },
  "pagi-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni-pagi",
@@ -3448,6 +3593,11 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-pasar.wav"
+ },
+ "pasti-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-pasti.wav"
  },
  "pedas-CloudyLosstr.m4a": {
   "author": "Cloudy (Losstreak)",
@@ -3543,6 +3693,16 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-pergi.wav"
+ },
+ "perlu-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-perlu.wav"
+ },
+ "pernah-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-pernah.wav"
  },
  "pertama-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
@@ -3864,6 +4024,16 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Swarabakti-sana.wav"
  },
+ "sangat-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-sangat.wav"
+ },
+ "sangat-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-sangat.wav"
+ },
  "santai-SofiSolihah.m4a": {
   "author": "Sofi Solihah",
   "license": "CC BY-SA 4.0",
@@ -3974,10 +4144,25 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-sebelas.wav"
  },
+ "sebelum-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-sebelum.wav"
+ },
  "sebentar-CloudyLosstr.m4a": {
   "author": "Cloudy (Losstreak)",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-sebentar.wav"
+ },
+ "sedang-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-sedang.wav"
+ },
+ "sedang-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-sedang.wav"
  },
  "sedangkan-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
@@ -4009,6 +4194,11 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-segar.wav"
  },
+ "segera-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-segera.wav"
+ },
  "sehat-CloudyLosstr.m4a": {
   "author": "Cloudy (Losstreak)",
   "license": "CC BY-SA 4.0",
@@ -4018,6 +4208,11 @@
   "author": "Cloudy (Losstreak)",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-sehingga.wav"
+ },
+ "sejak-SofiSolihah.m4a": {
+  "author": "Sofi Solihah",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Sofi_Solihah-sejak.wav"
  },
  "sekali-CloudyLosstr.m4a": {
   "author": "Cloudy (Losstreak)",
@@ -4209,10 +4404,20 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-serius.wav"
  },
+ "setelah-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-setelah.wav"
+ },
  "setengah-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-setengah.wav"
+ },
+ "setiap-SofiSolihah.m4a": {
+  "author": "Sofi Solihah",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Sofi_Solihah-setiap.wav"
  },
  "setrika-Titanboo.m4a": {
   "author": "Titanboo",
@@ -4308,6 +4513,11 @@
   "author": "Xbypass",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-sungai.wav"
+ },
+ "supaya-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-supaya.wav"
  },
  "susu-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
@@ -4424,6 +4634,16 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-tangkap.wav"
  },
+ "tanpa-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-tanpa.wav"
+ },
+ "tanpa-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-tanpa.wav"
+ },
  "tanya-SofiSolihah.m4a": {
   "author": "Sofi Solihah",
   "license": "CC BY-SA 4.0",
@@ -4499,10 +4719,30 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-teman.wav"
  },
+ "tempat-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-tempat.wav"
+ },
+ "tempat-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-tempat.wav"
+ },
  "tenang-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-tenang.wav"
+ },
+ "tentang-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-tentang.wav"
+ },
+ "tentu-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-tentu.wav"
  },
  "terakhir-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
@@ -4524,10 +4764,25 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-terkenal.wav"
  },
+ "terlalu-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-terlalu.wav"
+ },
  "terlambat-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-terlambat.wav"
+ },
+ "ternyata-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-ternyata.wav"
+ },
+ "terus-Iripseudocor.m4a": {
+  "author": "Iripseudocorus",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Iripseudocorus-terus.wav"
  },
  "tetapi-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
@@ -4539,15 +4794,30 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-tetapi.wav"
  },
- "tiba-AlfiyahRizzy.m4a": {
-  "author": "Alfiyah Rizzy Afdiquni-tiba",
-  "license": "CC BY-SA 4.0",
-  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-tiba-tiba.wav"
- },
  "tiba-RomoEkoAmida.m4a": {
   "author": "Romo Eko (Amidaxaviera)",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Romo_Eko_(Amidaxaviera)-tiba.wav"
+ },
+ "tiba_tiba-AlfiyahRizzy.m4a": {
+  "author": "Alfiyah Rizzy Afdiquni",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-tiba-tiba.wav"
+ },
+ "tidak-CloudyLosstr.m4a": {
+  "author": "Cloudy (Losstreak)",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Cloudy_(Losstreak)-tidak.wav"
+ },
+ "tidak-Swarabakti.m4a": {
+  "author": "Swarabakti",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Swarabakti-tidak.wav"
+ },
+ "tidak-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-tidak.wav"
  },
  "tidur-Diahasy.m4a": {
   "author": "Diahasy",
@@ -4729,6 +4999,21 @@
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Mutiaraaisyahh-utang.wav"
  },
+ "wajan-KumeGucci.m4a": {
+  "author": "Kume Gucci",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Kume_Gucci-wajan.wav"
+ },
+ "waktu-SofiSolihah.m4a": {
+  "author": "Sofi Solihah",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Sofi_Solihah-waktu.wav"
+ },
+ "waktu-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-waktu.wav"
+ },
  "walaupun-Iripseudocor.m4a": {
   "author": "Iripseudocorus",
   "license": "CC BY-SA 4.0",
@@ -4748,6 +5033,11 @@
   "author": "Alfiyah Rizzy Afdiquni",
   "license": "CC BY-SA 4.0",
   "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Alfiyah_Rizzy_Afdiquni-warung.wav"
+ },
+ "ya-Xbypass.m4a": {
+  "author": "Xbypass",
+  "license": "CC BY-SA 4.0",
+  "source": "https://commons.wikimedia.org/wiki/File:LL-Q9240_(ind)-Xbypass-ya.wav"
  },
  "yakin-AlfiyahRizzy.m4a": {
   "author": "Alfiyah Rizzy Afdiquni",
