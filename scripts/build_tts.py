@@ -27,12 +27,15 @@ readable in the page source of a public site, and ElevenLabs' own guidance is
 that it must not be exposed client-side. Here the key lives in your shell for
 the length of one run and is never written anywhere.
 
+The voice is pinned in DEFAULT_VOICE below, so no setup beyond the key:
+
     export ELEVENLABS_API_KEY=...
-    python3 scripts/build_tts.py --list-voices     # find an Indonesian voice
-    export ELEVENLABS_VOICE_ID=...
     python3 scripts/build_tts.py --dry-run         # what it would cost
-    python3 scripts/build_tts.py --limit 9000      # stay inside a free month
+    python3 scripts/build_tts.py                   # example sentences
+    python3 scripts/build_tts.py --words           # + fronts with no volunteer clip
+    python3 scripts/build_tts.py --limit 9000      # stop at a character budget
     python3 scripts/build_tts.py --prune           # drop orphaned clips
+    python3 scripts/build_tts.py --list-voices     # only to change voice entirely
 
 Output lands in audio/tts/ as content-hashed mp3s plus an index.json that
 build_flashcards.py and build_quiz.py read to attach a clip to each card.
@@ -69,6 +72,21 @@ API_ROOT = "https://api.elevenlabs.io/v1"
 # "SD" and "seafood" that a language-guessing synthesiser reads with English
 # phonics. Those have to come out ha-pe, a-se, es-de.
 DEFAULT_MODEL = "eleven_flash_v2_5"
+
+# Pinned, not left to the environment. Every clip in audio/tts/ was generated
+# with this voice, and the voice is part of the content hash — so a run with a
+# different one regenerates the whole deck under new filenames and, if
+# interrupted or partially indexed, leaves the cards split across two voices
+# with nothing in the UI to show it. That is not a hypothetical: this ID had to
+# be recovered on 2026-08-31 by hashing all 22 of the account's voices against
+# an existing clip's filename, because it had never been written down.
+#
+# "Andi - Clear and confident professional". Category `professional`, i.e. a
+# Voice Library voice, which per notes/hvpt-elevenlabs-build.md means
+# generation requires a paid plan — free tier answers 402 for this ID even for
+# a single word. Changing it is a deliberate, whole-deck decision: change it
+# here, regenerate everything, and --prune the old clips.
+DEFAULT_VOICE = "wvv6DzcHyOVTDgDY7SMW"
 LANGUAGE = "id"
 
 # The lowest-bitrate mp3 in the API's format enum. A 2-second clip at the
@@ -343,8 +361,10 @@ def prune(rows):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--voice", default=os.environ.get("ELEVENLABS_VOICE_ID"),
-                    help="voice id (or set ELEVENLABS_VOICE_ID)")
+    ap.add_argument("--voice",
+                    default=os.environ.get("ELEVENLABS_VOICE_ID", DEFAULT_VOICE),
+                    help=f"voice id (default {DEFAULT_VOICE}, the voice every "
+                         f"existing clip uses; ELEVENLABS_VOICE_ID overrides)")
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--limit", type=int, default=0,
                     help="stop after this many characters — free tier is 10,000 "
@@ -401,8 +421,8 @@ def main():
 
     if args.dry_run:
         if not args.voice:
-            print("\nNote: no voice set, so these filenames are placeholders. "
-                  "Set --voice/ELEVENLABS_VOICE_ID for real ones.")
+            print("\nNote: ELEVENLABS_VOICE_ID is set but empty, so these "
+                  "filenames are placeholders rather than the real ones.")
         budget = args.limit or None
         if budget:
             n = 0
@@ -417,8 +437,8 @@ def main():
         return
 
     if not args.voice:
-        sys.exit("No voice set. Use --voice or ELEVENLABS_VOICE_ID "
-                 "(--list-voices finds one).")
+        sys.exit("ELEVENLABS_VOICE_ID is set but empty, which overrides the "
+                 f"pinned default. Unset it to use {DEFAULT_VOICE}.")
     if not api_key:
         sys.exit("ELEVENLABS_API_KEY is not set.")
 
