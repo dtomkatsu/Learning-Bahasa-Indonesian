@@ -44,9 +44,12 @@
   button.icon:hover:not(:disabled) { border-color:var(--line); color:var(--fg); }
   button.icon:disabled { opacity:0.3; cursor:default; }
   button.icon.active { border-color:var(--accent); color:var(--accent); }
-  /* The overflow menu. Everything in here is either a session-boundary action
-     (reset, restore) or a set-once preference (clip speed, auto-compare) —
-     nothing you touch while actually working through a card. */
+  /* The overflow menu. Everything in here is a session-boundary action
+     (reset, restore) or a set-once preference (auto-compare) — nothing you
+     touch while actually working through a card. Clip speed used to live
+     here too, but it's touched often enough (per line, not per session)
+     that burying it a tap away from the audio it controls was the wrong
+     call — it's now its own row, always visible, next to the card. */
   .menu { display:flex; flex-direction:column; gap:10px; }
   .menu .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .menu .row.sep { border-top:1px solid var(--line); margin-top:2px; padding-top:10px; }
@@ -203,6 +206,19 @@
     .rate::before { content:''; position:absolute; left:0; right:0; top:-12px;
       height:12px; pointer-events:none;
       background:linear-gradient(to top, var(--bg), transparent); }
+    /* On a phone in portrait the card was a 160px island above a mostly
+       empty screen — content dictated the height, not the viewport. Give it
+       a floor tied to the viewport instead, so it actually occupies the
+       space a flashcard should. min-height still just a floor: a long back
+       side (example sentence + heard clip) grows past it as before. */
+    #card { min-height:min(48vh, 420px); }
+    /* The card grew to fill the screen but the word sitting in the middle of
+       it didn't — same 1.5rem front/1.25rem back as the old 160px box, now
+       lost in a lot more empty space around it. Scale the word up with the
+       card, not just the box. */
+    #card .front { font-size:2.1rem; }
+    #card .back .q { font-size:1.05rem; }
+    #card .back .en { font-size:1.6rem; }
   }
 
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
@@ -211,6 +227,9 @@
   button.plain.active { border-color:var(--accent); color:var(--accent); }
   button.plain.danger:hover { border-color:var(--again); color:var(--again); }
   #speedGroup button { padding:6px 8px; }
+  .speedBar { display:flex; flex-wrap:wrap; align-items:center; gap:6px;
+    margin:0 0 14px; }
+  .speedBar .stats { flex:0 0 auto; }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -233,6 +252,13 @@
     <button class="icon" id="undoBtn" title="Go back (z)" disabled>&#8630;</button>
     <button class="icon" id="moreBtn" title="More" aria-haspopup="true">&#8943;</button>
   </div>
+  <div class="speedBar" id="speedGroup" title="Speed of generated/volunteer clips — real family audio is unaffected">
+    <span class="stats">Clip speed</span>
+    <button class="plain" data-rate="0.75">0.75x</button>
+    <button class="plain active" data-rate="0.9">0.9x</button>
+    <button class="plain" data-rate="1">1x</button>
+    <button class="plain" data-rate="1.25">1.25x</button>
+  </div>
   <div class="panel" id="morePanel" hidden>
     <div class="menu">
       <div class="row">
@@ -240,13 +266,6 @@
         <button class="plain" id="browseToggleBtn">Browse</button>
         <button class="plain" id="addToggleBtn">+ Card</button>
         <button class="plain" id="bulkToggleBtn">+ List</button>
-      </div>
-      <div class="row" id="speedGroup" title="Speed of generated/volunteer clips — real family audio is unaffected">
-        <span class="stats">Clip speed</span>
-        <button class="plain" data-rate="0.75">0.75x</button>
-        <button class="plain active" data-rate="0.9">0.9x</button>
-        <button class="plain" data-rate="1">1x</button>
-        <button class="plain" data-rate="1.25">1.25x</button>
       </div>
       <div class="row">
         <label class="autoCmp" title="Play the model-and-you comparison automatically as soon as you stop recording">
