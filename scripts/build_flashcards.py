@@ -225,6 +225,7 @@ __STICKY_RATE_CSS__
   button.plain.active { border-color:var(--accent); color:var(--accent); }
   button.plain.danger:hover { border-color:var(--again); color:var(--again); }
   #speedGroup button { padding:6px 8px; }
+  #ringGroup button { padding:6px 8px; }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -261,6 +262,13 @@ __STICKY_RATE_CSS__
         <button class="plain active" data-rate="0.9">0.9x</button>
         <button class="plain" data-rate="1">1x</button>
         <button class="plain" data-rate="1.25">1.25x</button>
+      </div>
+      <div class="row" id="ringGroup" title="How many recent cards to hold back before one can come round again. Only bites on a small filter — a wide deck rarely repeats anyway.">
+        <span class="stats">Spacing</span>
+        <button class="plain" data-ring="0">Off</button>
+        <button class="plain" data-ring="3">3</button>
+        <button class="plain" data-ring="5">5</button>
+        <button class="plain" data-ring="10">10</button>
       </div>
       <div class="row">
         <label class="autoCmp" title="Play the model-and-you comparison automatically as soon as you stop recording">
@@ -750,6 +758,8 @@ cardAudio.addEventListener('timeupdate', () => {
 });
 
 ttsOnVoicesChanged(updatePlayRow);
+
+srsWireRecentGroup('ringGroup');
 
 // Speed applies to generated and volunteer clips only (see _tts_js.py) — real
 // family recordings play at their own pace, unaffected.

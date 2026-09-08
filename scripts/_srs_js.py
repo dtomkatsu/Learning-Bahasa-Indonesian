@@ -169,17 +169,60 @@ function srsLogReview(kind, grade, isNew, itemKey) {
 // those removed. The ring is trimmed to leave at least one candidate, so a
 // tiny filtered deck alternates rather than stalling; on a two-card tag that
 // means strict A-B-A-B, which is the best a two-card tag can do.
-const RECENT_MAX = 5;
+// Depth is a preference rather than a constant, because the right value
+// depends on how you study: a wide unfiltered deck never notices it, while on
+// a small tag it is the difference between a rotation and a shuffle. Kept
+// device-local alongside sessionSize and autoCompare — it's a UI preference,
+// not learning data, so it stays out of _sync_js.py's SYNC_KEYS. 0 means off,
+// which restores plain random draws (and with them the odd back-to-back
+// repeat); RECENT_CAP is only a sanity bound on hand-edited storage.
+const RECENT_KEY = 'bahasa:recentRing:v1';
+const RECENT_DEFAULT = 5;
+const RECENT_CAP = 50;
 let srsRecent = [];
+
+function srsRecentMax() {
+  const v = srsLoad(RECENT_KEY);
+  return v && typeof v.n === 'number' ? clamp(Math.round(v.n), 0, RECENT_CAP) : RECENT_DEFAULT;
+}
+// Shrinking the ring has to drop the now-excess entries straight away,
+// otherwise the change doesn't take effect until enough cards have scrolled
+// through to trim it naturally.
+function srsSetRecentMax(n) {
+  srsSave(RECENT_KEY, { n: clamp(Math.round(n), 0, RECENT_CAP) });
+  srsTrimRecent();
+}
+function srsTrimRecent() {
+  const max = srsRecentMax();
+  if (srsRecent.length > max) srsRecent = srsRecent.slice(srsRecent.length - max);
+}
 
 function srsNoteShown(key) {
   if (!key) return;
   srsRecent = srsRecent.filter(k => k !== key);
   srsRecent.push(key);
-  if (srsRecent.length > RECENT_MAX) srsRecent.shift();
+  srsTrimRecent();
 }
 function srsClearRecent() { srsRecent = []; }
 function srsRecentKeys() { return srsRecent.slice(); }
+
+// Wires a button row (one `data-ring` button per offered depth) to the
+// setting. Shared because flashcards and the quiz carry the same control in
+// different chrome — they differ in where it sits, not in what it does. A
+// stored value that matches no button (hand-edited storage) simply leaves the
+// row unhighlighted rather than silently snapping to something else.
+function srsWireRecentGroup(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const btns = [...el.querySelectorAll('button[data-ring]')];
+  const paint = () => btns.forEach(b =>
+    b.classList.toggle('active', Number(b.dataset.ring) === srsRecentMax()));
+  btns.forEach(b => b.addEventListener('click', () => {
+    srsSetRecentMax(Number(b.dataset.ring));
+    paint();
+  }));
+  paint();
+}
 
 // Draws uniformly from `items`, avoiding whatever the ring still holds room
 // to avoid. `keyOf` maps an item to its SRS id. Returns null only for an

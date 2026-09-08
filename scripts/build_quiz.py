@@ -713,6 +713,13 @@ __STICKY_RATE_CSS__
     <button class="plain" data-rate="1">1x</button>
     <button class="plain" data-rate="1.25">1.25x</button>
   </span>
+  <span class="speedGroup" id="ringGroup" title="How many recent items to hold back before one can come round again. Only bites on a small filter — a wide pool rarely repeats anyway.">
+    <span class="stats">Spacing</span>
+    <button class="plain" data-ring="0">Off</button>
+    <button class="plain" data-ring="3">3</button>
+    <button class="plain" data-ring="5">5</button>
+    <button class="plain" data-ring="10">10</button>
+  </span>
   <div class="modeHint" id="modeHint"></div>
   <div class="stats" id="stats"></div>
   <div class="controls">
@@ -864,6 +871,8 @@ function setMode(m) {
 document.querySelectorAll('.modeBtn').forEach(b => {
   b.addEventListener('click', () => { setMode(b.dataset.mode); pickNext(); });
 });
+
+srsWireRecentGroup('ringGroup');
 
 // Speed applies to generated and volunteer clips only (see _tts_js.py) — real
 // family recordings (Catch it, Sentence, Listening) play at their own pace.
