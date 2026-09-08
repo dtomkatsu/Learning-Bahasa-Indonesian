@@ -5,7 +5,7 @@
 // requests pass through to the network, so offline audio seeking is
 // best-effort — text features are the guaranteed-offline part.
 // Bump VERSION to invalidate all caches on deploy of breaking changes.
-const VERSION = 'bahasa-v1';
+const VERSION = 'bahasa-v2';
 const PRECACHE = [
   './',
   'index.html',
