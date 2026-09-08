@@ -325,6 +325,42 @@ function srsLogReview(kind, grade, isNew, itemKey) {
   return t;
 }
 
+// ---- Recent-item ring ------------------------------------------------------
+// pickNext draws at random from whatever is due, so on its own nothing stops
+// it handing straight back the card you just rated. The old guard — redraw
+// once if you got the same card as `current` — was too weak twice over: it
+// still repeats 1-in-n draws, and in practice-ahead it never fired at all,
+// because the caught-up screen clears `current` between draws. So a two-card
+// tag repeated itself half the time.
+//
+// Instead, remember the last few items shown and draw from the pool with
+// those removed. The ring is trimmed to leave at least one candidate, so a
+// tiny filtered deck alternates rather than stalling; on a two-card tag that
+// means strict A-B-A-B, which is the best a two-card tag can do.
+const RECENT_MAX = 5;
+let srsRecent = [];
+
+function srsNoteShown(key) {
+  if (!key) return;
+  srsRecent = srsRecent.filter(k => k !== key);
+  srsRecent.push(key);
+  if (srsRecent.length > RECENT_MAX) srsRecent.shift();
+}
+function srsClearRecent() { srsRecent = []; }
+function srsRecentKeys() { return srsRecent.slice(); }
+
+// Draws uniformly from `items`, avoiding whatever the ring still holds room
+// to avoid. `keyOf` maps an item to its SRS id. Returns null only for an
+// empty list.
+function srsPickAvoidingRecent(items, keyOf) {
+  if (!items.length) return null;
+  const room = Math.max(0, Math.min(srsRecent.length, items.length - 1));
+  const avoid = room ? srsRecent.slice(-room) : [];
+  const eligible = items.filter(d => !avoid.includes(keyOf(d)));
+  const from = eligible.length ? eligible : items;
+  return from[Math.floor(Math.random() * from.length)];
+}
+
 // ---- Undo ------------------------------------------------------------------
 // Rating is the only destructive action in the study UIs: it overwrites an
 // item's FSRS state and appends a review-log entry. "Go back" restores both,
@@ -1033,6 +1069,7 @@ function renderChips() {
 
 function applyFilter() {
   srsClearForward();
+  srsClearRecent();
   const modeItems = itemsForMode(mode);
   pool = activeTags.size
     ? modeItems.filter(d => d.tags.some(t => activeTags.has(t)))
@@ -1436,7 +1473,6 @@ function rate(grade) {
   srs[current.id] = fsrsNextState(srs[current.id], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
-  practiceAhead = false;
   updateUndoBtn();
   pickNext();
 }
@@ -1454,7 +1490,6 @@ function undoLast() {
   srsSave(SRS_KEY, srs);
   srsUnlogReview(u.ts);
   syncRemoteQueuePush(setSyncState);
-  practiceAhead = false;
   updateUndoBtn();
   // The rating may have happened in another mode; go back to it so the
   // restored item is the one actually on screen.
@@ -1480,6 +1515,7 @@ function pickNext() {
   const queued = srsTakeForward(c => pool.find(d => d.id === c.id));
   if (queued) {
     current = queued;
+    srsNoteShown(current.id);
     revealed = false;
     renderCard();
     renderStats();
@@ -1493,9 +1529,8 @@ function pickNext() {
   let due = reviews.length ? reviews : freshAll;
   if (practiceAhead && !due.length) due = pool;
   if (!due.length) { renderAllCaughtUp(); renderStats(); return; }
-  let next = due[Math.floor(Math.random() * due.length)];
-  if (due.length > 1 && current && next.id === current.id) next = due[Math.floor(Math.random() * due.length)];
-  current = next;
+  current = srsPickAvoidingRecent(due, d => d.id);
+  srsNoteShown(current.id);
   revealed = false;
   renderCard();
   renderStats();
@@ -1529,7 +1564,7 @@ function renderStats() {
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all quiz progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); pickNext(); }
+  if (confirm('Reset all quiz progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); srsClearRecent(); pickNext(); }
 });
 
 unflagBtn.addEventListener('click', () => {

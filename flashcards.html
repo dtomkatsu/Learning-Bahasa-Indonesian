@@ -44,12 +44,9 @@
   button.icon:hover:not(:disabled) { border-color:var(--line); color:var(--fg); }
   button.icon:disabled { opacity:0.3; cursor:default; }
   button.icon.active { border-color:var(--accent); color:var(--accent); }
-  /* The overflow menu. Everything in here is a session-boundary action
-     (reset, restore) or a set-once preference (auto-compare) — nothing you
-     touch while actually working through a card. Clip speed used to live
-     here too, but it's touched often enough (per line, not per session)
-     that burying it a tap away from the audio it controls was the wrong
-     call — it's now its own row, always visible, next to the card. */
+  /* The overflow menu. Everything in here is either a session-boundary action
+     (reset, restore) or a set-once preference (clip speed, auto-compare) —
+     nothing you touch while actually working through a card. */
   .menu { display:flex; flex-direction:column; gap:10px; }
   .menu .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .menu .row.sep { border-top:1px solid var(--line); margin-top:2px; padding-top:10px; }
@@ -206,19 +203,6 @@
     .rate::before { content:''; position:absolute; left:0; right:0; top:-12px;
       height:12px; pointer-events:none;
       background:linear-gradient(to top, var(--bg), transparent); }
-    /* On a phone in portrait the card was a 160px island above a mostly
-       empty screen — content dictated the height, not the viewport. Give it
-       a floor tied to the viewport instead, so it actually occupies the
-       space a flashcard should. min-height still just a floor: a long back
-       side (example sentence + heard clip) grows past it as before. */
-    #card { min-height:min(48vh, 420px); }
-    /* The card grew to fill the screen but the word sitting in the middle of
-       it didn't — same 1.5rem front/1.25rem back as the old 160px box, now
-       lost in a lot more empty space around it. Scale the word up with the
-       card, not just the box. */
-    #card .front { font-size:2.1rem; }
-    #card .back .q { font-size:1.05rem; }
-    #card .back .en { font-size:1.6rem; }
   }
 
   button.plain { font-size:0.78rem; padding:6px 10px; border-radius:6px; border:1px solid var(--line);
@@ -227,9 +211,6 @@
   button.plain.active { border-color:var(--accent); color:var(--accent); }
   button.plain.danger:hover { border-color:var(--again); color:var(--again); }
   #speedGroup button { padding:6px 8px; }
-  .speedBar { display:flex; flex-wrap:wrap; align-items:center; gap:6px;
-    margin:0 0 14px; }
-  .speedBar .stats { flex:0 0 auto; }
   .empty { color:var(--muted); font-size:0.9rem; text-align:center; margin-top:20px; }
   .empty .sub { font-size:0.8rem; margin-top:6px; }
   .empty button.plain { margin-top:14px; }
@@ -252,13 +233,6 @@
     <button class="icon" id="undoBtn" title="Go back (z)" disabled>&#8630;</button>
     <button class="icon" id="moreBtn" title="More" aria-haspopup="true">&#8943;</button>
   </div>
-  <div class="speedBar" id="speedGroup" title="Speed of generated/volunteer clips — real family audio is unaffected">
-    <span class="stats">Clip speed</span>
-    <button class="plain" data-rate="0.75">0.75x</button>
-    <button class="plain active" data-rate="0.9">0.9x</button>
-    <button class="plain" data-rate="1">1x</button>
-    <button class="plain" data-rate="1.25">1.25x</button>
-  </div>
   <div class="panel" id="morePanel" hidden>
     <div class="menu">
       <div class="row">
@@ -266,6 +240,13 @@
         <button class="plain" id="browseToggleBtn">Browse</button>
         <button class="plain" id="addToggleBtn">+ Card</button>
         <button class="plain" id="bulkToggleBtn">+ List</button>
+      </div>
+      <div class="row" id="speedGroup" title="Speed of generated/volunteer clips — real family audio is unaffected">
+        <span class="stats">Clip speed</span>
+        <button class="plain" data-rate="0.75">0.75x</button>
+        <button class="plain active" data-rate="0.9">0.9x</button>
+        <button class="plain" data-rate="1">1x</button>
+        <button class="plain" data-rate="1.25">1.25x</button>
       </div>
       <div class="row">
         <label class="autoCmp" title="Play the model-and-you comparison automatically as soon as you stop recording">
@@ -488,6 +469,42 @@ function srsLogReview(kind, grade, isNew, itemKey) {
   }
   srsSave(REVIEWLOG_KEY, log);
   return t;
+}
+
+// ---- Recent-item ring ------------------------------------------------------
+// pickNext draws at random from whatever is due, so on its own nothing stops
+// it handing straight back the card you just rated. The old guard — redraw
+// once if you got the same card as `current` — was too weak twice over: it
+// still repeats 1-in-n draws, and in practice-ahead it never fired at all,
+// because the caught-up screen clears `current` between draws. So a two-card
+// tag repeated itself half the time.
+//
+// Instead, remember the last few items shown and draw from the pool with
+// those removed. The ring is trimmed to leave at least one candidate, so a
+// tiny filtered deck alternates rather than stalling; on a two-card tag that
+// means strict A-B-A-B, which is the best a two-card tag can do.
+const RECENT_MAX = 5;
+let srsRecent = [];
+
+function srsNoteShown(key) {
+  if (!key) return;
+  srsRecent = srsRecent.filter(k => k !== key);
+  srsRecent.push(key);
+  if (srsRecent.length > RECENT_MAX) srsRecent.shift();
+}
+function srsClearRecent() { srsRecent = []; }
+function srsRecentKeys() { return srsRecent.slice(); }
+
+// Draws uniformly from `items`, avoiding whatever the ring still holds room
+// to avoid. `keyOf` maps an item to its SRS id. Returns null only for an
+// empty list.
+function srsPickAvoidingRecent(items, keyOf) {
+  if (!items.length) return null;
+  const room = Math.max(0, Math.min(srsRecent.length, items.length - 1));
+  const avoid = room ? srsRecent.slice(-room) : [];
+  const eligible = items.filter(d => !avoid.includes(keyOf(d)));
+  const from = eligible.length ? eligible : items;
+  return from[Math.floor(Math.random() * from.length)];
 }
 
 // ---- Undo ------------------------------------------------------------------
@@ -1335,6 +1352,7 @@ function updateFilterChrome() {
 // mid-word, so it only re-picks once the card on screen stops matching.
 function afterFilterChange(forcePick) {
   srsClearForward();
+  srsClearRecent();
   applyFilter();
   if (!document.getElementById('browsePanel').hidden) renderBrowse();
   if (forcePick || !current || !pool.some(d => d.front === current.front)) pickNext();
@@ -1346,6 +1364,7 @@ applyFilter();
 // that may have brought in edits made on another device.
 function refreshDeck() {
   srsClearForward();
+  srsClearRecent();
   DECK = computeDeck();
   renderChips();
   updateRestoreCount();
@@ -1374,9 +1393,7 @@ function pickNext() {
   let due = reviews.length ? reviews : freshAll;
   if (practiceAhead && !due.length) due = pool;
   if (!due.length) { renderAllCaughtUp(); return; }
-  let next = due[Math.floor(Math.random() * due.length)];
-  if (due.length > 1 && current && next.front === current.front) next = due[Math.floor(Math.random() * due.length)];
-  showCard(next);
+  showCard(srsPickAvoidingRecent(due, d => d.front));
 }
 
 // Split out of pickNext so undo can put a specific card back on screen
@@ -1397,6 +1414,7 @@ function updateOffFilterNote() {
 
 function showCard(card) {
   current = card;
+  srsNoteShown(card.front);
   flipped = false;
   cardEl.className = '';
   // Only the body is redrawn — the audio bar is a sibling, so it keeps its
@@ -1516,7 +1534,6 @@ function rate(grade) {
   srs[current.front] = fsrsNextState(srs[current.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
-  practiceAhead = false;
   updateUndoBtn();
   renderHint();
   pickNext();
@@ -1535,7 +1552,6 @@ function undoLast() {
   srsSave(SRS_KEY, srs);
   srsUnlogReview(u.ts);
   syncRemoteQueuePush(setSyncState);
-  practiceAhead = false;
   updateUndoBtn();
   showCard(u.card);
 }
@@ -2107,7 +2123,7 @@ document.getElementById('moreBtn').addEventListener('click', () => {
 });
 playBtn.addEventListener('click', (e) => { e.stopPropagation(); playCurrent(); });
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); pickNext(); }
+  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); srsClearRecent(); pickNext(); }
 });
 document.getElementById('restoreBtn').addEventListener('click', () => {
   const n = Object.keys(loadRemovedCards()).length;

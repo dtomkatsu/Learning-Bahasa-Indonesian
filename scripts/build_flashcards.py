@@ -459,6 +459,7 @@ function updateFilterChrome() {
 // mid-word, so it only re-picks once the card on screen stops matching.
 function afterFilterChange(forcePick) {
   srsClearForward();
+  srsClearRecent();
   applyFilter();
   if (!document.getElementById('browsePanel').hidden) renderBrowse();
   if (forcePick || !current || !pool.some(d => d.front === current.front)) pickNext();
@@ -470,6 +471,7 @@ applyFilter();
 // that may have brought in edits made on another device.
 function refreshDeck() {
   srsClearForward();
+  srsClearRecent();
   DECK = computeDeck();
   renderChips();
   updateRestoreCount();
@@ -498,9 +500,7 @@ function pickNext() {
   let due = reviews.length ? reviews : freshAll;
   if (practiceAhead && !due.length) due = pool;
   if (!due.length) { renderAllCaughtUp(); return; }
-  let next = due[Math.floor(Math.random() * due.length)];
-  if (due.length > 1 && current && next.front === current.front) next = due[Math.floor(Math.random() * due.length)];
-  showCard(next);
+  showCard(srsPickAvoidingRecent(due, d => d.front));
 }
 
 // Split out of pickNext so undo can put a specific card back on screen
@@ -521,6 +521,7 @@ function updateOffFilterNote() {
 
 function showCard(card) {
   current = card;
+  srsNoteShown(card.front);
   flipped = false;
   cardEl.className = '';
   // Only the body is redrawn — the audio bar is a sibling, so it keeps its
@@ -640,7 +641,6 @@ function rate(grade) {
   srs[current.front] = fsrsNextState(srs[current.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
-  practiceAhead = false;
   updateUndoBtn();
   renderHint();
   pickNext();
@@ -659,7 +659,6 @@ function undoLast() {
   srsSave(SRS_KEY, srs);
   srsUnlogReview(u.ts);
   syncRemoteQueuePush(setSyncState);
-  practiceAhead = false;
   updateUndoBtn();
   showCard(u.card);
 }
@@ -1173,7 +1172,7 @@ document.getElementById('moreBtn').addEventListener('click', () => {
 });
 playBtn.addEventListener('click', (e) => { e.stopPropagation(); playCurrent(); });
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); pickNext(); }
+  if (confirm('Reset all flashcard progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); srsClearRecent(); pickNext(); }
 });
 document.getElementById('restoreBtn').addEventListener('click', () => {
   const n = Object.keys(loadRemovedCards()).length;

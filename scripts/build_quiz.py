@@ -826,6 +826,7 @@ function renderChips() {
 
 function applyFilter() {
   srsClearForward();
+  srsClearRecent();
   const modeItems = itemsForMode(mode);
   pool = activeTags.size
     ? modeItems.filter(d => d.tags.some(t => activeTags.has(t)))
@@ -1229,7 +1230,6 @@ function rate(grade) {
   srs[current.id] = fsrsNextState(srs[current.id], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
-  practiceAhead = false;
   updateUndoBtn();
   pickNext();
 }
@@ -1247,7 +1247,6 @@ function undoLast() {
   srsSave(SRS_KEY, srs);
   srsUnlogReview(u.ts);
   syncRemoteQueuePush(setSyncState);
-  practiceAhead = false;
   updateUndoBtn();
   // The rating may have happened in another mode; go back to it so the
   // restored item is the one actually on screen.
@@ -1273,6 +1272,7 @@ function pickNext() {
   const queued = srsTakeForward(c => pool.find(d => d.id === c.id));
   if (queued) {
     current = queued;
+    srsNoteShown(current.id);
     revealed = false;
     renderCard();
     renderStats();
@@ -1286,9 +1286,8 @@ function pickNext() {
   let due = reviews.length ? reviews : freshAll;
   if (practiceAhead && !due.length) due = pool;
   if (!due.length) { renderAllCaughtUp(); renderStats(); return; }
-  let next = due[Math.floor(Math.random() * due.length)];
-  if (due.length > 1 && current && next.id === current.id) next = due[Math.floor(Math.random() * due.length)];
-  current = next;
+  current = srsPickAvoidingRecent(due, d => d.id);
+  srsNoteShown(current.id);
   revealed = false;
   renderCard();
   renderStats();
@@ -1322,7 +1321,7 @@ function renderStats() {
 }
 
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Reset all quiz progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); pickNext(); }
+  if (confirm('Reset all quiz progress (review history and due dates)?')) { srs = {}; srsSave(SRS_KEY, srs); srsClearForward(); srsClearRecent(); pickNext(); }
 });
 
 unflagBtn.addEventListener('click', () => {
