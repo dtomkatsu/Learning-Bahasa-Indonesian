@@ -833,7 +833,6 @@ function renderChips() {
 
 function applyFilter() {
   srsClearForward();
-  srsClearRecent();
   const modeItems = itemsForMode(mode);
   pool = activeTags.size
     ? modeItems.filter(d => d.tags.some(t => activeTags.has(t)))

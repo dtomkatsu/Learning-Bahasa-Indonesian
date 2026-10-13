@@ -179,7 +179,16 @@ function srsLogReview(kind, grade, isNew, itemKey) {
 const RECENT_KEY = 'bahasa:recentRing:v1';
 const RECENT_DEFAULT = 5;
 const RECENT_CAP = 50;
-let srsRecent = [];
+// The ring is persisted per page (flashcards and quiz key their items
+// differently). Held only in memory it was lost on every reload, so each page
+// load could open on a card you'd just seen.
+const RECENT_RING_KEY = 'bahasa:recentItems:v1:' + ((typeof location !== 'undefined' && location.pathname) || '');
+function srsLoadRing() {
+  const v = srsLoad(RECENT_RING_KEY);
+  return Array.isArray(v) ? v.filter(k => typeof k === 'string') : [];
+}
+function srsSaveRing() { srsSave(RECENT_RING_KEY, srsRecent); }
+let srsRecent = srsLoadRing();
 
 function srsRecentMax() {
   const v = srsLoad(RECENT_KEY);
@@ -195,6 +204,7 @@ function srsSetRecentMax(n) {
 function srsTrimRecent() {
   const max = srsRecentMax();
   if (srsRecent.length > max) srsRecent = srsRecent.slice(srsRecent.length - max);
+  srsSaveRing();
 }
 
 function srsNoteShown(key) {
@@ -203,7 +213,7 @@ function srsNoteShown(key) {
   srsRecent.push(key);
   srsTrimRecent();
 }
-function srsClearRecent() { srsRecent = []; }
+function srsClearRecent() { srsRecent = []; srsSaveRing(); }
 function srsRecentKeys() { return srsRecent.slice(); }
 
 // Wires a button row (one `data-ring` button per offered depth) to the
@@ -229,8 +239,12 @@ function srsWireRecentGroup(id) {
 // empty list.
 function srsPickAvoidingRecent(items, keyOf) {
   if (!items.length) return null;
-  const room = Math.max(0, Math.min(srsRecent.length, items.length - 1));
-  const avoid = room ? srsRecent.slice(-room) : [];
+  // Only ring entries that are actually in this pool count: stale keys from
+  // another filter would otherwise eat the avoidance budget.
+  const inPool = new Set(items.map(keyOf));
+  const recent = srsRecent.filter(k => inPool.has(k));
+  const room = Math.max(0, Math.min(recent.length, items.length - 1));
+  const avoid = room ? recent.slice(-room) : [];
   const eligible = items.filter(d => !avoid.includes(keyOf(d)));
   const from = eligible.length ? eligible : items;
   return from[Math.floor(Math.random() * from.length)];

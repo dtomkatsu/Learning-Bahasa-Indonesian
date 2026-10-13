@@ -302,3 +302,31 @@ suite('parseBulkVocab: extra blank lines and stray indentation', () => {
   eq(out[0].front, 'lebih', 'indentation trimmed from front');
   deepEq(out[1].tags, ['other'], 'second block tag');
 });
+
+suite('recent ring: no back-to-back repeats, fair cycling, survives reload', () => {
+  const items = ['a', 'b', 'c', 'd', 'e', 'f'].map(id => ({ id }));
+  const k = d => d.id;
+  srsClearRecent();
+  let prev = null, counts = {};
+  for (let i = 0; i < 600; i++) {
+    const c = srsPickAvoidingRecent(items, k);
+    if (c.id === prev) throw new Error('back-to-back repeat of ' + c.id + ' at draw ' + i);
+    srsNoteShown(c.id); prev = c.id; counts[c.id] = (counts[c.id] || 0) + 1;
+  }
+  ok(Object.keys(counts).length === 6, 'every card gets drawn');
+  // Persisted ring is reloaded, so a "page load" can't open on the last card.
+  const saved = srsRecentKeys();
+  srsRecent = srsLoadRing();
+  deepEq(srsRecentKeys(), saved, 'ring restored from storage');
+  const next = srsPickAvoidingRecent(items, k);
+  ok(!saved.includes(next.id), 'first draw after reload avoids recent cards');
+  // Two-card pool alternates strictly.
+  srsClearRecent();
+  const two = [{ id: 'x' }, { id: 'y' }];
+  let p2 = null;
+  for (let i = 0; i < 50; i++) { const c = srsPickAvoidingRecent(two, k); ok(c.id !== p2, 'alternates'); srsNoteShown(c.id); p2 = c.id; }
+  // Stale keys from another filter don't eat the avoidance budget.
+  srsRecent = ['zzz1', 'zzz2', 'zzz3', 'x'];
+  ok(srsPickAvoidingRecent(two, k).id === 'y', 'ignores out-of-pool ring keys');
+  srsClearRecent();
+});

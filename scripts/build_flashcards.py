@@ -467,7 +467,6 @@ function updateFilterChrome() {
 // mid-word, so it only re-picks once the card on screen stops matching.
 function afterFilterChange(forcePick) {
   srsClearForward();
-  srsClearRecent();
   applyFilter();
   if (!document.getElementById('browsePanel').hidden) renderBrowse();
   if (forcePick || !current || !pool.some(d => d.front === current.front)) pickNext();
@@ -479,7 +478,6 @@ applyFilter();
 // that may have brought in edits made on another device.
 function refreshDeck() {
   srsClearForward();
-  srsClearRecent();
   DECK = computeDeck();
   renderChips();
   updateRestoreCount();
