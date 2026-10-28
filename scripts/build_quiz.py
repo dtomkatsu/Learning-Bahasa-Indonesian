@@ -1280,7 +1280,7 @@ function pickNext() {
   const queued = srsTakeForward(c => pool.find(d => d.id === c.id));
   if (queued) {
     current = queued;
-    srsNoteShown(current.id);
+    srsNoteShown(srsWordKeys(current));
     revealed = false;
     renderCard();
     renderStats();
@@ -1294,8 +1294,8 @@ function pickNext() {
   let due = reviews.length ? reviews : freshAll;
   if (practiceAhead && !due.length) due = pool;
   if (!due.length) { renderAllCaughtUp(); renderStats(); return; }
-  current = srsPickAvoidingRecent(due, d => d.id);
-  srsNoteShown(current.id);
+  current = srsPickAvoidingRecent(due, srsWordKeys);
+  srsNoteShown(srsWordKeys(current));
   revealed = false;
   renderCard();
   renderStats();

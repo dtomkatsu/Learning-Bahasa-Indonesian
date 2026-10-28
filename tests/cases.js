@@ -330,3 +330,35 @@ suite('recent ring: no back-to-back repeats, fair cycling, survives reload', () 
   ok(srsPickAvoidingRecent(two, k).id === 'y', 'ignores out-of-pool ring keys');
   srsClearRecent();
 });
+
+suite('recent ring: the same word never comes straight back under another item', () => {
+  // Catch it has a clip per speaker; pairs share words; Study mixes kinds of
+  // the same word and line. Distinct ids, so id-keyed avoidance missed all of it.
+  const items = [
+    { id: 'hear::c::1::sih', kind: 'hear', answer: 'sih', lineId: 'c::1' },
+    { id: 'hear::c::9::sih', kind: 'hear', answer: 'sih', lineId: 'c::9' },
+    { id: 'pairs::adik::adil', kind: 'pairs', options: ['adik', 'adil'] },
+    { id: 'pairs::adik::aduk', kind: 'pairs', options: ['adik', 'aduk'] },
+    { kind: 'flash', front: 'Kaki' },
+    { id: 'blank::kaki', kind: 'blank', term: 'kaki' },
+    { id: 'sentence::c::5', kind: 'sentence', lineId: 'c::5' },
+    { id: 'listening::c::5', kind: 'listening', lineId: 'c::5' },
+    { front: 'capek / lelah' }, { front: 'lelah' },
+    { id: 'word::x', kind: 'word', term: 'makan' },
+  ];
+  deepEq(srsWordKeys(items[4]), ['w:kaki'], 'flash keyed by lowercased front');
+  deepEq(srsWordKeys(items[8]), ['w:capek', 'w:lelah'], 'slash variants split');
+  srsClearRecent();
+  let prev = null;
+  for (let i = 0; i < 400; i++) {
+    const c = srsPickAvoidingRecent(items, srsWordKeys);
+    const ck = srsWordKeys(c);
+    if (prev && ck.some(x => prev.includes(x))) throw new Error('shared-word repeat ' + ck + ' at draw ' + i);
+    srsNoteShown(ck); prev = ck;
+  }
+  // Array entries survive the reload too.
+  const saved = srsRecentKeys();
+  srsRecent = srsLoadRing();
+  deepEq(srsRecentKeys(), saved, 'array ring entries restored from storage');
+  srsClearRecent();
+});

@@ -288,7 +288,21 @@ function srsLogReview(kind, grade, isNew, itemKey) {
 const RECENT_KEY = 'bahasa:recentRing:v1';
 const RECENT_DEFAULT = 5;
 const RECENT_CAP = 50;
-let srsRecent = [];
+// The ring is persisted per page (flashcards and quiz key their items
+// differently). Held only in memory it was lost on every reload, so each page
+// load could open on a card you'd just seen.
+// v2: entries are word keys (see srsWordKeys), not item ids. v1 held ids.
+const RECENT_RING_KEY = 'bahasa:recentItems:v2:' + ((typeof location !== 'undefined' && location.pathname) || '');
+// A ring entry is one shown item: a key, or an array of keys.
+function srsKeyList(x) {
+  return (Array.isArray(x) ? x : [x]).filter(k => typeof k === 'string' && k);
+}
+function srsLoadRing() {
+  const v = srsLoad(RECENT_RING_KEY);
+  return Array.isArray(v) ? v.filter(e => srsKeyList(e).length) : [];
+}
+function srsSaveRing() { srsSave(RECENT_RING_KEY, srsRecent); }
+let srsRecent = srsLoadRing();
 
 function srsRecentMax() {
   const v = srsLoad(RECENT_KEY);
@@ -304,15 +318,37 @@ function srsSetRecentMax(n) {
 function srsTrimRecent() {
   const max = srsRecentMax();
   if (srsRecent.length > max) srsRecent = srsRecent.slice(srsRecent.length - max);
+  srsSaveRing();
 }
 
 function srsNoteShown(key) {
-  if (!key) return;
-  srsRecent = srsRecent.filter(k => k !== key);
-  srsRecent.push(key);
+  const keys = srsKeyList(key);
+  if (!keys.length) return;
+  const id = keys.join('|');
+  srsRecent = srsRecent.filter(e => srsKeyList(e).join('|') !== id);
+  srsRecent.push(keys.length === 1 ? keys[0] : keys);
   srsTrimRecent();
 }
-function srsClearRecent() { srsRecent = []; }
+
+// What counts as "the same card again". Avoiding repeats by item id wasn't
+// enough: many items share a word — Catch it has one clip per speaker,
+// Minimal pairs reuse a word across pairs (adik/adil, adik/aduk), and the
+// Study session mixes a word's flashcard, cloze and fill-the-blank with the
+// Sentence and Listening cards for the same line. So an item's keys are its
+// word(s), lowercased, plus the transcript line it came from.
+function srsWordKeys(d) {
+  const words = d.kind === 'pairs' ? (d.options || [])
+    : [d.kind && d.kind !== 'flash' ? (d.term || d.answer) : d.front];
+  const keys = [];
+  words.forEach(w => String(w || '').toLowerCase().split('/').forEach(p => {
+    p = p.trim();
+    if (p) keys.push('w:' + p);
+  }));
+  if (d.lineId) keys.push('l:' + d.lineId);
+  if (!keys.length) keys.push('i:' + (d.id || d.front));
+  return keys;
+}
+function srsClearRecent() { srsRecent = []; srsSaveRing(); }
 function srsRecentKeys() { return srsRecent.slice(); }
 
 // Wires a button row (one `data-ring` button per offered depth) to the
@@ -333,16 +369,24 @@ function srsWireRecentGroup(id) {
   paint();
 }
 
-// Draws uniformly from `items`, avoiding whatever the ring still holds room
-// to avoid. `keyOf` maps an item to its SRS id. Returns null only for an
-// empty list.
+// Draws uniformly from `items`, skipping any item that shares a key with
+// something in the ring. `keyOf` maps an item to a key or an array of keys
+// (usually srsWordKeys). When the pool is too small to avoid the whole ring,
+// the oldest entries are let go first, so the most recent card is the last
+// one allowed back. Returns null only for an empty list.
 function srsPickAvoidingRecent(items, keyOf) {
   if (!items.length) return null;
-  const room = Math.max(0, Math.min(srsRecent.length, items.length - 1));
-  const avoid = room ? srsRecent.slice(-room) : [];
-  const eligible = items.filter(d => !avoid.includes(keyOf(d)));
-  const from = eligible.length ? eligible : items;
-  return from[Math.floor(Math.random() * from.length)];
+  const keysOf = d => srsKeyList(keyOf(d));
+  // Only ring entries that touch this pool count: stale keys from another
+  // filter would otherwise eat the avoidance budget.
+  const inPool = new Set(items.flatMap(keysOf));
+  const recent = srsRecent.map(srsKeyList).filter(e => e.some(k => inPool.has(k)));
+  for (let n = recent.length; n > 0; n--) {
+    const avoid = new Set(recent.slice(-n).flat());
+    const eligible = items.filter(d => !keysOf(d).some(k => avoid.has(k)));
+    if (eligible.length) return eligible[Math.floor(Math.random() * eligible.length)];
+  }
+  return items[Math.floor(Math.random() * items.length)];
 }
 
 // ---- Undo ------------------------------------------------------------------
@@ -1006,7 +1050,15 @@ function next() {
   stopAt = null;
   revealed = false;
   if (idx >= session.length) { renderSummary(); return; }
+  // The session is a fixed list, but one word can be in it three ways
+  // (flashcard, cloze, fill-the-blank) and one line twice (sentence,
+  // listening). Pull forward a remaining item that shares nothing with what
+  // you just saw; the session's contents don't change, only the order.
+  const pick = srsPickAvoidingRecent(session.slice(idx), srsWordKeys);
+  const j = session.indexOf(pick, idx);
+  [session[idx], session[j]] = [session[j], session[idx]];
   current = session[idx];
+  srsNoteShown(srsWordKeys(current));
   renderCard();
 }
 

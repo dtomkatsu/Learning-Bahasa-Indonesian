@@ -377,7 +377,15 @@ function next() {
   stopAt = null;
   revealed = false;
   if (idx >= session.length) { renderSummary(); return; }
+  // The session is a fixed list, but one word can be in it three ways
+  // (flashcard, cloze, fill-the-blank) and one line twice (sentence,
+  // listening). Pull forward a remaining item that shares nothing with what
+  // you just saw; the session's contents don't change, only the order.
+  const pick = srsPickAvoidingRecent(session.slice(idx), srsWordKeys);
+  const j = session.indexOf(pick, idx);
+  [session[idx], session[j]] = [session[j], session[idx]];
   current = session[idx];
+  srsNoteShown(srsWordKeys(current));
   renderCard();
 }
 

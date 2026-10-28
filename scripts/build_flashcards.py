@@ -506,7 +506,7 @@ function pickNext() {
   let due = reviews.length ? reviews : freshAll;
   if (practiceAhead && !due.length) due = pool;
   if (!due.length) { renderAllCaughtUp(); return; }
-  showCard(srsPickAvoidingRecent(due, d => d.front));
+  showCard(srsPickAvoidingRecent(due, srsWordKeys));
 }
 
 // Split out of pickNext so undo can put a specific card back on screen
@@ -527,7 +527,7 @@ function updateOffFilterNote() {
 
 function showCard(card) {
   current = card;
-  srsNoteShown(card.front);
+  srsNoteShown(srsWordKeys(card));
   flipped = false;
   cardEl.className = '';
   // Only the body is redrawn — the audio bar is a sibling, so it keeps its
