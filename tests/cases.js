@@ -362,3 +362,64 @@ suite('recent ring: the same word never comes straight back under another item',
   deepEq(srsRecentKeys(), saved, 'array ring entries restored from storage');
   srsClearRecent();
 });
+
+suite('relearn cap: one quick retry per card per day', () => {
+  const t = Date.UTC(2026, 9, 29, 18);
+  let s = fsrsNextState(null, 1, t);
+  eq(s.due - t, RELEARN_MS, 'first Again on a new card: back in 10 minutes');
+  s = fsrsNextState(s, 1, t + RELEARN_MS);
+  eq(s.due - (t + RELEARN_MS), DAY_MS, 'second Again the same day: tomorrow, not another loop');
+  // Again, Good, Again still counts as missed twice today.
+  let r = fsrsNextState(fsrsNextState(null, 3, t - 5 * DAY_MS), 1, t);
+  eq(r.due - t, RELEARN_MS, 'first lapse of a learned card: 10 minutes');
+  r = fsrsNextState(r, 3, t + RELEARN_MS);
+  r = fsrsNextState(r, 1, t + 2 * RELEARN_MS);
+  eq(r.due - (t + 2 * RELEARN_MS), DAY_MS, 'Again/Good/Again within a day: tomorrow');
+  // A day later the quick retry is available again.
+  const later = t + 2 * RELEARN_MS + DAY_MS + 1;
+  eq(fsrsNextState(r, 1, later).due - later, RELEARN_MS, 'next day: quick retry again');
+});
+
+// The whole experience, not one function: a review session played through to
+// the end of the list with the same pool/picker/scheduler calls the pages make.
+// Each earlier "same word again" bug passed every unit test and only showed up
+// here — at the tail of a session, where the pool is small.
+suite('full session to the end of the list: no word loops', () => {
+  const realNow = Date.now;
+  let clock = Date.UTC(2026, 9, 29, 18);
+  Date.now = () => clock;
+  try {
+    for (const missRate of [0.3, 0.6]) {
+      const deck = Array.from({ length: 300 }, (_, i) => ({ front: 'w' + i }));
+      const srs = {};
+      deck.forEach((d, i) => { srs[d.front] = i < 60
+        ? { difficulty: 5, stability: 3, due: clock - DAY_MS, lastReview: clock - 4 * DAY_MS, reps: 2 }
+        : { difficulty: 5, stability: 10, due: clock + 7 * DAY_MS, lastReview: clock - 3 * DAY_MS, reps: 3 }; });
+      srsClearRecent();
+      let seed = 11;
+      const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+      const shown = [], counts = {};
+      let idle = 0;
+      while (shown.length < 1000 && idle < 180) {        // up to 3h of waiting around
+        const due = srsDuePool(deck, d => srs[d.front], false);
+        if (!due.length) { clock += 60000; idle++; continue; }
+        const c = srsPickAvoidingRecent(due, srsWordKeys);
+        srsNoteShown(srsWordKeys(c));
+        const prev = shown[shown.length - 1];
+        if (prev === c.front) throw new Error(`back-to-back ${c.front} at miss rate ${missRate}`);
+        shown.push(c.front);
+        counts[c.front] = (counts[c.front] || 0) + 1;
+        const x = rnd();
+        srs[c.front] = fsrsNextState(srs[c.front], x < missRate ? 1 : x < missRate + 0.15 ? 2 : 3, clock);
+        clock += 15000;
+      }
+      const worst = Math.max(...Object.values(counts));
+      ok(worst <= 2, `miss rate ${missRate}: no card more than twice in a session (worst ${worst})`);
+      ok(shown.length < 1000, `miss rate ${missRate}: the session runs out instead of cycling (${shown.length} cards)`);
+      clock += 2 * DAY_MS;
+    }
+  } finally {
+    Date.now = realNow;
+    srsClearRecent();
+  }
+});

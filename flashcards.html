@@ -412,7 +412,9 @@ function fsrsNextState(state, g, now) {
     const S = fsrsInitialStability(g);
     const D = fsrsInitialDifficulty(g);
     const due = g === 1 ? now + RELEARN_MS : now + fsrsIntervalDays(DESIRED_RETENTION, S) * DAY_MS;
-    return { difficulty: D, stability: S, due, lastReview: now, reps: g === 1 ? 0 : 1 };
+    const out = { difficulty: D, stability: S, due, lastReview: now, reps: g === 1 ? 0 : 1 };
+    if (g === 1) out.lapsedAt = now;
+    return out;
   }
   const elapsedDays = Math.max(0, (now - state.lastReview) / DAY_MS);
   const R = fsrsRetrievability(elapsedDays, state.stability);
@@ -420,9 +422,23 @@ function fsrsNextState(state, g, now) {
   const S = elapsedDays < 1
     ? fsrsUpdateSameDayStability(state.stability, g)
     : fsrsUpdateStability(state.stability, state.difficulty, R, g);
-  const due = g === 1 ? now + RELEARN_MS : now + fsrsIntervalDays(DESIRED_RETENTION, S) * DAY_MS;
+  const due = g === 1 ? now + srsRelearnDelay(state, now) : now + fsrsIntervalDays(DESIRED_RETENTION, S) * DAY_MS;
   const reps = g === 1 ? 0 : (state.reps || 0) + 1;
-  return { difficulty: D, stability: S, due, lastReview: now, reps };
+  const out = { difficulty: D, stability: S, due, lastReview: now, reps };
+  // Kept across non-Again ratings so "missed twice today" holds even with a
+  // Good in between (Again, Good, Again would otherwise loop all evening).
+  const lapsedAt = g === 1 ? now : state.lapsedAt;
+  if (lapsedAt) out.lapsedAt = lapsedAt;
+  return out;
+}
+
+// One quick retry per card per day. The first Again brings the card back in
+// RELEARN_MS; another Again within a day of that sends it to tomorrow.
+// Without the cap, every missed card re-entered the queue every ten minutes
+// for as long as you kept missing it, so the end of each session was the
+// same handful of words on a loop.
+function srsRelearnDelay(state, now) {
+  return state && state.lapsedAt && now - state.lapsedAt < DAY_MS ? DAY_MS : RELEARN_MS;
 }
 
 // { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' } -> formatted next-interval string,
@@ -600,6 +616,17 @@ function srsPickAvoidingRecent(items, keyOf) {
     if (eligible.length) return eligible[Math.floor(Math.random() * eligible.length)];
   }
   return items[Math.floor(Math.random() * items.length)];
+}
+
+// The pool a page draws its next card from: anything due for review, else
+// brand-new cards, else (with practice-ahead on) the whole pool. Flashcards
+// and the quiz both draw through this and srsPickAvoidingRecent, which is
+// what lets tests/cases.js simulate a whole session against the real logic.
+function srsDuePool(pool, stateOf, practiceAhead) {
+  const reviews = pool.filter(d => stateOf(d) && srsIsDue(stateOf(d)));
+  let due = reviews.length ? reviews : pool.filter(d => !stateOf(d));
+  if (practiceAhead && !due.length) due = pool;
+  return due;
 }
 
 // ---- Undo ------------------------------------------------------------------
@@ -1481,10 +1508,7 @@ function pickNext() {
   if (queued) { showCard(queued); return; }
   // Reviews first, then any brand-new card; practice-ahead ignores the
   // schedule entirely once even that pool is exhausted.
-  const reviews = pool.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
-  const freshAll = pool.filter(d => !srs[d.front]);
-  let due = reviews.length ? reviews : freshAll;
-  if (practiceAhead && !due.length) due = pool;
+  const due = srsDuePool(pool, d => srs[d.front], practiceAhead);
   if (!due.length) { renderAllCaughtUp(); return; }
   showCard(srsPickAvoidingRecent(due, srsWordKeys));
 }

@@ -1289,10 +1289,7 @@ function pickNext() {
   }
   // Reviews first, then any brand-new item; practice-ahead ignores the
   // schedule entirely once even that pool is exhausted.
-  const reviews = pool.filter(d => srs[d.id] && srsIsDue(srs[d.id]));
-  const freshAll = pool.filter(d => !srs[d.id]);
-  let due = reviews.length ? reviews : freshAll;
-  if (practiceAhead && !due.length) due = pool;
+  const due = srsDuePool(pool, d => srs[d.id], practiceAhead);
   if (!due.length) { renderAllCaughtUp(); renderStats(); return; }
   current = srsPickAvoidingRecent(due, srsWordKeys);
   srsNoteShown(srsWordKeys(current));
