@@ -423,3 +423,46 @@ suite('full session to the end of the list: no word loops', () => {
     srsClearRecent();
   }
 });
+
+// A fake GitHub gist API: `tokens` is the set it accepts, `gist` its content.
+function fakeGitHub(tokens, gistId) {
+  const gh = { gist: null, calls: [] };
+  globalThis.fetch = async (url, opts = {}) => {
+    const auth = ((opts.headers || {}).Authorization || '').replace('Bearer ', '');
+    gh.calls.push((opts.method || 'GET') + ' ' + url.replace(GH_API, ''));
+    const res = (status, body) => ({ status, ok: status < 300, json: async () => body });
+    if (!tokens.includes(auth)) return res(401, { message: 'Bad credentials' });
+    if (url.endsWith('/gists/' + gistId)) {
+      if (opts.method === 'PATCH') { gh.gist = JSON.parse(opts.body).files[SYNC_FILENAME].content; return res(200, {}); }
+      return res(200, { id: gistId, files: gh.gist ? { [SYNC_FILENAME]: { content: gh.gist } } : {} });
+    }
+    return res(404, {});
+  };
+  return gh;
+}
+
+asyncSuite('sync: an expired token is detected, reported, and replaceable in place', async () => {
+  localStorage.clear();
+  localStorage.setItem(SYNC_TOKEN_KEY, 'old');
+  localStorage.setItem(SYNC_GIST_KEY, 'g1');
+  localStorage.setItem(SYNC_LAST_KEY, String(Date.now() - 60 * DAY_MS));
+  localStorage.setItem('bahasa:flashcards:fsrs:v1', JSON.stringify({ kaki: { due: 1, lastReview: Date.now(), stability: 2, difficulty: 5, reps: 1 } }));
+  const gh = fakeGitHub(['new'], 'g1');
+  ok(syncRemoteStale(), 'two months without a sync reads as stale');
+  let msg = '';
+  try { await syncRemotePush(); } catch (e) { msg = e.message; }
+  ok(/expired or been revoked/.test(msg), 'push says the token is dead, not just "HTTP 401"');
+  ok(syncRemoteNeedsToken(), 'the dead token is remembered for every page to show');
+  let badBoth = '';
+  try { await syncRemoteReplaceToken('also-bad'); } catch (e) { badBoth = e.message; }
+  ok(/rejected that token too/.test(badBoth), 'a second bad token is refused before saving');
+  eq(localStorage.getItem(SYNC_TOKEN_KEY), 'old', 'refused token is not stored');
+  await syncRemoteReplaceToken('new');
+  ok(!syncRemoteNeedsToken(), 'new token clears the flag');
+  eq(localStorage.getItem(SYNC_GIST_KEY), 'g1', 'same gist kept — nothing re-created');
+  ok(!gh.calls.some(c => c.startsWith('POST')), 'no new gist created');
+  ok(gh.gist && JSON.parse(gh.gist).data['bahasa:flashcards:fsrs:v1'].kaki, 'progress made while offline is pushed');
+  ok(!syncRemoteStale(), 'no longer stale after the push');
+  localStorage.clear();
+  delete globalThis.fetch;
+});

@@ -70,13 +70,23 @@ function deepEq(actual, expected, msg) {
   ok(JSON.stringify(actual) === JSON.stringify(expected),
      `${msg} (expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)})`);
 }
+// Async suites run one after another (they share localStorage and fetch),
+// after all the synchronous ones; the footer waits for the chain.
+let __asyncChain = Promise.resolve();
+function asyncSuite(name, fn) {
+  __asyncChain = __asyncChain.then(async () => {
+    __suite = name;
+    try { await fn(); }
+    catch (e) { __fail++; console.log(`  ✗ ${name}: threw ${e && e.message ? e.message : e}`); }
+  });
+}
 globalThis.__report = () => {
   console.log(`\n  ${__pass} passed, ${__fail} failed`);
   return __fail;
 };
 """
 
-FOOTER = "\nprocess.exit(__report());\n"
+FOOTER = "\n__asyncChain.then(() => process.exit(__report()));\n"
 
 
 def run_unit_tests():

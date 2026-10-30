@@ -101,6 +101,9 @@ __PWA_META__
   #syncMsg { margin-top:10px; font-size:0.8rem; white-space:pre-line; line-height:1.5; }
   #syncMsg.ok { color:var(--good); }
   #syncMsg.err { color:var(--bad); }
+  .sync .alert { border:1px solid var(--bad); border-radius:8px; padding:12px 14px; margin-bottom:12px;
+    font-size:0.85rem; line-height:1.45; }
+  .sync .alert b { color:var(--bad); }
   .hidden { display:none; }
 </style>
 </head>
@@ -224,11 +227,32 @@ document.getElementById('pasteMerge').addEventListener('click', () => {
 // ---- auto-sync panel ----
 const remoteBox = document.getElementById('remoteBox');
 
+// No expiration is the point: a 30-day token silently stopped sync for two
+// months. A gist-only token can't touch repos, so not expiring is low-risk.
+const TOKEN_HOWTO = `Create one at
+      <a href="https://github.com/settings/tokens/new?scopes=gist&description=Bahasa+Player+sync"
+         target="_blank" rel="noopener">github.com/settings/tokens/new</a>:
+      classic token, tick only <b>gist</b>, and set <b>Expiration</b> to <b>No expiration</b> (GitHub's default
+      is 30 days, after which sync silently stops). Fine-grained tokens don't work with the gist API.`;
+
 function renderRemote() {
   if (syncRemoteConfigured()) {
     const last = parseInt(localStorage.getItem('bahasa:sync:lastSync') || '0', 10);
     const gid = localStorage.getItem('bahasa:sync:gistId');
-    remoteBox.innerHTML = `
+    const lastText = last ? new Date(last).toLocaleDateString() : 'never';
+    let alert = '';
+    if (syncRemoteNeedsToken()) {
+      alert = `<div class="alert"><b>Sync stopped</b> — GitHub rejected the saved token (expired or revoked).
+        Last successful sync: ${lastText}. Your progress on this device is safe; paste a new token and
+        everything since then goes up and merges.
+        <input type="password" id="newTokenInput" autocomplete="off" style="margin-top:10px"
+          placeholder="New GitHub classic token (gist scope)">
+        <div class="row"><button class="primary" id="replaceTokenBtn">Resume sync</button></div>
+        <div class="note">${TOKEN_HOWTO} Do the same on your other device.</div></div>`;
+    } else if (syncRemoteStale()) {
+      alert = `<div class="alert"><b>Not synced since ${lastText}.</b> Tap Sync now to see why.</div>`;
+    }
+    remoteBox.innerHTML = alert + `
       <div class="row">
         <button class="primary" id="syncNowBtn">Sync now</button>
         <button id="disconnectBtn">Disconnect</button>
@@ -236,13 +260,24 @@ function renderRemote() {
       <div class="note">Auto-sync is <b>on</b> (private gist ${gid.slice(0,8)}…). Last synced:
       ${last ? new Date(last).toLocaleString() : 'never'}. Every page pulls on load; ratings push a few seconds
       after you answer. Connect the other device with the same token and it stays in step automatically.</div>`;
+    const rb = document.getElementById('replaceTokenBtn');
+    if (rb) rb.addEventListener('click', async () => {
+      const token = document.getElementById('newTokenInput').value.trim();
+      if (!token) { say('Paste a token first.', 'err'); return; }
+      say('Reconnecting…');
+      try {
+        await syncRemoteReplaceToken(token);
+        renderCounts(); renderRemote(); renderStudyMeta(); renderStatsPanel();
+        say('Sync resumed — this device\\'s progress is merged and pushed.', 'ok');
+      } catch (e) { say(e.message, 'err'); }
+    });
     document.getElementById('syncNowBtn').addEventListener('click', async () => {
       say('Syncing…');
       try {
         await syncRemotePush();
         renderCounts(); renderRemote();
         say('Synced.', 'ok');
-      } catch (e) { say(e.message, 'err'); }
+      } catch (e) { renderRemote(); say(e.message, 'err'); }
     });
     document.getElementById('disconnectBtn').addEventListener('click', () => {
       if (!confirm('Disconnect auto-sync on this device? Your progress here and the gist are both kept — this only stops syncing.')) return;
@@ -256,11 +291,7 @@ function renderRemote() {
         placeholder="GitHub classic token with only the gist scope">
       <div class="row"><button class="primary" id="connectBtn">Connect auto-sync</button></div>
       <div class="note">Stores progress in a <b>private gist</b> on your GitHub account — no server, nothing
-      new to run. Create a token at
-      <a href="https://github.com/settings/tokens/new?scopes=gist&description=Bahasa+Player+sync"
-         target="_blank" rel="noopener">github.com/settings/tokens/new</a>
-      (classic token, tick only <b>gist</b> — fine-grained tokens don't work with the gist API), paste it here,
-      then do the same once on your other device. The token stays in this browser's local storage.</div>`;
+      new to run. ${TOKEN_HOWTO} Paste it here, then do the same once on your other device. The token stays in this browser's local storage.</div>`;
     document.getElementById('connectBtn').addEventListener('click', async () => {
       const token = document.getElementById('tokenInput').value.trim();
       if (!token) { say('Paste a token first.', 'err'); return; }
@@ -395,7 +426,10 @@ function wireGoalInput() {
 renderStatsPanel();
 
 // If already connected, do a background pull on load like the practice pages do.
-syncRemoteAutoPull(() => { renderCounts(); renderRemote(); renderStudyMeta(); renderStatsPanel(); }, null);
+// Failures re-render the panel, so a dead token shows up here instead of
+// failing silently on the one page you open first.
+syncRemoteAutoPull(() => { renderCounts(); renderRemote(); renderStudyMeta(); renderStatsPanel(); },
+  s => { if (s !== 'pending') renderRemote(); });
 
 // ---- PWA: offline caching + installability (no-op over file://) ----
 __PWA_SW__

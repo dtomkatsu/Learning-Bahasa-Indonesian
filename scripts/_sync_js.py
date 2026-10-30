@@ -168,11 +168,32 @@ function syncCounts() {
 const SYNC_TOKEN_KEY = 'bahasa:sync:token';
 const SYNC_GIST_KEY = 'bahasa:sync:gistId';
 const SYNC_LAST_KEY = 'bahasa:sync:lastSync';
+// Set when GitHub rejects the saved token (401). Classic tokens default to a
+// 30-day expiry, and when this one lapsed every push failed behind a small
+// "sync failed" badge for two months. The flag lets every page say plainly
+// that the token is dead and take a new one in place.
+const SYNC_AUTH_FAIL_KEY = 'bahasa:sync:authFailedAt';
+const SYNC_STALE_MS = 3 * 24 * 60 * 60 * 1000;
 const SYNC_FILENAME = 'bahasa-progress.json';
 const GH_API = 'https://api.github.com';
 
 function syncRemoteConfigured() {
   return !!(localStorage.getItem(SYNC_TOKEN_KEY) && localStorage.getItem(SYNC_GIST_KEY));
+}
+function syncRemoteNeedsToken() {
+  return syncRemoteConfigured() && !!localStorage.getItem(SYNC_AUTH_FAIL_KEY);
+}
+// Connected, but nothing has synced for a few days (and no known cause).
+function syncRemoteStale() {
+  const last = parseInt(localStorage.getItem(SYNC_LAST_KEY) || '0', 10);
+  return syncRemoteConfigured() && (!last || Date.now() - last > SYNC_STALE_MS);
+}
+function syncNoteResponse(resp) {
+  if (resp.status === 401) {
+    if (!localStorage.getItem(SYNC_AUTH_FAIL_KEY)) localStorage.setItem(SYNC_AUTH_FAIL_KEY, String(Date.now()));
+    throw new Error('GitHub rejected the saved token — it has expired or been revoked. Paste a new one to resume syncing.');
+  }
+  if (resp.ok) localStorage.removeItem(SYNC_AUTH_FAIL_KEY);
 }
 function syncGhHeaders() {
   return {
@@ -209,6 +230,7 @@ async function syncRemoteSetup(token) {
 async function syncRemotePull() {
   const id = localStorage.getItem(SYNC_GIST_KEY);
   const resp = await fetch(GH_API + '/gists/' + id, { headers: syncGhHeaders() });
+  syncNoteResponse(resp);
   if (resp.status === 404) throw new Error('Sync gist not found — it may have been deleted. Disconnect and reconnect.');
   if (!resp.ok) throw new Error('Pull failed (HTTP ' + resp.status + ').');
   const gist = await resp.json();
@@ -232,6 +254,7 @@ async function syncRemotePush() {
     method: 'PATCH', headers: syncGhHeaders(),
     body: JSON.stringify({ files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } } }),
   });
+  syncNoteResponse(resp);
   if (!resp.ok) throw new Error('Push failed (HTTP ' + resp.status + ').');
   localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
 }
@@ -250,6 +273,21 @@ function syncRemoteQueuePush(statusCb) {
     // manual action on index.html. Pass it through instead.
     catch (e) { statusCb && statusCb('err', e.message); }
   }, 2500);
+}
+
+// Swap in a new token without disconnecting: same gist, so nothing is
+// re-created and both devices keep pointing at one file. Then pull-merge and
+// push, so everything studied while sync was down goes up straight away.
+async function syncRemoteReplaceToken(token) {
+  const id = localStorage.getItem(SYNC_GIST_KEY);
+  const resp = id && await fetch(GH_API + '/gists/' + id, {
+    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' },
+  });
+  if (resp && resp.status === 401) throw new Error('GitHub rejected that token too. Is it a classic token with the gist scope?');
+  if (resp && resp.ok) localStorage.setItem(SYNC_TOKEN_KEY, token);
+  else await syncRemoteSetup(token);   // gist gone or never set: find or create it
+  localStorage.removeItem(SYNC_AUTH_FAIL_KEY);
+  await syncRemotePush();
 }
 
 // Best-effort flush if the tab is backgrounded while a push is still queued.
@@ -296,6 +334,20 @@ function syncStatusBadge(el, s, detail) {
   if (!syncRemoteConfigured()) { el.textContent = ''; el.onclick = null; el.style.cursor = ''; return; }
   if (s === 'pending') { el.textContent = 'syncing…'; el.onclick = null; el.style.cursor = ''; return; }
   if (s === 'ok') { el.textContent = 'synced ✓'; el.onclick = null; el.style.cursor = ''; return; }
+  if (syncRemoteNeedsToken()) {
+    el.textContent = 'sync stopped: token expired (tap to fix)';
+    el.style.cursor = 'pointer';
+    el.onclick = async () => {
+      const t = (prompt('GitHub rejected the saved sync token (expired or revoked). Your progress on this device is safe.' +
+        '\\n\\nMake a new classic token with only the gist scope and Expiration set to No expiration ' +
+        '(github.com/settings/tokens/new), then paste it here:') || '').trim();
+      if (!t) return;
+      syncStatusBadge(el, 'pending');
+      try { await syncRemoteReplaceToken(t); syncStatusBadge(el, 'ok'); }
+      catch (e) { syncStatusBadge(el, 'err', e.message); }
+    };
+    return;
+  }
   el.textContent = 'sync failed (tap for why)';
   el.style.cursor = 'pointer';
   el.onclick = () => alert('Sync failed: ' + (detail || 'unknown error.') +
@@ -307,5 +359,6 @@ function syncRemoteDisconnect() {
   localStorage.removeItem(SYNC_TOKEN_KEY);
   localStorage.removeItem(SYNC_GIST_KEY);
   localStorage.removeItem(SYNC_LAST_KEY);
+  localStorage.removeItem(SYNC_AUTH_FAIL_KEY);
 }
 """
