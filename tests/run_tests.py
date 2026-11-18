@@ -31,6 +31,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from _srs_js import SRS_JS          # noqa: E402
 from _sync_js import SYNC_JS        # noqa: E402
 from _vocab_js import VOCAB_JS      # noqa: E402
+from _voice_js import VOICE_JS      # noqa: E402
 
 # Minimal browser surface. Only what the modules touch at load time or inside
 # the pure functions under test — anything network- or DOM-bound is out of
@@ -91,7 +92,7 @@ FOOTER = "\n__asyncChain.then(() => process.exit(__report()));\n"
 
 def run_unit_tests():
     cases = (ROOT / "tests" / "cases.js").read_text(encoding="utf-8")
-    bundle = SHIM + SRS_JS + SYNC_JS + VOCAB_JS + cases + FOOTER
+    bundle = SHIM + SRS_JS + SYNC_JS + VOCAB_JS + VOICE_JS + cases + FOOTER
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
         f.write(bundle)
         path = f.name

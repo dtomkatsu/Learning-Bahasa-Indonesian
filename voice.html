@@ -1,0 +1,1650 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#D01228">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Bahasa">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Voice drill — Learning Bahasa Indonesian</title>
+<style>
+  :root { color-scheme: light dark; --bg:#fff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb;
+    --accent:#2563eb; --card:#f9fafb; --again:#dc2626; --hard:#d97706; --good:#16a34a; --easy:#2563eb; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#111318; --fg:#e7e9ee; --muted:#9aa1ac; --line:#2a2e37; --accent:#5b9dff;
+      --card:#1a1d24; --again:#f87171; --hard:#fbbf24; --good:#4ade80; --easy:#7cb0ff; }
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  .wrap { max-width:560px; margin:0 auto; padding:24px 16px 60px; }
+  .top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:14px; }
+  h1 { font-size:1.15rem; margin:0; }
+  a.back { color:var(--muted); font-size:0.8rem; text-decoration:none; }
+  #card { border:1px solid var(--line); border-radius:14px; background:var(--card);
+    padding:22px 20px; min-height:230px; margin-bottom:14px; text-align:center; }
+  .phase { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted);
+    min-height:1.2em; }
+  .phase.listening { color:var(--good); }
+  .phase.listening::before { content:''; display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:var(--good); margin-right:6px; vertical-align:1px; animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity:0.25; } }
+  .front { font-size:2rem; font-weight:600; margin:18px 0 6px; min-height:2.4rem; overflow-wrap:anywhere; }
+  .answer { font-size:1.05rem; color:var(--muted); min-height:1.5rem; }
+  .heard { margin-top:16px; font-size:0.9rem; color:var(--muted); min-height:1.3rem; font-style:italic; }
+  .verdict { margin-top:8px; font-weight:600; min-height:1.4rem; }
+  .verdict.g1 { color:var(--again); } .verdict.g2 { color:var(--hard); }
+  .verdict.g3 { color:var(--good); } .verdict.g4 { color:var(--easy); }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  button { font:inherit; font-size:0.9rem; padding:10px 14px; border-radius:10px;
+    border:1px solid var(--line); background:transparent; color:var(--fg); cursor:pointer; }
+  button:disabled { opacity:0.4; cursor:default; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; flex:1; font-weight:600; }
+  .stats { color:var(--muted); font-size:0.82rem; margin-bottom:16px; }
+  .settings { border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:0.85rem; }
+  .settings label { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; }
+  .settings select { font-size:0.85rem; padding:4px 6px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); color:var(--fg); max-width:55%; }
+  .help { color:var(--muted); font-size:0.82rem; line-height:1.5; margin-top:16px; }
+  .help b { color:var(--fg); }
+  .warn { border:1px solid var(--again); color:var(--fg); border-radius:10px; padding:10px 12px;
+    font-size:0.85rem; margin-bottom:14px; line-height:1.45; }
+  #lock { position:fixed; inset:0; background:#000; color:#555; z-index:10; display:flex;
+    flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center;
+    touch-action:none; user-select:none; -webkit-user-select:none; padding:24px; }
+  #lock[hidden] { display:none; }
+  #lock .lockPhase { font-size:0.95rem; color:#666; }
+  #lock .lockFront { font-size:1.6rem; color:#777; min-height:2rem; }
+  #lock .hold { margin-top:40px; border:1px solid #333; border-radius:999px; padding:14px 22px;
+    color:#666; font-size:0.85rem; }
+  #lock .hold.holding { border-color:#888; color:#aaa; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Voice drill</h1>
+    <a class="back" href="index.html">&larr; Home</a>
+  </div>
+  <div class="warn" id="unsupported" hidden></div>
+  <div id="card">
+    <div class="phase" id="phase">Tap Start, then put the phone down</div>
+    <div class="front" id="front"></div>
+    <div class="answer" id="answer"></div>
+    <div class="heard" id="heard"></div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+  <div class="controls">
+    <button class="primary" id="startBtn">Start</button>
+    <button id="skipBtn" disabled>Skip</button>
+    <button id="undoBtn" disabled>&#8630; Go back</button>
+    <button id="lockBtn" disabled>Pocket lock</button>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="settings">
+    <label>Words <select id="tagSel"></select></label>
+    <label>New words per session <select id="newSel">
+      <option value="0">0 — reviews only</option><option value="5">5</option>
+      <option value="10">10</option><option value="20">20</option></select></label>
+    <label>Time to answer <select id="waitSel">
+      <option value="5000">5 s</option><option value="8000">8 s</option>
+      <option value="12000">12 s</option></select></label>
+  </div>
+  <div class="help">
+    <p><b>How it works.</b> You hear an Indonesian word. Say what it means in English
+    (&ldquo;friend&rdquo;, &ldquo;to eat&rdquo;) and it grades you. Or grade yourself instead:
+    <b>good</b>, <b>easy</b>, <b>hard</b>, or <b>don&rsquo;t know</b>. Either way you hear the
+    answer before the next word. If it can&rsquo;t tell, it reads the answer and asks
+    <b>right or wrong?</b></p>
+    <p>Any time: <b>repeat</b>, <b>skip</b>, <b>go back</b>, <b>stop</b>. Two silences in a row
+    pause it; say <b>resume</b> to carry on.</p>
+    <p><b>Keep the screen on.</b> Browsers stop listening when the phone locks, so this page
+    keeps the screen awake. Use <b>Pocket lock</b> to black it out and ignore touches (hold the
+    button on the black screen to unlock). Earbuds help: the mic won&rsquo;t hear the page
+    talking, and iPhone plays louder through them while it&rsquo;s listening.</p>
+    <p>Reviews here count as flashcard reviews &mdash; same schedule, same streak, same sync.</p>
+  </div>
+</div>
+<div id="lock" hidden>
+  <div class="lockPhase" id="lockPhase"></div>
+  <div class="lockFront" id="lockFront"></div>
+  <div class="hold" id="holdBtn">Hold to unlock</div>
+</div>
+<script>
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RELEARN_MS = 10 * 60 * 1000;
+const MATURE_STABILITY_DAYS = 21;
+const DESIRED_RETENTION = 0.9;
+
+const FSRS_W = [
+  0.40255, 1.18385, 3.173, 15.69105, 7.1949,
+  0.5345, 1.4604, 0.0046, 1.54575, 0.1192,
+  1.01925, 1.9395, 0.11, 0.29605, 2.2698,
+  0.2315, 2.9898, 0.51655, 0.6621
+];
+const FSRS_F = 19 / 81;
+const FSRS_C = -0.5;
+
+function srsLoad(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; }
+}
+function srsSave(key, s) { localStorage.setItem(key, JSON.stringify(s)); }
+
+function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+function clampD(d) { return clamp(d, 1, 10); }
+
+function fsrsRetrievability(elapsedDays, stability) {
+  if (elapsedDays <= 0) return 1;
+  return Math.pow(1 + FSRS_F * (elapsedDays / stability), FSRS_C);
+}
+
+// Days until retrievability decays to `desiredR` starting from `stability`.
+function fsrsIntervalDays(desiredR, stability) {
+  return (stability / FSRS_F) * (Math.pow(desiredR, 1 / FSRS_C) - 1);
+}
+
+function fsrsInitialDifficulty(g) {
+  return clampD(FSRS_W[4] - Math.exp(FSRS_W[5] * (g - 1)) + 1);
+}
+function fsrsInitialStability(g) {
+  return FSRS_W[g - 1]; // W[0..3] are literally the four initial-stability values
+}
+
+function fsrsUpdateDifficulty(D, g) {
+  const deltaD = -FSRS_W[6] * (g - 3);
+  const dPrime = D + deltaD * ((10 - D) / 9);
+  const mixed = FSRS_W[7] * fsrsInitialDifficulty(4) + (1 - FSRS_W[7]) * dPrime;
+  return clampD(mixed);
+}
+
+function fsrsUpdateStability(S, D, R, g) {
+  if (g === 1) {
+    // Lapse: new stability can't exceed the pre-lapse stability.
+    const sMin = FSRS_W[11] * Math.pow(D, -FSRS_W[12]) *
+      (Math.pow(S + 1, FSRS_W[13]) - 1) * Math.exp(FSRS_W[14] * (1 - R));
+    return Math.min(sMin, S);
+  }
+  const hardPenalty = g === 2 ? FSRS_W[15] : 1;
+  const easyBonus = g === 4 ? FSRS_W[16] : 1;
+  const growth = 1 + hardPenalty * easyBonus * Math.exp(FSRS_W[8]) *
+    (11 - D) * Math.pow(S, -FSRS_W[9]) * (Math.exp(FSRS_W[10] * (1 - R)) - 1);
+  return S * growth;
+}
+
+function fsrsUpdateSameDayStability(S, g) {
+  return S * Math.exp(FSRS_W[17] * (g - 3 + FSRS_W[18]));
+}
+
+// Pure: computes the resulting state for grade g without touching storage.
+// state is null/undefined for a never-reviewed card.
+function fsrsNextState(state, g, now) {
+  if (!state || !state.stability) {
+    const S = fsrsInitialStability(g);
+    const D = fsrsInitialDifficulty(g);
+    const due = g === 1 ? now + RELEARN_MS : now + fsrsIntervalDays(DESIRED_RETENTION, S) * DAY_MS;
+    const out = { difficulty: D, stability: S, due, lastReview: now, reps: g === 1 ? 0 : 1 };
+    if (g === 1) out.lapsedAt = now;
+    return out;
+  }
+  const elapsedDays = Math.max(0, (now - state.lastReview) / DAY_MS);
+  const R = fsrsRetrievability(elapsedDays, state.stability);
+  const D = fsrsUpdateDifficulty(state.difficulty, g);
+  const S = elapsedDays < 1
+    ? fsrsUpdateSameDayStability(state.stability, g)
+    : fsrsUpdateStability(state.stability, state.difficulty, R, g);
+  const due = g === 1 ? now + srsRelearnDelay(state, now) : now + fsrsIntervalDays(DESIRED_RETENTION, S) * DAY_MS;
+  const reps = g === 1 ? 0 : (state.reps || 0) + 1;
+  const out = { difficulty: D, stability: S, due, lastReview: now, reps };
+  // Kept across non-Again ratings so "missed twice today" holds even with a
+  // Good in between (Again, Good, Again would otherwise loop all evening).
+  const lapsedAt = g === 1 ? now : state.lapsedAt;
+  if (lapsedAt) out.lapsedAt = lapsedAt;
+  return out;
+}
+
+// One quick retry per card per day. The first Again brings the card back in
+// RELEARN_MS; another Again within a day of that sends it to tomorrow.
+// Without the cap, every missed card re-entered the queue every ten minutes
+// for as long as you kept missing it, so the end of each session was the
+// same handful of words on a loop.
+function srsRelearnDelay(state, now) {
+  return state && state.lapsedAt && now - state.lapsedAt < DAY_MS ? DAY_MS : RELEARN_MS;
+}
+
+// { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' } -> formatted next-interval string,
+// for showing an Anki-style preview on each rating button.
+function fsrsPreviewLabels(state, now) {
+  const out = {};
+  for (let g = 1; g <= 4; g++) {
+    const next = fsrsNextState(state, g, now);
+    out[g] = srsFmtInterval(next.due - now);
+  }
+  return out;
+}
+
+function srsIsDue(state) {
+  return !state || !state.due || state.due <= Date.now();
+}
+function srsIsMature(state) {
+  return !!(state && state.stability >= MATURE_STABILITY_DAYS);
+}
+
+// ---- Daily new-card cap ----------------------------------------------------
+// Removed (2026-07-19) — new cards are no longer rationed. srsNewQuotaLeft()
+// stays as a no-op returning Infinity so every caller (flashcards/quiz/study
+// all do `.slice(0, srsNewQuotaLeft())` or `quota === 0` checks) keeps
+// working unchanged without gating on it.
+function srsNewQuotaLeft() {
+  return Infinity;
+}
+function srsNoteNewIntroduced() {}
+
+// ---- Review log (feeds streak/heatmap/retention stats) ---------------------
+// Map keyed by ms-timestamp -> {g: grade 1-4, k: kind, n: 1 if first-ever
+// review of that item}. Capped to the newest LOG_CAP entries; synced across
+// devices as a union (see _sync_js.py) so streaks survive switching devices.
+const REVIEWLOG_KEY = 'bahasa:reviewLog:v1';
+const REVIEWLOG_CAP = 2000;
+
+// Returns the key it logged under, so an undo can take the entry back out.
+// `itemKey` (the item's SRS id) is recorded so stats can join a review back to
+// the card it belongs to — that's what makes retention-by-tag possible.
+// Entries written before this existed simply have no `i` and are skipped by
+// those breakdowns rather than miscounted.
+function srsLogReview(kind, grade, isNew, itemKey) {
+  const log = srsLoad(REVIEWLOG_KEY);
+  let t = Date.now();
+  while (log[t]) t++;
+  log[t] = { g: grade, k: kind, n: isNew ? 1 : 0 };
+  if (itemKey) log[t].i = itemKey;
+  const keys = Object.keys(log).map(Number).sort((a, b) => b - a);
+  if (keys.length > REVIEWLOG_CAP) {
+    for (const k of keys.slice(REVIEWLOG_CAP)) delete log[k];
+  }
+  srsSave(REVIEWLOG_KEY, log);
+  return t;
+}
+
+// ---- Recent-item ring ------------------------------------------------------
+// pickNext draws at random from whatever is due, so on its own nothing stops
+// it handing straight back the card you just rated. The old guard — redraw
+// once if you got the same card as `current` — was too weak twice over: it
+// still repeats 1-in-n draws, and in practice-ahead it never fired at all,
+// because the caught-up screen clears `current` between draws. So a two-card
+// tag repeated itself half the time.
+//
+// Instead, remember the last few items shown and draw from the pool with
+// those removed. The ring is trimmed to leave at least one candidate, so a
+// tiny filtered deck alternates rather than stalling; on a two-card tag that
+// means strict A-B-A-B, which is the best a two-card tag can do.
+// Depth is a preference rather than a constant, because the right value
+// depends on how you study: a wide unfiltered deck never notices it, while on
+// a small tag it is the difference between a rotation and a shuffle. Kept
+// device-local alongside sessionSize and autoCompare — it's a UI preference,
+// not learning data, so it stays out of _sync_js.py's SYNC_KEYS. 0 means off,
+// which restores plain random draws (and with them the odd back-to-back
+// repeat); RECENT_CAP is only a sanity bound on hand-edited storage.
+const RECENT_KEY = 'bahasa:recentRing:v1';
+const RECENT_DEFAULT = 5;
+const RECENT_CAP = 50;
+// The ring is persisted per page (flashcards and quiz key their items
+// differently). Held only in memory it was lost on every reload, so each page
+// load could open on a card you'd just seen.
+// v2: entries are word keys (see srsWordKeys), not item ids. v1 held ids.
+const RECENT_RING_KEY = 'bahasa:recentItems:v2:' + ((typeof location !== 'undefined' && location.pathname) || '');
+// A ring entry is one shown item: a key, or an array of keys.
+function srsKeyList(x) {
+  return (Array.isArray(x) ? x : [x]).filter(k => typeof k === 'string' && k);
+}
+function srsLoadRing() {
+  const v = srsLoad(RECENT_RING_KEY);
+  return Array.isArray(v) ? v.filter(e => srsKeyList(e).length) : [];
+}
+function srsSaveRing() { srsSave(RECENT_RING_KEY, srsRecent); }
+let srsRecent = srsLoadRing();
+
+function srsRecentMax() {
+  const v = srsLoad(RECENT_KEY);
+  return v && typeof v.n === 'number' ? clamp(Math.round(v.n), 0, RECENT_CAP) : RECENT_DEFAULT;
+}
+// Shrinking the ring has to drop the now-excess entries straight away,
+// otherwise the change doesn't take effect until enough cards have scrolled
+// through to trim it naturally.
+function srsSetRecentMax(n) {
+  srsSave(RECENT_KEY, { n: clamp(Math.round(n), 0, RECENT_CAP) });
+  srsTrimRecent();
+}
+function srsTrimRecent() {
+  const max = srsRecentMax();
+  if (srsRecent.length > max) srsRecent = srsRecent.slice(srsRecent.length - max);
+  srsSaveRing();
+}
+
+function srsNoteShown(key) {
+  const keys = srsKeyList(key);
+  if (!keys.length) return;
+  const id = keys.join('|');
+  srsRecent = srsRecent.filter(e => srsKeyList(e).join('|') !== id);
+  srsRecent.push(keys.length === 1 ? keys[0] : keys);
+  srsTrimRecent();
+}
+
+// What counts as "the same card again". Avoiding repeats by item id wasn't
+// enough: many items share a word — Catch it has one clip per speaker,
+// Minimal pairs reuse a word across pairs (adik/adil, adik/aduk), and the
+// Study session mixes a word's flashcard, cloze and fill-the-blank with the
+// Sentence and Listening cards for the same line. So an item's keys are its
+// word(s), lowercased, plus the transcript line it came from.
+function srsWordKeys(d) {
+  const words = d.kind === 'pairs' ? (d.options || [])
+    : [d.kind && d.kind !== 'flash' ? (d.term || d.answer) : d.front];
+  const keys = [];
+  words.forEach(w => String(w || '').toLowerCase().split('/').forEach(p => {
+    p = p.trim();
+    if (p) keys.push('w:' + p);
+  }));
+  if (d.lineId) keys.push('l:' + d.lineId);
+  if (!keys.length) keys.push('i:' + (d.id || d.front));
+  return keys;
+}
+function srsClearRecent() { srsRecent = []; srsSaveRing(); }
+function srsRecentKeys() { return srsRecent.slice(); }
+
+// Wires a button row (one `data-ring` button per offered depth) to the
+// setting. Shared because flashcards and the quiz carry the same control in
+// different chrome — they differ in where it sits, not in what it does. A
+// stored value that matches no button (hand-edited storage) simply leaves the
+// row unhighlighted rather than silently snapping to something else.
+function srsWireRecentGroup(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const btns = [...el.querySelectorAll('button[data-ring]')];
+  const paint = () => btns.forEach(b =>
+    b.classList.toggle('active', Number(b.dataset.ring) === srsRecentMax()));
+  btns.forEach(b => b.addEventListener('click', () => {
+    srsSetRecentMax(Number(b.dataset.ring));
+    paint();
+  }));
+  paint();
+}
+
+// Draws uniformly from `items`, skipping any item that shares a key with
+// something in the ring. `keyOf` maps an item to a key or an array of keys
+// (usually srsWordKeys). When the pool is too small to avoid the whole ring,
+// the oldest entries are let go first, so the most recent card is the last
+// one allowed back. Returns null only for an empty list.
+function srsPickAvoidingRecent(items, keyOf) {
+  if (!items.length) return null;
+  const keysOf = d => srsKeyList(keyOf(d));
+  // Only ring entries that touch this pool count: stale keys from another
+  // filter would otherwise eat the avoidance budget.
+  const inPool = new Set(items.flatMap(keysOf));
+  const recent = srsRecent.map(srsKeyList).filter(e => e.some(k => inPool.has(k)));
+  for (let n = recent.length; n > 0; n--) {
+    const avoid = new Set(recent.slice(-n).flat());
+    const eligible = items.filter(d => !keysOf(d).some(k => avoid.has(k)));
+    if (eligible.length) return eligible[Math.floor(Math.random() * eligible.length)];
+  }
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+// The pool a page draws its next card from: anything due for review, else
+// brand-new cards, else (with practice-ahead on) the whole pool. Flashcards
+// and the quiz both draw through this and srsPickAvoidingRecent, which is
+// what lets tests/cases.js simulate a whole session against the real logic.
+function srsDuePool(pool, stateOf, practiceAhead) {
+  const reviews = pool.filter(d => stateOf(d) && srsIsDue(stateOf(d)));
+  let due = reviews.length ? reviews : pool.filter(d => !stateOf(d));
+  if (practiceAhead && !due.length) due = pool;
+  return due;
+}
+
+// ---- Undo ------------------------------------------------------------------
+// Rating is the only destructive action in the study UIs: it overwrites an
+// item's FSRS state and appends a review-log entry. "Go back" restores both,
+// so a misclicked "Again" doesn't leave a wrecked schedule behind. The stack
+// is in-memory on purpose — it's for the misclick you just made, not
+// cross-session history.
+const UNDO_CAP = 30;
+let srsUndoStack = [];
+
+function srsPushUndo(entry) {
+  srsUndoStack.push(entry);
+  if (srsUndoStack.length > UNDO_CAP) srsUndoStack.shift();
+}
+function srsPopUndo() { return srsUndoStack.pop() || null; }
+function srsUndoDepth() { return srsUndoStack.length; }
+
+// An undo rewrites an item to an *older* state, which would normally lose the
+// sync merge to the rated copy this device may already have pushed (the merge
+// keeps whichever side was reviewed later). `rev` marks "this was written
+// locally at time T" without touching lastReview, which FSRS reads as when the
+// item was genuinely last reviewed. See syncMergeFsrs in _sync_js.py.
+// Returns null when the item had no prior state (it was brand new), which the
+// caller turns into a delete rather than a write.
+function srsRestoreState(prev) {
+  return prev ? Object.assign({}, prev, { rev: Date.now() }) : null;
+}
+
+// ---- Forward stack ---------------------------------------------------------
+// The card an undo pushed off the screen. Flashcards and the quiz draw the
+// next item at random, so without this, going back and re-rating would hand
+// you a *different* card than the one you were already looking at — the undo
+// would quietly reshuffle your place in the deck.
+//
+// LIFO, so consecutive undos replay forwards in the right order: rate A (see
+// B), rate B (see C), undo, undo — now re-rating A gives back B, and B gives
+// back C.
+let srsForwardStack = [];
+
+function srsPushForward(item) {
+  if (item) srsForwardStack.push(item);
+}
+function srsClearForward() { srsForwardStack = []; }
+function srsForwardDepth() { return srsForwardStack.length; }
+
+// `resolve` re-looks-up the queued item and returns it (or a falsy value if
+// it's no longer eligible — filtered out, removed, or edited away). Skips past
+// anything stale rather than showing a card that isn't in the current pool.
+function srsTakeForward(resolve) {
+  while (srsForwardStack.length) {
+    const found = resolve(srsForwardStack.pop());
+    if (found) return found;
+  }
+  return null;
+}
+
+// Removes a review-log entry by the key srsLogReview returned, so an undone
+// rating doesn't keep inflating the streak/recall stats.
+function srsUnlogReview(ts) {
+  if (!ts) return;
+  const log = srsLoad(REVIEWLOG_KEY);
+  if (!(ts in log)) return;
+  delete log[ts];
+  srsSave(REVIEWLOG_KEY, log);
+}
+
+// ---- Daily goal ------------------------------------------------------------
+// A target number of reviews per day. Deliberately a soft goal shown on the
+// landing page, not a cap that stops you (the hard 15/day new-card cap was
+// removed on purpose) — it exists to make "am I done for today?" answerable.
+// Device-local: it's a display preference, not progress, so it stays out of
+// SYNC_KEYS and each device can set its own.
+const GOAL_KEY = 'bahasa:dailyGoal:v1';
+const DEFAULT_GOAL = 30;
+
+function srsDayKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function srsGoal() {
+  const g = srsLoad(GOAL_KEY);
+  return g && g.n ? g.n : DEFAULT_GOAL;
+}
+function srsSetGoal(n) {
+  srsSave(GOAL_KEY, { n: Math.max(1, Math.round(n)) });
+}
+function srsReviewsToday() {
+  const today = srsDayKey(new Date());
+  const log = srsLoad(REVIEWLOG_KEY);
+  let n = 0;
+  for (const ts of Object.keys(log)) {
+    if (srsDayKey(new Date(Number(ts))) === today) n++;
+  }
+  return n;
+}
+
+// ---- Device ----------------------------------------------------------------
+// Touch devices have no space bar and no "z" key, but they do have the swipe
+// gestures — so the on-screen hints have to say different things. `hover:none`
+// is the right signal (it means "no mouse"); screen width is not, since a
+// narrow desktop window still has a keyboard.
+function srsIsTouch() {
+  return !!(window.matchMedia && window.matchMedia('(hover: none)').matches);
+}
+
+// Separate from srsIsTouch on purpose: whether a panel should start collapsed
+// is a *layout* question (is there room?), while hint wording is an *input*
+// question (is there a keyboard?). A narrow desktop window needs the collapse
+// but still wants the keyboard hints.
+function srsIsNarrow() {
+  return window.innerWidth < 640;
+}
+
+function srsFmtDue(ts) {
+  if (!isFinite(ts)) return 'later';
+  return srsFmtInterval(ts - Date.now());
+}
+function srsFmtInterval(ms) {
+  if (ms <= 0) return 'now';
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return mins + 'm';
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return hrs + 'h';
+  const days = Math.round(hrs / 24);
+  if (days < 30) return days + 'd';
+  const months = Math.round(days / 30);
+  if (months < 12) return months + 'mo';
+  return (Math.round(months / 12 * 10) / 10) + 'y';
+}
+
+// One-time migration from the old simplified-SM2 state (ease/interval/reps,
+// no difficulty/stability) into FSRS state, then removes the legacy key.
+// Items with reps >= 1 are seeded as if their most recent rating was "Good"
+// (grade 3), using their old interval as a stability floor, and are put up
+// for immediate re-review under the new model rather than guessing a
+// mapping that doesn't really exist between the two systems.
+function srsMigrateLegacy(srsKey, legacyKeys) {
+  let srs = srsLoad(srsKey);
+  for (const legacyKey of legacyKeys) {
+    const legacy = srsLoad(legacyKey);
+    if (!Object.keys(legacy).length) continue;
+    for (const [id, v] of Object.entries(legacy)) {
+      if (srs[id]) continue;
+      const hasProgress = v && ((v.reps || 0) >= 1 || (v.box || 0) >= 1);
+      const S = hasProgress ? Math.max(fsrsInitialStability(3), v.interval || 0) : fsrsInitialStability(3);
+      srs[id] = {
+        difficulty: fsrsInitialDifficulty(3),
+        stability: S,
+        due: Date.now(),
+        lastReview: Date.now(),
+        reps: hasProgress ? 1 : 0,
+      };
+    }
+    localStorage.removeItem(legacyKey);
+  }
+  srsSave(srsKey, srs);
+  return srs;
+}
+
+
+const SYNC_FORMAT = 1;
+const SYNC_APP_ID = 'learning-bahasa-indonesian';
+const FSRS_KEYS = ['bahasa:flashcards:fsrs:v1', 'bahasa:quiz:fsrs:v1'];
+const FLAG_KEY = 'bahasa:flaggedLines:v1';
+const REMOVED_CARDS_KEY = 'bahasa:flashcards:removed:v1';
+const CUSTOM_CARDS_KEY = 'bahasa:flashcards:custom:v1';
+// REVIEWLOG_KEY is declared in the SRS module, which is always embedded
+// before this one on pages that have both; index.html embeds only this
+// module, so declare a local fallback name instead of referencing it.
+const SYNC_REVIEWLOG_KEY = 'bahasa:reviewLog:v1';
+const SYNC_KEYS = [...FSRS_KEYS, FLAG_KEY, REMOVED_CARDS_KEY, CUSTOM_CARDS_KEY, SYNC_REVIEWLOG_KEY];
+
+function syncRead(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || {}; } catch (e) { return {}; }
+}
+function syncWrite(key, v) { localStorage.setItem(key, JSON.stringify(v)); }
+
+function syncBuildExport() {
+  const data = {};
+  SYNC_KEYS.forEach(k => { data[k] = syncRead(k); });
+  return {
+    app: SYNC_APP_ID,
+    formatVersion: SYNC_FORMAT,
+    exportedAt: Date.now(),
+    exportedAtISO: new Date().toISOString(),
+    data,
+  };
+}
+
+// How recently a record was written. Normally that's its lastReview, but an
+// undo deliberately restores an *older* state and stamps it with `rev` (see
+// srsRestoreState in _srs_js.py) so it isn't instantly re-clobbered by the
+// rated copy already sitting on the remote.
+function syncStamp(r) {
+  return Math.max((r && r.lastReview) || 0, (r && r.rev) || 0);
+}
+
+// Per item id, keep whichever side was written more recently.
+function syncMergeFsrs(local, incoming) {
+  const out = Object.assign({}, local);
+  let added = 0, updated = 0, kept = 0;
+  for (const [id, inc] of Object.entries(incoming || {})) {
+    const cur = out[id];
+    if (!cur) { out[id] = inc; added++; continue; }
+    if (syncStamp(inc) > syncStamp(cur)) { out[id] = inc; updated++; }
+    else kept++;
+  }
+  return { out, added, updated, kept };
+}
+
+function syncMergeFlags(local, incoming) {
+  const out = Object.assign({}, local);
+  let added = 0;
+  for (const id of Object.keys(incoming || {})) {
+    if (!out[id]) { out[id] = incoming[id]; added++; }
+  }
+  return { out, added };
+}
+
+// Generic version of syncMergeFsrs's rule (later `field` wins) for any
+// id -> {..., [field]: timestamp} map — used for custom flashcards, keyed by
+// `updatedAt` instead of `lastReview`.
+function syncMergeByField(local, incoming, field) {
+  const out = Object.assign({}, local);
+  let added = 0, updated = 0, kept = 0;
+  for (const [id, inc] of Object.entries(incoming || {})) {
+    const cur = out[id];
+    if (!cur) { out[id] = inc; added++; continue; }
+    if ((inc[field] || 0) > (cur[field] || 0)) { out[id] = inc; updated++; }
+    else kept++;
+  }
+  return { out, added, updated, kept };
+}
+
+// Returns a human-readable summary, or throws with a useful message.
+function syncApplyImport(payload) {
+  if (!payload || typeof payload !== 'object') throw new Error('That file isn\'t valid JSON.');
+  if (payload.app !== SYNC_APP_ID) {
+    throw new Error('That file isn\'t a Bahasa Player progress export.');
+  }
+  if ((payload.formatVersion || 0) > SYNC_FORMAT) {
+    throw new Error('That export came from a newer version of the app than this one.');
+  }
+  const bits = [];
+  let touched = 0;
+  for (const key of FSRS_KEYS) {
+    const r = syncMergeFsrs(syncRead(key), (payload.data || {})[key]);
+    syncWrite(key, r.out);
+    touched += r.added + r.updated;
+    const label = key.includes('flashcards') ? 'flashcards' : 'quiz items';
+    bits.push(`${label}: ${r.added} new, ${r.updated} updated, ${r.kept} already newer here`);
+  }
+  const f = syncMergeFlags(syncRead(FLAG_KEY), (payload.data || {})[FLAG_KEY]);
+  syncWrite(FLAG_KEY, f.out);
+  touched += f.added;
+  bits.push(`flagged lines: ${f.added} new`);
+
+  const rm = syncMergeFlags(syncRead(REMOVED_CARDS_KEY), (payload.data || {})[REMOVED_CARDS_KEY]);
+  syncWrite(REMOVED_CARDS_KEY, rm.out);
+  touched += rm.added;
+  bits.push(`removed flashcards: ${rm.added} new`);
+
+  const cc = syncMergeByField(syncRead(CUSTOM_CARDS_KEY), (payload.data || {})[CUSTOM_CARDS_KEY], 'updatedAt');
+  syncWrite(CUSTOM_CARDS_KEY, cc.out);
+  touched += cc.added + cc.updated;
+  bits.push(`custom flashcards: ${cc.added} new, ${cc.updated} updated, ${cc.kept} already newer here`);
+
+  // Review log: union by timestamp key, then trim to the newest 2000 so the
+  // payload can't grow without bound.
+  const lg = syncMergeFlags(syncRead(SYNC_REVIEWLOG_KEY), (payload.data || {})[SYNC_REVIEWLOG_KEY]);
+  const lgKeys = Object.keys(lg.out).map(Number).sort((a, b) => b - a);
+  for (const k of lgKeys.slice(2000)) delete lg.out[k];
+  syncWrite(SYNC_REVIEWLOG_KEY, lg.out);
+  touched += lg.added;
+
+  const when = payload.exportedAtISO ? new Date(payload.exportedAtISO).toLocaleString() : 'unknown date';
+  return { touched, text: `Merged export from ${when}.\n` + bits.join('\n') };
+}
+
+function syncCounts() {
+  const fc = Object.keys(syncRead('bahasa:flashcards:fsrs:v1')).length;
+  const qz = Object.keys(syncRead('bahasa:quiz:fsrs:v1')).length;
+  const fl = Object.keys(syncRead(FLAG_KEY)).length;
+  return { fc, qz, fl };
+}
+
+// ---- Remote auto-sync via a private GitHub Gist ----------------------------
+// The gist holds exactly one file (SYNC_FILENAME) whose content is the same
+// payload syncBuildExport() produces, so pull can reuse syncApplyImport().
+// Token requirement: a CLASSIC personal-access token with only the `gist`
+// scope (fine-grained tokens can't access the gist API). Stored in this
+// browser's localStorage only.
+
+const SYNC_TOKEN_KEY = 'bahasa:sync:token';
+const SYNC_GIST_KEY = 'bahasa:sync:gistId';
+const SYNC_LAST_KEY = 'bahasa:sync:lastSync';
+// Set when GitHub rejects the saved token (401). Classic tokens default to a
+// 30-day expiry, and when this one lapsed every push failed behind a small
+// "sync failed" badge for two months. The flag lets every page say plainly
+// that the token is dead and take a new one in place.
+const SYNC_AUTH_FAIL_KEY = 'bahasa:sync:authFailedAt';
+const SYNC_STALE_MS = 3 * 24 * 60 * 60 * 1000;
+const SYNC_FILENAME = 'bahasa-progress.json';
+const GH_API = 'https://api.github.com';
+
+function syncRemoteConfigured() {
+  return !!(localStorage.getItem(SYNC_TOKEN_KEY) && localStorage.getItem(SYNC_GIST_KEY));
+}
+function syncRemoteNeedsToken() {
+  return syncRemoteConfigured() && !!localStorage.getItem(SYNC_AUTH_FAIL_KEY);
+}
+// Connected, but nothing has synced for a few days (and no known cause).
+function syncRemoteStale() {
+  const last = parseInt(localStorage.getItem(SYNC_LAST_KEY) || '0', 10);
+  return syncRemoteConfigured() && (!last || Date.now() - last > SYNC_STALE_MS);
+}
+function syncNoteResponse(resp) {
+  if (resp.status === 401) {
+    if (!localStorage.getItem(SYNC_AUTH_FAIL_KEY)) localStorage.setItem(SYNC_AUTH_FAIL_KEY, String(Date.now()));
+    throw new Error('GitHub rejected the saved token — it has expired or been revoked. Paste a new one to resume syncing.');
+  }
+  if (resp.ok) localStorage.removeItem(SYNC_AUTH_FAIL_KEY);
+}
+function syncGhHeaders() {
+  return {
+    'Authorization': 'Bearer ' + localStorage.getItem(SYNC_TOKEN_KEY),
+    'Accept': 'application/vnd.github+json',
+  };
+}
+
+// Find this browser's user's progress gist, or create it. Stores token+id.
+async function syncRemoteSetup(token) {
+  const headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' };
+  let resp = await fetch(GH_API + '/gists?per_page=100', { headers });
+  if (resp.status === 401) throw new Error('GitHub rejected that token. Is it a classic token with the gist scope?');
+  if (!resp.ok) throw new Error('GitHub error ' + resp.status + ' while listing gists.');
+  const gists = await resp.json();
+  let gist = gists.find(g => g.files && g.files[SYNC_FILENAME]);
+  if (!gist) {
+    resp = await fetch(GH_API + '/gists', {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        description: 'Bahasa Player progress sync (created automatically)',
+        public: false,
+        files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } },
+      }),
+    });
+    if (!resp.ok) throw new Error('Could not create the sync gist (HTTP ' + resp.status + '). Does the token have the gist scope?');
+    gist = await resp.json();
+  }
+  localStorage.setItem(SYNC_TOKEN_KEY, token);
+  localStorage.setItem(SYNC_GIST_KEY, gist.id);
+  return gist.id;
+}
+
+async function syncRemotePull() {
+  const id = localStorage.getItem(SYNC_GIST_KEY);
+  const resp = await fetch(GH_API + '/gists/' + id, { headers: syncGhHeaders() });
+  syncNoteResponse(resp);
+  if (resp.status === 404) throw new Error('Sync gist not found — it may have been deleted. Disconnect and reconnect.');
+  if (!resp.ok) throw new Error('Pull failed (HTTP ' + resp.status + ').');
+  const gist = await resp.json();
+  const file = gist.files && gist.files[SYNC_FILENAME];
+  if (!file) return { touched: 0, text: 'Remote gist has no progress file yet.' };
+  let content = file.content;
+  if (file.truncated) content = await (await fetch(file.raw_url)).text();
+  let payload;
+  try { payload = JSON.parse(content); } catch (e) { return { touched: 0, text: 'Remote progress file was unreadable; it will be overwritten on next push.' }; }
+  const r = syncApplyImport(payload);
+  localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+  return r;
+}
+
+// Pull-merge first so this device's push can never clobber another device's
+// newer reviews, then upload the merged state.
+async function syncRemotePush() {
+  try { await syncRemotePull(); } catch (e) { /* offline pull is fine; push may still work */ }
+  const id = localStorage.getItem(SYNC_GIST_KEY);
+  const resp = await fetch(GH_API + '/gists/' + id, {
+    method: 'PATCH', headers: syncGhHeaders(),
+    body: JSON.stringify({ files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } } }),
+  });
+  syncNoteResponse(resp);
+  if (!resp.ok) throw new Error('Push failed (HTTP ' + resp.status + ').');
+  localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+}
+
+let _syncPushTimer = null;
+function syncRemoteQueuePush(statusCb) {
+  if (!syncRemoteConfigured()) return;
+  if (_syncPushTimer) clearTimeout(_syncPushTimer);
+  statusCb && statusCb('pending');
+  _syncPushTimer = setTimeout(async () => {
+    _syncPushTimer = null;
+    try { await syncRemotePush(); statusCb && statusCb('ok'); }
+    // The specific reason (bad token, deleted gist, network) used to be
+    // thrown away here — every page just showed "sync failed" with no way to
+    // tell a revoked token from a network blip without re-triggering a
+    // manual action on index.html. Pass it through instead.
+    catch (e) { statusCb && statusCb('err', e.message); }
+  }, 2500);
+}
+
+// Swap in a new token without disconnecting: same gist, so nothing is
+// re-created and both devices keep pointing at one file. Then pull-merge and
+// push, so everything studied while sync was down goes up straight away.
+async function syncRemoteReplaceToken(token) {
+  const id = localStorage.getItem(SYNC_GIST_KEY);
+  const resp = id && await fetch(GH_API + '/gists/' + id, {
+    headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' },
+  });
+  if (resp && resp.status === 401) throw new Error('GitHub rejected that token too. Is it a classic token with the gist scope?');
+  if (resp && resp.ok) localStorage.setItem(SYNC_TOKEN_KEY, token);
+  else await syncRemoteSetup(token);   // gist gone or never set: find or create it
+  localStorage.removeItem(SYNC_AUTH_FAIL_KEY);
+  await syncRemotePush();
+}
+
+// Best-effort flush if the tab is backgrounded while a push is still queued.
+// Skips the pre-pull; keepalive bodies are size-capped (~64KB) so this can
+// silently no-op on very large state — the next normal push covers it.
+async function syncRemoteFlush() {
+  const id = localStorage.getItem(SYNC_GIST_KEY);
+  if (!id) return;
+  try {
+    await fetch(GH_API + '/gists/' + id, {
+      method: 'PATCH', headers: syncGhHeaders(), keepalive: true,
+      body: JSON.stringify({ files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } } }),
+    });
+    localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+  } catch (e) { /* best effort */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && _syncPushTimer) {
+    clearTimeout(_syncPushTimer);
+    _syncPushTimer = null;
+    syncRemoteFlush();
+  }
+});
+
+// Page-load hook: pull, merge, and let the page refresh its UI if anything
+// actually changed.
+async function syncRemoteAutoPull(onMerged, statusCb) {
+  if (!syncRemoteConfigured()) return;
+  statusCb && statusCb('pending');
+  try {
+    const r = await syncRemotePull();
+    statusCb && statusCb('ok');
+    if (r.touched && onMerged) onMerged(r);
+  } catch (e) { statusCb && statusCb('err', e.message); }
+}
+
+// Shared by flashcards/quiz/study, which all show the same small "synced ✓ /
+// syncing… / sync failed" badge next to their stats line. Centralized so the
+// three pages can't drift the way the plain 'err'-with-no-detail version did
+// — tap the failed state to see the actual reason (bad token, deleted gist,
+// offline) instead of a dead end.
+function syncStatusBadge(el, s, detail) {
+  if (!el) return;
+  if (!syncRemoteConfigured()) { el.textContent = ''; el.onclick = null; el.style.cursor = ''; return; }
+  if (s === 'pending') { el.textContent = 'syncing…'; el.onclick = null; el.style.cursor = ''; return; }
+  if (s === 'ok') { el.textContent = 'synced ✓'; el.onclick = null; el.style.cursor = ''; return; }
+  if (syncRemoteNeedsToken()) {
+    el.textContent = 'sync stopped: token expired (tap to fix)';
+    el.style.cursor = 'pointer';
+    el.onclick = async () => {
+      const t = (prompt('GitHub rejected the saved sync token (expired or revoked). Your progress on this device is safe.' +
+        '\n\nMake a new classic token with only the gist scope and Expiration set to No expiration ' +
+        '(github.com/settings/tokens/new), then paste it here:') || '').trim();
+      if (!t) return;
+      syncStatusBadge(el, 'pending');
+      try { await syncRemoteReplaceToken(t); syncStatusBadge(el, 'ok'); }
+      catch (e) { syncStatusBadge(el, 'err', e.message); }
+    };
+    return;
+  }
+  el.textContent = 'sync failed (tap for why)';
+  el.style.cursor = 'pointer';
+  el.onclick = () => alert('Sync failed: ' + (detail || 'unknown error.') +
+    '\n\nIf this keeps happening, the saved GitHub token may have been revoked or expired — ' +
+    'go to the homepage sync panel, disconnect, and reconnect with a fresh token.');
+}
+
+function syncRemoteDisconnect() {
+  localStorage.removeItem(SYNC_TOKEN_KEY);
+  localStorage.removeItem(SYNC_GIST_KEY);
+  localStorage.removeItem(SYNC_LAST_KEY);
+  localStorage.removeItem(SYNC_AUTH_FAIL_KEY);
+}
+
+
+const ttsHasSupport = typeof window.speechSynthesis !== 'undefined'
+  && typeof window.SpeechSynthesisUtterance !== 'undefined';
+let ttsVoice = null;
+
+// A pre-generated clip (scripts/build_tts.py) beats the device's own voice
+// wherever one exists: it's a real Indonesian voice rather than whatever the
+// OS happens to ship, it sounds the same on every device, and on desktop
+// browsers with no Indonesian voice installed it's the difference between
+// audio and a disabled button. Falls back to synthesis when a card has no clip
+// — a partial run is a valid state, since the free tier's monthly allowance
+// only covers about half the deck at a time.
+const ttsClipAudio = typeof Audio !== 'undefined' ? new Audio() : null;
+
+// Learner-controlled playback speed. Research on this specifically (Zhao
+// 1997; see notes/sentence-pronunciation-scope.md) found giving listeners
+// control over rate improved L2 comprehension, and that this beat any single
+// fixed rate imposed on them — so this is a page-level setting the learner
+// picks, not a generation-time choice. Deliberately NOT applied to real
+// family clips: those already have their own rate control in the player,
+// and slowing a generated voice is a much smaller risk to naturalness than
+// slowing real speech would be.
+let ttsRate = 0.9;
+
+function ttsSetRate(rate) {
+  ttsRate = rate;
+  if (ttsClipAudio) ttsClipAudio.playbackRate = rate;
+}
+
+function ttsHasClip(src) { return !!(src && ttsClipAudio); }
+
+// Same contract as ttsSpeak: resolves when the audio finishes, so callers can
+// sequence against it without caring which of the two sources played.
+function ttsPlayClip(src) {
+  if (!ttsHasClip(src)) return Promise.resolve(false);
+  ttsStop();
+  return new Promise(resolve => {
+    let settled = false;
+    const done = ok => {
+      if (settled) return;
+      settled = true;
+      ttsClipAudio.removeEventListener('ended', onEnd);
+      ttsClipAudio.removeEventListener('error', onErr);
+      resolve(ok);
+    };
+    const onEnd = () => done(true);
+    const onErr = () => done(false);
+    ttsClipAudio.addEventListener('ended', onEnd);
+    ttsClipAudio.addEventListener('error', onErr);
+    ttsClipAudio.src = src;
+    ttsClipAudio.playbackRate = ttsRate;
+    ttsClipAudio.currentTime = 0;
+    ttsClipAudio.play().catch(() => done(false));
+  });
+}
+
+function ttsStopClip() {
+  if (ttsClipAudio) { ttsClipAudio.pause(); ttsClipAudio.currentTime = 0; }
+}
+
+// The one call sites should use: prefer the generated clip, fall back to the
+// device voice, so no page has to branch on which source it got.
+function ttsSay(text, src, rate) {
+  if (ttsHasClip(src)) return ttsPlayClip(src);
+  return ttsSpeak(text, rate);
+}
+
+// Voices load asynchronously in most browsers, and an Indonesian voice may
+// simply not be installed — in which case the default voice would read
+// Indonesian with English phonics and teach the wrong pronunciation. Callers
+// are expected to disable their play button and say so, rather than fall back
+// to an English voice.
+function ttsPickVoice() {
+  if (!ttsHasSupport) return null;
+  const vs = window.speechSynthesis.getVoices() || [];
+  ttsVoice = vs.find(v => /^id\b|^id[-_]/i.test(v.lang)) || null;
+  return ttsVoice;
+}
+
+// Re-picks on the browser's async voice load, then hands control back so the
+// page can refresh whatever UI depends on voice availability.
+function ttsOnVoicesChanged(cb) {
+  if (!ttsHasSupport) return;
+  ttsPickVoice();
+  window.speechSynthesis.addEventListener('voiceschanged', () => { ttsPickVoice(); cb(); });
+}
+
+function ttsStop() {
+  if (ttsHasSupport) window.speechSynthesis.cancel();
+  if (typeof ttsStopClip === 'function') ttsStopClip();
+}
+
+// Slightly under normal speed: fast enough to sound like speech, slow enough
+// that the syllable boundaries are still audible to a learner.
+//
+// Returns a promise that resolves when the voice has finished, so callers that
+// need to sequence something after it (the say-it-yourself compare in
+// _record_js.py plays the model, then your attempt) don't have to guess at a
+// duration. Callers that just want noise can ignore the return value.
+function ttsSpeak(text, rate) {
+  if (!ttsVoice || !text) return Promise.resolve(false);
+  window.speechSynthesis.cancel();
+  return new Promise(resolve => {
+    const u = new SpeechSynthesisUtterance(text);
+    u.voice = ttsVoice;
+    u.lang = ttsVoice.lang;
+    u.rate = rate || ttsRate;
+    // 'end' fires on cancel() too, so an interrupted utterance still settles
+    // rather than leaving the caller's await hanging forever.
+    u.addEventListener('end', () => resolve(true));
+    u.addEventListener('error', () => resolve(false));
+    window.speechSynthesis.speak(u);
+  });
+}
+
+// One place that decides what to tell the user about a synthetic voice, so
+// flashcards and quiz can never drift into describing it differently.
+function ttsUnavailableNote() {
+  return ttsHasSupport
+    ? 'no Indonesian voice installed on this device'
+    : 'speech synthesis unavailable';
+}
+
+
+// Words that carry no meaning on their own. A gloss made only of these
+// ("I / me", "you") still matches as a whole phrase; they just can't match
+// as single words inside a longer answer.
+const VOICE_STOP = new Set(('a an the to of in on at for and or is are be '
+  + 'it its this that with as by from so not no do does also very some '
+  + 'something someone thing one').split(' '));
+
+const VOICE_NUM = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven',
+  'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+  'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const VOICE_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty',
+  'seventy', 'eighty', 'ninety'];
+
+// Recognizers write numbers as digits ("2", "1000"); number cards are written
+// in words. Spell digits out so the two meet.
+function voiceNumWords(n) {
+  if (n < 20) return VOICE_NUM[n];
+  if (n < 100) return VOICE_TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + VOICE_NUM[n % 10] : '');
+  if (n < 1000) return VOICE_NUM[Math.floor(n / 100)] + ' hundred' + (n % 100 ? ' ' + voiceNumWords(n % 100) : '');
+  if (n < 1000000) return voiceNumWords(Math.floor(n / 1000)) + ' thousand' + (n % 1000 ? ' ' + voiceNumWords(n % 1000) : '');
+  if (n < 1000000000) return voiceNumWords(Math.floor(n / 1000000)) + ' million' + (n % 1000000 ? ' ' + voiceNumWords(n % 1000000) : '');
+  return String(n);
+}
+
+function voiceNorm(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[‘’]/g, "'")
+    .replace(/(\d),(\d{3})/g, '$1$2')
+    .replace(/\d+/g, d => ' ' + voiceNumWords(Number(d)) + ' ')
+    .replace(/[^a-z' ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Close enough for "eat"/"eats"/"eating"/"eaten", "tired"/"tiring". Applied
+// to both sides, so it only has to be consistent, not linguistically right.
+function voiceStem(w) {
+  w = w.replace(/'s$/, '');
+  if (w.length > 5 && w.endsWith('ing')) return w.slice(0, -3);
+  if (w.length > 4 && w.endsWith('ed')) return w.slice(0, -2);
+  if (w.length > 4 && w.endsWith('es')) return w.slice(0, -2);
+  if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) return w.slice(0, -1);
+  if (w.length > 4 && w.endsWith('e')) return w.slice(0, -1);
+  return w;
+}
+
+// The part of a back that is the meaning rather than the commentary.
+function voiceHead(back) {
+  return String(back || '').split(/\s[—–-]\s|\s[—–]|[—–]\s/)[0];
+}
+
+// Phrases that count as a correct answer for this card.
+function voiceAccepted(back) {
+  const quoted = [...String(back || '').matchAll(/["“]([^"”]+)["”]/g)].map(m => m[1]);
+  const head = voiceHead(back).replace(/\([^)]*\)/g, ' ').replace(/["“”]/g, ' ');
+  const parts = head.split(/[\/;,]/).concat(quoted);
+  const out = [];
+  for (let p of parts) {
+    p = voiceNorm(p).replace(/^(also|or|esp|e g|i e) /, '');
+    if (!p) continue;
+    out.push(p);
+    // "to eat" is answered by "eat"; "a shirt" by "shirt".
+    const bare = p.replace(/^(to|a|an|the|be) /, '');
+    if (bare !== p && bare) out.push(bare);
+  }
+  return [...new Set(out)];
+}
+
+// What the page reads aloud as the answer: the meaning, without the notes.
+function voiceSpokenGloss(back) {
+  const head = voiceHead(back).replace(/\([^)]*\)/g, ' ')
+    .replace(/["“”]/g, '').replace(/\s*\/\s*/g, ', or ')
+    .replace(/\s+/g, ' ').trim().replace(/[,;]$/, '');
+  return head || String(back || '');
+}
+
+function voiceHas(said, phrase) {
+  return (' ' + said + ' ').includes(' ' + phrase + ' ');
+}
+
+// True when what you said contains the meaning: a whole accepted phrase, or
+// any content word from one (stemmed), so "it means to eat something" and
+// "eating" both count for "to eat".
+function voiceMatches(said, back) {
+  const s = voiceNorm(said);
+  if (!s) return false;
+  const saidStems = new Set(s.split(' ').map(voiceStem));
+  for (const phrase of voiceAccepted(back)) {
+    if (voiceHas(s, phrase)) return true;
+    for (const w of phrase.split(' ')) {
+      if (w.length < 3 || VOICE_STOP.has(w)) continue;
+      if (saidStems.has(voiceStem(w))) return true;
+    }
+  }
+  return false;
+}
+
+// Control words, checked in this order. Each is a whole-phrase match on the
+// normalized transcript, so "repeat" never fires on "repeatedly".
+const VOICE_COMMANDS = [
+  ['stop', ['stop', 'pause', 'stop listening', 'take a break']],
+  ['undo', ['go back', 'undo', 'previous', 'last one']],
+  ['repeat', ['repeat', 'again please', 'say again', 'say it again', 'one more time', 'what', 'huh', 'pardon', 'sorry']],
+  ['skip', ['skip', 'next', 'next one', 'pass on this']],
+];
+const VOICE_GRADES = [
+  // "don't know" before anything that could find "know" in a gloss.
+  [1, ["don't know", 'dont know', 'do not know', 'no idea', 'not sure', 'no clue',
+       'forgot', 'i forget', 'pass', 'bad', 'wrong', 'missed', 'miss', 'nope', 'no']],
+  [2, ['hard', 'difficult', 'almost', 'close', 'kind of', 'sort of']],
+  [4, ['easy', 'too easy', 'super easy', 'obvious']],
+  [3, ['good', 'got it', 'right', 'correct', 'yes', 'yeah', 'yep', 'knew it', 'i knew it', 'know it', 'i know it']],
+];
+
+function voiceFind(s, table) {
+  for (const [value, phrases] of table) {
+    if (phrases.some(p => voiceHas(s, p))) return value;
+  }
+  return null;
+}
+
+// Whole-utterance control: only when the utterance is short, so "stop" in
+// "it means to stop" is an answer, not a pause.
+function voiceCommand(said) {
+  const s = voiceNorm(said);
+  if (!s || s.split(' ').length > 4) return null;
+  return voiceFind(s, VOICE_COMMANDS);
+}
+
+// What one utterance in the answer window means. Returns one of:
+//   {kind:'silent'}              nothing heard
+//   {kind:'command', cmd}        stop / undo / repeat / skip
+//   {kind:'correct'}             said the meaning           -> Good
+//   {kind:'grade', grade}        graded yourself instead     -> that grade
+//   {kind:'unclear'}             said something else         -> ask right/wrong
+// A self-grade or command that is also the meaning ("good" for bagus, "what"
+// for apa) counts as the meaning.
+function voiceClassifyAnswer(said, back) {
+  const s = voiceNorm(said);
+  if (!s) return { kind: 'silent' };
+  const accepted = voiceAccepted(back);
+  const dontKnow = ["don't know", 'dont know', 'do not know', 'no idea', 'no clue'];
+  if (dontKnow.some(p => voiceHas(s, p)) && !accepted.some(a => dontKnow.some(p => a.includes(p)))) {
+    return { kind: 'grade', grade: 1 };
+  }
+  // The meaning wins over a control word: "what" is the answer for apa, and
+  // "go back" for kembali, not a request to repeat or undo.
+  if (voiceMatches(s, back)) return { kind: 'correct' };
+  const cmd = voiceCommand(s);
+  if (cmd) return { kind: 'command', cmd };
+  if (s.split(' ').length <= 3) {
+    const g = voiceFind(s, VOICE_GRADES);
+    if (g) return { kind: 'grade', grade: g };
+  }
+  return { kind: 'unclear' };
+}
+
+// After the page reads the answer back and asks "right or wrong?".
+// Returns {kind:'grade', grade} | {kind:'command', cmd} | {kind:'silent'} | {kind:'unclear'}.
+function voiceClassifyConfirm(said) {
+  const s = voiceNorm(said);
+  if (!s) return { kind: 'silent' };
+  const cmd = voiceCommand(s);
+  if (cmd && cmd !== 'skip') return { kind: 'command', cmd };
+  const g = voiceFind(s, VOICE_GRADES);
+  if (g) return { kind: 'grade', grade: g };
+  if (cmd) return { kind: 'command', cmd };
+  return { kind: 'unclear' };
+}
+
+// While paused by silence, only "resume" (or its friends) restarts the drill.
+function voiceIsResume(said) {
+  const s = voiceNorm(said);
+  return ['resume', 'continue', 'start', 'go', "let's go", 'keep going', "i'm back", 'ready']
+    .some(p => voiceHas(s, p));
+}
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+const BUILTIN_DECK = [{"front": "badan", "back": "body", "tags": ["health"], "llSrc": "audio/ll/badan-Xbypass.m4a"}, {"front": "kepala", "back": "head", "tags": ["health"], "llSrc": "audio/ll/kepala-Xbypass.m4a"}, {"front": "rambut", "back": "hair", "tags": ["health"], "llSrc": "audio/ll/rambut-Xbypass.m4a"}, {"front": "mata", "back": "eye", "tags": ["health"], "llSrc": "audio/ll/mata-Xbypass.m4a"}, {"front": "hidung", "back": "nose", "tags": ["health"], "llSrc": "audio/ll/hidung-Xbypass.m4a"}, {"front": "telinga", "back": "ear", "tags": ["health"], "llSrc": "audio/ll/telinga-Xbypass.m4a"}, {"front": "mulut", "back": "mouth", "tags": ["health"], "llSrc": "audio/ll/mulut-Xbypass.m4a"}, {"front": "gigi", "back": "tooth", "tags": ["health"], "llSrc": "audio/ll/gigi-Xbypass.m4a"}, {"front": "lidah", "back": "tongue", "tags": ["health"], "llSrc": "audio/ll/lidah-Xbypass.m4a"}, {"front": "leher", "back": "neck", "tags": ["health"], "llSrc": "audio/ll/leher-Xbypass.m4a"}, {"front": "tangan", "back": "hand / arm", "tags": ["health"], "llSrc": "audio/ll/tangan-Xbypass.m4a"}, {"front": "jari", "back": "finger / toe", "tags": ["health"], "llSrc": "audio/ll/jari-Xbypass.m4a"}, {"front": "kaki", "back": "foot / leg", "tags": ["health"], "llSrc": "audio/ll/kaki-Xbypass.m4a"}, {"front": "perut", "back": "stomach / belly", "tags": ["health"], "llSrc": "audio/ll/perut-Xbypass.m4a"}, {"front": "punggung", "back": "back", "tags": ["health"], "llSrc": "audio/ll/punggung-AlfiyahRizzy.m4a"}, {"front": "dada", "back": "chest", "tags": ["health"], "llSrc": "audio/ll/dada-Xbypass.m4a"}, {"front": "jantung", "back": "heart (the organ)", "tags": ["health"], "llSrc": "audio/ll/jantung-Xbypass.m4a"}, {"front": "darah", "back": "blood", "tags": ["health"], "llSrc": "audio/ll/darah-Xbypass.m4a"}, {"front": "kulit", "back": "skin / leather", "tags": ["health"], "llSrc": "audio/ll/kulit-Xbypass.m4a"}, {"front": "demam", "back": "fever", "tags": ["health"], "llSrc": "audio/ll/demam-Xbypass.m4a"}, {"front": "batuk", "back": "cough", "tags": ["health"], "llSrc": "audio/ll/batuk-Titanboo.m4a"}, {"front": "pilek", "back": "head cold / runny nose", "tags": ["health"], "wordSrc": "audio/tts/ad2fee8f94fd8269.mp3"}, {"front": "flu", "back": "flu", "tags": ["health"], "wordSrc": "audio/tts/ec722177ce94e6b4.mp3"}, {"front": "pusing", "back": "dizzy / a headache", "tags": ["health"], "wordSrc": "audio/tts/da1744a2ee7ea49a.mp3"}, {"front": "mual", "back": "nauseous", "tags": ["health"], "llSrc": "audio/ll/mual-SofiSolihah.m4a"}, {"front": "capek / lelah", "back": "tired", "tags": ["health"], "wordSrc": "audio/tts/d870dd2e7d3f80ce.mp3"}, {"front": "luka", "back": "wound / injured", "tags": ["health"], "llSrc": "audio/ll/luka-Xbypass.m4a"}, {"front": "obat", "back": "medicine", "tags": ["health"], "llSrc": "audio/ll/obat-Xbypass.m4a"}, {"front": "dokter", "back": "doctor", "tags": ["health"], "llSrc": "audio/ll/dokter-Xbypass.m4a"}, {"front": "perawat", "back": "nurse", "tags": ["health"], "llSrc": "audio/ll/perawat-Fexpr.m4a"}, {"front": "rumah sakit", "back": "hospital", "tags": ["health"], "llSrc": "audio/ll/rumah_sakit-Xbypass.m4a"}, {"front": "puskesmas", "back": "community health clinic", "tags": ["health"], "wordSrc": "audio/tts/5c5a11c069f5bea0.mp3"}, {"front": "apotek", "back": "pharmacy", "tags": ["health"], "llSrc": "audio/ll/apotek-Xbypass.m4a"}, {"front": "sembuh", "back": "to recover / get well", "tags": ["health"], "llSrc": "audio/ll/sembuh-CloudyLosstr.m4a"}, {"front": "periksa", "back": "to examine / get checked", "tags": ["health"], "wordSrc": "audio/tts/af541c1efafa6fee.mp3"}, {"front": "istirahat", "back": "to rest", "tags": ["health"], "llSrc": "audio/ll/istirahat-AlfiyahRizzy.m4a"}, {"front": "olahraga", "back": "exercise / sport", "tags": ["health"], "llSrc": "audio/ll/olahraga-Xbypass.m4a"}, {"front": "masuk angin", "back": "feeling run down (lit. \"wind got in\")", "tags": ["health"], "wordSrc": "audio/tts/032606fcd5044ae4.mp3"}, {"front": "alergi", "back": "allergy / allergic", "tags": ["health"], "wordSrc": "audio/tts/e714fc81e644938f.mp3"}, {"front": "hamil", "back": "pregnant", "tags": ["health"], "wordSrc": "audio/tts/e098fd278658c330.mp3"}, {"front": "baju", "back": "clothes / a shirt or top", "tags": ["clothing"], "llSrc": "audio/ll/baju-Xbypass.m4a"}, {"front": "pakaian", "back": "clothing (the general word)", "tags": ["clothing"], "llSrc": "audio/ll/pakaian-AlfiyahRizzy.m4a"}, {"front": "celana", "back": "trousers / pants", "tags": ["clothing"], "llSrc": "audio/ll/celana-Xbypass.m4a"}, {"front": "rok", "back": "skirt", "tags": ["clothing"], "wordSrc": "audio/tts/3b206c08f8b53658.mp3"}, {"front": "kaus", "back": "t-shirt", "tags": ["clothing"], "wordSrc": "audio/tts/5774a1fa9c9f1446.mp3"}, {"front": "kemeja", "back": "button-up shirt", "tags": ["clothing"], "wordSrc": "audio/tts/32162f69d262a417.mp3"}, {"front": "jaket", "back": "jacket", "tags": ["clothing"], "wordSrc": "audio/tts/e71198f0f057beed.mp3"}, {"front": "sepatu", "back": "shoes", "tags": ["clothing"], "llSrc": "audio/ll/sepatu-Xbypass.m4a"}, {"front": "sandal", "back": "sandals / flip-flops", "tags": ["clothing"], "wordSrc": "audio/tts/5e1cb30f5d054966.mp3"}, {"front": "kaus kaki", "back": "socks", "tags": ["clothing"], "wordSrc": "audio/tts/0c15812c8a692966.mp3"}, {"front": "topi", "back": "hat / cap", "tags": ["clothing"], "llSrc": "audio/ll/topi-Xbypass.m4a"}, {"front": "jilbab", "back": "headscarf", "tags": ["clothing"], "llSrc": "audio/ll/jilbab-SofiSolihah.m4a"}, {"front": "sarung", "back": "sarong", "tags": ["clothing"], "llSrc": "audio/ll/sarung-SofiSolihah.m4a"}, {"front": "batik", "back": "batik (patterned cloth, worn formally)", "tags": ["clothing"], "llSrc": "audio/ll/batik-HzuHzu.m4a"}, {"front": "kacamata", "back": "glasses", "tags": ["clothing"], "wordSrc": "audio/tts/4e029ad7f52dc113.mp3"}, {"front": "jam tangan", "back": "wristwatch", "tags": ["clothing"], "llSrc": "audio/ll/jam_tangan-SofiSolihah.m4a"}, {"front": "ukuran", "back": "size / measurement", "tags": ["clothing"], "llSrc": "audio/ll/ukuran-Iripseudocor.m4a"}, {"front": "muat", "back": "to fit", "tags": ["clothing"], "wordSrc": "audio/tts/5be4b61836cde8a5.mp3"}, {"front": "setrika", "back": "iron / to iron", "tags": ["clothing"], "llSrc": "audio/ll/setrika-Titanboo.m4a"}, {"front": "warna", "back": "colour", "tags": ["clothing"], "llSrc": "audio/ll/warna-Xbypass.m4a"}, {"front": "bahan", "back": "material / ingredient", "tags": ["clothing"], "llSrc": "audio/ll/bahan-Iripseudocor.m4a"}, {"front": "model", "back": "style / design", "tags": ["clothing"], "wordSrc": "audio/tts/a971b64bee625cbf.mp3"}, {"front": "besar", "back": "big", "tags": ["adjective"], "llSrc": "audio/ll/besar-Xbypass.m4a"}, {"front": "kecil", "back": "small", "tags": ["adjective"], "llSrc": "audio/ll/kecil-Xbypass.m4a"}, {"front": "panjang", "back": "long", "tags": ["adjective"], "llSrc": "audio/ll/panjang-Nasyaale.m4a"}, {"front": "pendek", "back": "short", "tags": ["adjective"], "llSrc": "audio/ll/pendek-Xbypass.m4a"}, {"front": "tinggi", "back": "tall / high", "tags": ["adjective"], "llSrc": "audio/ll/tinggi-Xbypass.m4a"}, {"front": "rendah", "back": "low", "tags": ["adjective"], "llSrc": "audio/ll/rendah-Iripseudocor.m4a"}, {"front": "lebar", "back": "wide", "tags": ["adjective"], "llSrc": "audio/ll/lebar-Iripseudocor.m4a"}, {"front": "sempit", "back": "narrow", "tags": ["adjective"], "llSrc": "audio/ll/sempit-AmeliaWardan.m4a"}, {"front": "tebal", "back": "thick", "tags": ["adjective"], "llSrc": "audio/ll/tebal-Iripseudocor.m4a"}, {"front": "tipis", "back": "thin", "tags": ["adjective"], "llSrc": "audio/ll/tipis-CloudyLosstr.m4a"}, {"front": "banyak", "back": "many / much / a lot", "tags": ["adjective"], "llSrc": "audio/ll/banyak-SofiSolihah.m4a"}, {"front": "sedikit", "back": "few / a little", "tags": ["adjective"], "llSrc": "audio/ll/sedikit-Swarabakti.m4a"}, {"front": "penuh", "back": "full", "tags": ["adjective"], "llSrc": "audio/ll/penuh-Xbypass.m4a"}, {"front": "kosong", "back": "empty", "tags": ["adjective"], "llSrc": "audio/ll/kosong-Xbypass.m4a"}, {"front": "kuat", "back": "strong / powerful", "tags": ["adjective"], "llSrc": "audio/ll/kuat-Iripseudocor.m4a"}, {"front": "lemah", "back": "weak", "tags": ["adjective"], "wordSrc": "audio/tts/a4a6a60edc83e5d4.mp3"}, {"front": "berat", "back": "heavy", "tags": ["adjective"], "llSrc": "audio/ll/berat-Nasyaale.m4a"}, {"front": "ringan", "back": "light (weight)", "tags": ["adjective"], "llSrc": "audio/ll/ringan-Iripseudocor.m4a"}, {"front": "baru", "back": "new", "tags": ["adjective"], "llSrc": "audio/ll/baru-Xbypass.m4a"}, {"front": "lama", "back": "old (things), long time", "tags": ["adjective"], "llSrc": "audio/ll/lama-Xbypass.m4a"}, {"front": "tua", "back": "old (people)", "tags": ["adjective"], "llSrc": "audio/ll/tua-Xbypass.m4a"}, {"front": "muda", "back": "young", "tags": ["adjective"], "llSrc": "audio/ll/muda-Xbypass.m4a"}, {"front": "awal", "back": "early", "tags": ["adjective"], "llSrc": "audio/ll/awal-Xbypass.m4a"}, {"front": "terlambat", "back": "late", "tags": ["adjective"], "llSrc": "audio/ll/terlambat-AlfiyahRizzy.m4a"}, {"front": "sering", "back": "often", "tags": ["adjective"], "llSrc": "audio/ll/sering-Xbypass.m4a"}, {"front": "jarang", "back": "rarely / seldom", "tags": ["adjective"], "llSrc": "audio/ll/jarang-Iripseudocor.m4a"}, {"front": "kadang-kadang", "back": "sometimes", "tags": ["adjective"], "llSrc": "audio/ll/kadang_kadang-Iripseudocor.m4a"}, {"front": "selalu", "back": "always", "tags": ["adjective"], "llSrc": "audio/ll/selalu-Xbypass.m4a"}, {"front": "putih", "back": "white", "tags": ["adjective"], "llSrc": "audio/ll/putih-Xbypass.m4a"}, {"front": "hitam", "back": "black", "tags": ["adjective"], "llSrc": "audio/ll/hitam-Xbypass.m4a"}, {"front": "merah", "back": "red", "tags": ["adjective"], "llSrc": "audio/ll/merah-MuRiIrUm.m4a"}, {"front": "biru", "back": "blue", "tags": ["adjective"], "wordSrc": "audio/tts/b2765f749354a857.mp3"}, {"front": "hijau", "back": "green", "tags": ["adjective"], "llSrc": "audio/ll/hijau-Xbypass.m4a"}, {"front": "kuning", "back": "yellow", "tags": ["adjective"], "llSrc": "audio/ll/kuning-Xbypass.m4a"}, {"front": "coklat", "back": "brown", "tags": ["adjective"], "llSrc": "audio/ll/coklat-Xbypass.m4a"}, {"front": "abu-abu", "back": "gray", "tags": ["adjective"], "llSrc": "audio/ll/abu_abu-Xbypass.m4a"}, {"front": "oranye", "back": "orange", "tags": ["adjective"], "wordSrc": "audio/tts/aaf7259e07f2d176.mp3"}, {"front": "ungu", "back": "purple", "tags": ["adjective"], "llSrc": "audio/ll/ungu-CloudyLosstr.m4a"}, {"front": "merah muda", "back": "pink", "tags": ["adjective"], "wordSrc": "audio/tts/666d12675d7a14bc.mp3"}, {"front": "keras", "back": "hard", "tags": ["adjective"], "llSrc": "audio/ll/keras-SofiSolihah.m4a"}, {"front": "lembut", "back": "soft", "tags": ["adjective"], "llSrc": "audio/ll/lembut-AlfiyahRizzy.m4a"}, {"front": "kering", "back": "dry", "tags": ["adjective"], "llSrc": "audio/ll/kering-Xbypass.m4a"}, {"front": "basah", "back": "wet", "tags": ["adjective"], "llSrc": "audio/ll/basah-Xbypass.m4a"}, {"front": "dingin", "back": "cold", "tags": ["adjective"], "llSrc": "audio/ll/dingin-Xbypass.m4a"}, {"front": "panas", "back": "hot", "tags": ["adjective"], "llSrc": "audio/ll/panas-Xbypass.m4a"}, {"front": "gelap", "back": "dark", "tags": ["adjective"], "llSrc": "audio/ll/gelap-Xbypass.m4a"}, {"front": "terang", "back": "bright / light", "tags": ["adjective"], "llSrc": "audio/ll/terang-Iripseudocor.m4a"}, {"front": "bising", "back": "noisy", "tags": ["adjective"], "wordSrc": "audio/tts/c61cabb8215d99a9.mp3"}, {"front": "tenang", "back": "calm / quiet", "tags": ["adjective"], "llSrc": "audio/ll/tenang-AlfiyahRizzy.m4a"}, {"front": "bersih", "back": "clean", "tags": ["adjective"], "llSrc": "audio/ll/bersih-HzuHzu.m4a"}, {"front": "kotor", "back": "dirty", "tags": ["adjective"], "llSrc": "audio/ll/kotor-Xbypass.m4a"}, {"front": "asin", "back": "salty", "tags": ["adjective"], "llSrc": "audio/ll/asin-Xbypass.m4a"}, {"front": "asam", "back": "sour", "tags": ["adjective"], "llSrc": "audio/ll/asam-Xbypass.m4a"}, {"front": "pahit", "back": "bitter", "tags": ["adjective"], "llSrc": "audio/ll/pahit-AlfiyahRizzy.m4a"}, {"front": "pedas", "back": "spicy", "tags": ["adjective"], "llSrc": "audio/ll/pedas-CloudyLosstr.m4a"}, {"front": "hambar", "back": "bland", "tags": ["adjective"], "wordSrc": "audio/tts/449d51bab081d4fb.mp3"}, {"front": "segar", "back": "fresh", "tags": ["adjective"], "llSrc": "audio/ll/segar-CloudyLosstr.m4a"}, {"front": "busuk", "back": "rotten", "tags": ["adjective"], "llSrc": "audio/ll/busuk-Xbypass.m4a"}, {"front": "lezat", "back": "delicious", "tags": ["adjective"], "wordSrc": "audio/tts/0a18d844d7d1eba1.mp3"}, {"front": "baik", "back": "good", "tags": ["adjective"], "llSrc": "audio/ll/baik-Xbypass.m4a"}, {"front": "buruk", "back": "bad", "tags": ["adjective"], "llSrc": "audio/ll/buruk-Xbypass.m4a"}, {"front": "jelek", "back": "bad / ugly", "tags": ["adjective"], "wordSrc": "audio/tts/a71ce4ea55ab579d.mp3"}, {"front": "bagus", "back": "good / nice / great", "tags": ["adjective"], "llSrc": "audio/ll/bagus-Xbypass.m4a"}, {"front": "sulit", "back": "difficult", "tags": ["adjective"], "llSrc": "audio/ll/sulit-AlfiyahRizzy.m4a"}, {"front": "mudah", "back": "easy", "tags": ["adjective"], "llSrc": "audio/ll/mudah-AlfiyahRizzy.m4a"}, {"front": "susah", "back": "difficult (informal)", "tags": ["adjective"], "wordSrc": "audio/tts/cbc3ae10816c39ac.mp3"}, {"front": "gampang", "back": "easy (informal)", "tags": ["adjective"], "llSrc": "audio/ll/gampang-Xbypass.m4a"}, {"front": "mahal", "back": "expensive", "tags": ["adjective"], "llSrc": "audio/ll/mahal-Xbypass.m4a"}, {"front": "murah", "back": "cheap", "tags": ["adjective"], "llSrc": "audio/ll/murah-Xbypass.m4a"}, {"front": "penting", "back": "important", "tags": ["adjective"], "llSrc": "audio/ll/penting-Xbypass.m4a"}, {"front": "menarik", "back": "interesting", "tags": ["adjective"], "llSrc": "audio/ll/menarik-Xbypass.m4a"}, {"front": "membosankan", "back": "boring", "tags": ["adjective"], "wordSrc": "audio/tts/bcaae8146f57a30d.mp3"}, {"front": "senang", "back": "happy", "tags": ["adjective"], "llSrc": "audio/ll/senang-AlfiyahRizzy.m4a"}, {"front": "bahagia", "back": "happy (deeper feeling)", "tags": ["adjective"], "llSrc": "audio/ll/bahagia-AlfiyahRizzy.m4a"}, {"front": "marah", "back": "angry", "tags": ["adjective"], "llSrc": "audio/ll/marah-Xbypass.m4a"}, {"front": "kecewa", "back": "disappointed", "tags": ["adjective"], "wordSrc": "audio/tts/27ab2f75d920f088.mp3"}, {"front": "malu", "back": "shy / embarrassed", "tags": ["adjective"], "llSrc": "audio/ll/malu-Xbypass.m4a"}, {"front": "lucu", "back": "funny / cute", "tags": ["adjective"], "wordSrc": "audio/tts/2d4217096fe1fc7c.mp3"}, {"front": "ramah", "back": "friendly", "tags": ["adjective"], "llSrc": "audio/ll/ramah-Diahasy.m4a"}, {"front": "kasar", "back": "rude / rough", "tags": ["adjective"], "llSrc": "audio/ll/kasar-Iripseudocor.m4a"}, {"front": "sopan", "back": "polite", "tags": ["adjective"], "wordSrc": "audio/tts/f46ade5f82942913.mp3"}, {"front": "serius", "back": "serious", "tags": ["adjective"], "llSrc": "audio/ll/serius-Iripseudocor.m4a"}, {"front": "santai", "back": "relaxed / chill", "tags": ["adjective"], "llSrc": "audio/ll/santai-SofiSolihah.m4a"}, {"front": "benar", "back": "correct / right", "tags": ["adjective"], "llSrc": "audio/ll/benar-Xbypass.m4a"}, {"front": "salah", "back": "wrong; to be wrong / make a mistake", "tags": ["adjective", "verb", "state"], "llSrc": "audio/ll/salah-Xbypass.m4a"}, {"front": "khusus", "back": "special", "tags": ["adjective"], "llSrc": "audio/ll/khusus-CloudyLosstr.m4a"}, {"front": "sederhana", "back": "simple", "tags": ["adjective"], "llSrc": "audio/ll/sederhana-AlfiyahRizzy.m4a"}, {"front": "rumit", "back": "complicated", "tags": ["adjective"], "wordSrc": "audio/tts/ec06cd61eae875d0.mp3"}, {"front": "aman", "back": "safe", "tags": ["adjective"], "llSrc": "audio/ll/aman-Iripseudocor.m4a"}, {"front": "berbahaya", "back": "dangerous", "tags": ["adjective"], "llSrc": "audio/ll/berbahaya-CloudyLosstr.m4a"}, {"front": "resmi", "back": "official / formal", "tags": ["adjective"], "wordSrc": "audio/tts/df2248378b611d77.mp3"}, {"front": "umum", "back": "common / general", "tags": ["adjective"], "llSrc": "audio/ll/umum-Xbypass.m4a"}, {"front": "populer", "back": "popular", "tags": ["adjective"], "llSrc": "audio/ll/populer-Iripseudocor.m4a"}, {"front": "terkenal", "back": "famous", "tags": ["adjective"], "llSrc": "audio/ll/terkenal-Iripseudocor.m4a"}, {"front": "lokal", "back": "local", "tags": ["adjective"], "wordSrc": "audio/tts/11b38bb762ba666d.mp3"}, {"front": "asing", "back": "foreign", "tags": ["adjective"], "llSrc": "audio/ll/asing-AlfiyahRizzy.m4a"}, {"front": "digital", "back": "digital", "tags": ["adjective"], "wordSrc": "audio/tts/3c900d628ac9232d.mp3"}, {"front": "lebih", "back": "more", "tags": ["comparison"], "llSrc": "audio/ll/lebih-CloudyLosstr.m4a"}, {"front": "kurang", "back": "less / not enough; to reduce / be lacking", "tags": ["comparison", "verb", "change"], "llSrc": "audio/ll/kurang-SofiSolihah.m4a"}, {"front": "paling", "back": "most", "tags": ["comparison"], "llSrc": "audio/ll/paling-CloudyLosstr.m4a"}, {"front": "agak", "back": "somewhat / rather", "tags": ["comparison"], "llSrc": "audio/ll/agak-CloudyLosstr.m4a"}, {"front": "sekitar", "back": "around / approximately", "tags": ["comparison"], "llSrc": "audio/ll/sekitar-SofiSolihah.m4a"}, {"front": "kira-kira", "back": "about / roughly", "tags": ["comparison"], "llSrc": "audio/ll/kira_kira-CloudyLosstr.m4a"}, {"front": "hampir", "back": "almost / nearly", "tags": ["comparison"], "llSrc": "audio/ll/hampir-Xbypass.m4a"}, {"front": "sama", "back": "same / equal", "tags": ["comparison"], "llSrc": "audio/ll/sama-Xbypass.m4a"}, {"front": "tidak sama", "back": "not the same / different", "tags": ["comparison"], "wordSrc": "audio/tts/63174f975dba7203.mp3"}, {"front": "mirip", "back": "similar", "tags": ["comparison"], "llSrc": "audio/ll/mirip-AlfiyahRizzy.m4a"}, {"front": "berbeda", "back": "different", "tags": ["comparison"], "llSrc": "audio/ll/berbeda-AlfiyahRizzy.m4a"}, {"front": "lebih baik", "back": "better", "tags": ["comparison"], "wordSrc": "audio/tts/318a85f88bcc1518.mp3"}, {"front": "lebih buruk", "back": "worse", "tags": ["comparison"], "wordSrc": "audio/tts/18e0799450ab1192.mp3"}, {"front": "lebih besar", "back": "bigger", "tags": ["comparison"], "wordSrc": "audio/tts/bf4552213f7ff8c1.mp3"}, {"front": "lebih kecil", "back": "smaller", "tags": ["comparison"], "wordSrc": "audio/tts/0365d76a0ed1fa78.mp3"}, {"front": "lebih cepat", "back": "faster", "tags": ["comparison"], "wordSrc": "audio/tts/a2bfd4b6c07a8aba.mp3"}, {"front": "lebih lambat / lebih pelan", "back": "slower", "tags": ["comparison"], "wordSrc": "audio/tts/f00344c060e2c52b.mp3"}, {"front": "lebih mahal", "back": "more expensive", "tags": ["comparison"], "wordSrc": "audio/tts/703dbe940ed9b4e7.mp3"}, {"front": "lebih murah", "back": "cheaper", "tags": ["comparison"], "wordSrc": "audio/tts/43c6794fa4f23d8a.mp3"}, {"front": "lebih banyak", "back": "more (quantity)", "tags": ["comparison"], "wordSrc": "audio/tts/bf118d6a244e3f1f.mp3"}, {"front": "lebih sedikit", "back": "less / fewer", "tags": ["comparison"], "wordSrc": "audio/tts/ef54fe0a223952ad.mp3"}, {"front": "lebih tinggi", "back": "taller / higher", "tags": ["comparison"], "wordSrc": "audio/tts/4ded5b50acbbb633.mp3"}, {"front": "lebih rendah", "back": "lower", "tags": ["comparison"], "wordSrc": "audio/tts/08dcd592bb994eca.mp3"}, {"front": "lebih jauh", "back": "farther", "tags": ["comparison"], "wordSrc": "audio/tts/6f2c925399c1ae73.mp3"}, {"front": "lebih dekat", "back": "closer", "tags": ["comparison"], "wordSrc": "audio/tts/cddd3c4fb7dbc877.mp3"}, {"front": "kurang lebih", "back": "more or less", "tags": ["comparison"], "wordSrc": "audio/tts/1f128bd83f0838bb.mp3"}, {"front": "lebih kurang", "back": "roughly / approximately", "tags": ["comparison"], "wordSrc": "audio/tts/252690dfd0982028.mp3"}, {"front": "seperti", "back": "like / similar to", "tags": ["comparison"], "llSrc": "audio/ll/seperti-SofiSolihah.m4a"}, {"front": "seolah-olah", "back": "as if", "tags": ["comparison"], "llSrc": "audio/ll/seolah_olah-AlfiyahRizzy.m4a"}, {"front": "seakan-akan", "back": "as though", "tags": ["comparison"], "wordSrc": "audio/tts/57c458650b0dde22.mp3"}, {"front": "sebanding", "back": "comparable", "tags": ["comparison"], "wordSrc": "audio/tts/0ffd5d23b5570197.mp3"}, {"front": "selevel", "back": "at the same level", "tags": ["comparison"], "wordSrc": "audio/tts/0ca0f889ca96f374.mp3"}, {"front": "setara", "back": "equivalent", "tags": ["comparison"], "wordSrc": "audio/tts/d0ecf4b16198aa79.mp3"}, {"front": "daripada", "back": "than (in comparisons)", "tags": ["comparison"], "llSrc": "audio/ll/daripada-CloudyLosstr.m4a"}, {"front": "dibandingkan dengan", "back": "compared to / compared with", "tags": ["comparison"], "wordSrc": "audio/tts/baa08223587af541.mp3"}, {"front": "dibandingkan", "back": "(when) compared", "tags": ["comparison"], "llSrc": "audio/ll/dibandingkan-Iripseudocor.m4a"}, {"front": "bandingkan dengan", "back": "compare with", "tags": ["comparison"], "wordSrc": "audio/tts/ac5a47606cb7b260.mp3"}, {"front": "sama … dengan …", "back": "as … as …", "tags": ["comparison"], "wordSrc": "audio/tts/3fa9d22f54b35861.mp3"}, {"front": "lebih … daripada …", "back": "more … than …", "tags": ["comparison"], "wordSrc": "audio/tts/abcf21c12619954f.mp3"}, {"front": "kurang … daripada …", "back": "less … than …", "tags": ["comparison"], "wordSrc": "audio/tts/587bdcb211463780.mp3"}, {"front": "baik … maupun …", "back": "both … and …", "tags": ["comparison"], "wordSrc": "audio/tts/3b687f57b41203b2.mp3"}, {"front": "entah … entah …", "back": "either … or … (informal)", "tags": ["comparison"], "wordSrc": "audio/tts/07dd0cdddb401d4e.mp3"}, {"front": "baiknya", "back": "preferably / it's better to", "tags": ["comparison"], "wordSrc": "audio/tts/39154d85c15519a1.mp3"}, {"front": "idealnya", "back": "ideally", "tags": ["comparison"], "wordSrc": "audio/tts/85dbc3e2925cff5f.mp3"}, {"front": "relatif", "back": "relative", "tags": ["comparison"], "wordSrc": "audio/tts/bef87d59203a1bcd.mp3"}, {"front": "mutlak", "back": "absolute", "tags": ["comparison"], "llSrc": "audio/ll/mutlak-AlfiyahRizzy.m4a"}, {"front": "dan", "back": "and", "tags": ["connector"], "llSrc": "audio/ll/dan-Xbypass.m4a"}, {"front": "atau", "back": "or", "tags": ["connector"], "llSrc": "audio/ll/atau-Xbypass.m4a"}, {"front": "tetapi / tapi", "back": "but", "tags": ["connector"], "llSrc": "audio/ll/tetapi-Xbypass.m4a"}, {"front": "namun", "back": "however", "tags": ["connector"], "wordSrc": "audio/tts/4eff720302296fb0.mp3"}, {"front": "sedangkan", "back": "whereas / while (contrast)", "tags": ["connector"], "llSrc": "audio/ll/sedangkan-Iripseudocor.m4a"}, {"front": "sementara", "back": "while / meanwhile", "tags": ["connector"], "llSrc": "audio/ll/sementara-CloudyLosstr.m4a"}, {"front": "sebaliknya", "back": "conversely / on the contrary", "tags": ["connector"], "wordSrc": "audio/tts/e8e9dca3dd6def8b.mp3"}, {"front": "karena", "back": "because", "tags": ["connector"], "llSrc": "audio/ll/karena-Xbypass.m4a"}, {"front": "sebab", "back": "cause / because", "tags": ["connector"], "llSrc": "audio/ll/sebab-CloudyLosstr.m4a"}, {"front": "oleh karena itu", "back": "therefore / because of that", "tags": ["connector"], "wordSrc": "audio/tts/fdee0adfa03d17b0.mp3"}, {"front": "jadi", "back": "so / therefore; to become", "tags": ["connector", "verb", "change"], "llSrc": "audio/ll/jadi-CloudyLosstr.m4a"}, {"front": "sehingga", "back": "so that / as a result", "tags": ["connector"], "llSrc": "audio/ll/sehingga-CloudyLosstr.m4a"}, {"front": "akibatnya", "back": "as a result / consequently", "tags": ["connector"], "wordSrc": "audio/tts/bcbbd55ae3cce766.mp3"}, {"front": "walaupun", "back": "although / even though", "tags": ["connector"], "llSrc": "audio/ll/walaupun-Iripseudocor.m4a"}, {"front": "meskipun", "back": "although / even though", "tags": ["connector"], "llSrc": "audio/ll/meskipun-CloudyLosstr.m4a"}, {"front": "padahal", "back": "even though / in fact (contrastive)", "tags": ["connector"], "wordSrc": "audio/tts/09cbdb74faffe8c6.mp3"}, {"front": "meski", "back": "even though (short form)", "tags": ["connector"], "wordSrc": "audio/tts/ee4524ff5f65d71b.mp3"}, {"front": "andaikan", "back": "if / supposing", "tags": ["connector"], "llSrc": "audio/ll/andaikan-AlfiyahRizzy.m4a"}, {"front": "jika", "back": "if", "tags": ["connector"], "llSrc": "audio/ll/jika-CloudyLosstr.m4a"}, {"front": "lagipula", "back": "besides / moreover", "tags": ["connector"], "wordSrc": "audio/tts/11b61f4b525f4818.mp3"}, {"front": "selain itu", "back": "besides that / other than that", "tags": ["connector"], "wordSrc": "audio/tts/db18cda590360b96.mp3"}, {"front": "di samping itu", "back": "in addition / besides", "tags": ["connector"], "wordSrc": "audio/tts/6701146f1de5719e.mp3"}, {"front": "juga", "back": "also", "tags": ["connector"], "llSrc": "audio/ll/juga-Xbypass.m4a"}, {"front": "bahkan", "back": "even", "tags": ["connector"], "wordSrc": "audio/tts/aefe4756d24d2bd5.mp3"}, {"front": "apalagi", "back": "especially / let alone", "tags": ["connector"], "llSrc": "audio/ll/apalagi-CloudyLosstr.m4a"}, {"front": "pertama", "back": "first", "tags": ["connector"], "llSrc": "audio/ll/pertama-Xbypass.m4a"}, {"front": "kedua", "back": "second", "tags": ["connector"], "llSrc": "audio/ll/kedua-Xbypass.m4a"}, {"front": "ketiga", "back": "third", "tags": ["connector"], "llSrc": "audio/ll/ketiga-Xbypass.m4a"}, {"front": "selanjutnya", "back": "next / subsequently", "tags": ["connector"], "wordSrc": "audio/tts/7d9734ba1d526932.mp3"}, {"front": "kemudian", "back": "then / afterwards", "tags": ["connector"], "llSrc": "audio/ll/kemudian-CloudyLosstr.m4a"}, {"front": "lalu", "back": "then / after that; to pass", "tags": ["connector", "verb", "motion"], "llSrc": "audio/ll/lalu-CloudyLosstr.m4a"}, {"front": "berikutnya", "back": "the next", "tags": ["connector"], "llSrc": "audio/ll/berikutnya-Iripseudocor.m4a"}, {"front": "akhirnya", "back": "finally / in the end", "tags": ["connector"], "llSrc": "audio/ll/akhirnya-AlfiyahRizzy.m4a"}, {"front": "pada akhirnya", "back": "ultimately", "tags": ["connector"], "wordSrc": "audio/tts/d075b30447d892fe.mp3"}, {"front": "singkatnya", "back": "in short", "tags": ["connector"], "wordSrc": "audio/tts/ad8c1efe462530da.mp3"}, {"front": "secara umum", "back": "generally / in general", "tags": ["connector"], "wordSrc": "audio/tts/2edcf7846e40bafe.mp3"}, {"front": "secara khusus", "back": "specifically", "tags": ["connector"], "wordSrc": "audio/tts/0e1200ed7b15d8f9.mp3"}, {"front": "sebagainya", "back": "and so on / etc.", "tags": ["connector"], "llSrc": "audio/ll/sebagainya-Iripseudocor.m4a"}, {"front": "misalnya", "back": "for example", "tags": ["connector"], "llSrc": "audio/ll/misalnya-CloudyLosstr.m4a"}, {"front": "contohnya", "back": "for instance", "tags": ["connector"], "wordSrc": "audio/tts/60593a09e40b8101.mp3"}, {"front": "khususnya", "back": "particularly", "tags": ["connector"], "wordSrc": "audio/tts/74b29ef79afa2b94.mp3"}, {"front": "umumnya", "back": "generally", "tags": ["connector"], "llSrc": "audio/ll/umumnya-CloudyLosstr.m4a"}, {"front": "di satu sisi", "back": "on one side / on the one hand", "tags": ["connector"], "wordSrc": "audio/tts/cbc1c260e66256a2.mp3"}, {"front": "di sisi lain", "back": "on the other side / on the other hand", "tags": ["connector"], "wordSrc": "audio/tts/b7300d85d48d63ae.mp3"}, {"front": "dari segi", "back": "in terms of", "tags": ["connector"], "wordSrc": "audio/tts/67137fbeaeff2a3c.mp3"}, {"front": "dari sisi", "back": "from the side of / from the perspective of", "tags": ["connector"], "wordSrc": "audio/tts/29bcd797fa7a6ff6.mp3"}, {"front": "dari sudut pandang", "back": "from the point of view of", "tags": ["connector"], "wordSrc": "audio/tts/37ccecf02c71ad5c.mp3"}, {"front": "kan", "back": "tag question / seeking agreement — \"right?\"", "tags": ["particle"], "llSrc": "audio/ll/kan-Diahasy.m4a"}, {"front": "sih", "back": "softener / mild emphasis or curiosity", "tags": ["particle"], "wordSrc": "audio/tts/9565d26241290b45.mp3"}, {"front": "dong", "back": "insistence — \"come on, obviously\"", "tags": ["particle"], "wordSrc": "audio/tts/560c544af4bacf0e.mp3"}, {"front": "loh / lho", "back": "mild surprise, \"you know\"", "tags": ["particle"], "wordSrc": "audio/tts/3a9467c3aa36a0c4.mp3"}, {"front": "nih", "back": "here — draws attention to something close", "tags": ["particle"], "wordSrc": "audio/tts/8610a0e8ad750dc2.mp3"}, {"front": "kok", "back": "how come? — surprise or mild complaint", "tags": ["particle"], "wordSrc": "audio/tts/3aac317177aea483.mp3"}, {"front": "deh", "back": "softening a suggestion / conceding a point", "tags": ["particle"], "llSrc": "audio/ll/deh-Bangrapip.m4a"}, {"front": "gitu / begitu", "back": "like that — trails off a sentence", "tags": ["particle"], "wordSrc": "audio/tts/e4a4e2563fcb1a61.mp3"}, {"front": "banget", "back": "very / so — intensifier", "tags": ["particle"], "wordSrc": "audio/tts/a1267ec5699712d2.mp3"}, {"front": "mendingan", "back": "better off, rather — for comparing options", "tags": ["particle"], "wordSrc": "audio/tts/aa5b6b5aad4ec3b7.mp3"}, {"front": "entar", "back": "colloquial for \"nanti\" — later", "tags": ["particle"], "wordSrc": "audio/tts/61ff9adafbc7b5a0.mp3"}, {"front": "makanya", "back": "that's why", "tags": ["particle", "connector"], "wordSrc": "audio/tts/a61debca0052b851.mp3"}, {"front": "atuh", "back": "Sundanese softener/emphasis particle, no direct translation", "tags": ["particle_sundanese"], "wordSrc": "audio/tts/b8888fd0f4685e3a.mp3"}, {"front": "mah", "back": "Sundanese topic marker, roughly \"as for...\"", "tags": ["particle_sundanese"], "wordSrc": "audio/tts/541809714860a543.mp3"}, {"front": "udah", "back": "colloquial \"sudah\" — already", "tags": ["grammar"], "wordSrc": "audio/tts/7e57be3f3614ca09.mp3"}, {"front": "belum", "back": "not yet", "tags": ["grammar"], "llSrc": "audio/ll/belum-CloudyLosstr.m4a"}, {"front": "nggak / enggak", "back": "colloquial \"tidak\" — not, no", "tags": ["grammar"], "wordSrc": "audio/tts/15ae0c86edd3535f.mp3"}, {"front": "iya", "back": "yes / right (softer than \"ya\")", "tags": ["grammar"], "llSrc": "audio/ll/iya-AmeliaWardan.m4a"}, {"front": "kalau", "back": "if / when (conditional)", "tags": ["grammar", "connector"], "llSrc": "audio/ll/kalau-Xbypass.m4a"}, {"front": "soalnya", "back": "because, the thing is...", "tags": ["grammar"], "wordSrc": "audio/tts/d14761b6a7685217.mp3"}, {"front": "kayaknya", "back": "it seems like, I think", "tags": ["grammar"], "wordSrc": "audio/tts/75ecb0f6f8be1852.mp3"}, {"front": "gimana", "back": "colloquial \"bagaimana\" — how", "tags": ["grammar"], "wordSrc": "audio/tts/2f879fbe3fd8463c.mp3"}, {"front": "biar", "back": "so that / \"in order to\"", "tags": ["grammar"], "wordSrc": "audio/tts/4ed3c30ffea653f9.mp3"}, {"front": "Mami", "back": "Mom (used directly, not \"Ibu\")", "tags": ["family"], "wordSrc": "audio/tts/9fd9f6e01e22090e.mp3"}, {"front": "Papi / Bapak", "back": "Dad", "tags": ["family"], "wordSrc": "audio/tts/37d6b3fc10fb5e35.mp3"}, {"front": "Mbak", "back": "older sister / polite term for young woman", "tags": ["family"], "wordSrc": "audio/tts/d0edcb8ba4ca7911.mp3"}, {"front": "Dek / Adek", "back": "younger sibling, term of endearment", "tags": ["family"], "wordSrc": "audio/tts/bfc20fba646386ff.mp3"}, {"front": "sayangku", "back": "my love/darling — affectionate term", "tags": ["family"], "wordSrc": "audio/tts/6ef6e17c2b5e914f.mp3"}, {"front": "salim", "back": "hand-to-forehead greeting gesture for elders", "tags": ["family"], "wordSrc": "audio/tts/724b347a8f73c91d.mp3"}, {"front": "assalamualaikum", "back": "Islamic greeting, \"peace be upon you\" — used casually arriving/leaving", "tags": ["family"], "llSrc": "audio/ll/assalamualaikum-AlfiyahRizzy.m4a"}, {"front": "tahu", "back": "tofu", "tags": ["food"], "llSrc": "audio/ll/tahu-Xbypass.m4a"}, {"front": "lele", "back": "catfish", "tags": ["food"], "llSrc": "audio/ll/lele-CloudyLosstr.m4a"}, {"front": "santan", "back": "coconut milk", "tags": ["food"], "llSrc": "audio/ll/santan-AlfiyahRizzy.m4a"}, {"front": "bayam", "back": "spinach", "tags": ["food"], "llSrc": "audio/ll/bayam-HzuHzu.m4a"}, {"front": "ayam", "back": "chicken", "tags": ["food"], "llSrc": "audio/ll/ayam-Xbypass.m4a"}, {"front": "nasi", "back": "rice", "tags": ["food"], "llSrc": "audio/ll/nasi-Xbypass.m4a"}, {"front": "enak", "back": "tasty, delicious", "tags": ["food", "adjective"], "llSrc": "audio/ll/enak-Xbypass.m4a"}, {"front": "kupingmu", "back": "your ear — used scoldingly re: earbuds/headphones", "tags": ["tech"], "wordSrc": "audio/tts/a2023260c2dfaa5d.mp3"}, {"front": "aplikasi", "back": "application, app", "tags": ["tech"], "wordSrc": "audio/tts/2df24e5c4b0eda17.mp3"}, {"front": "unduh / download", "back": "to download", "tags": ["tech"], "wordSrc": "audio/tts/f7c0d9ed95c0915c.mp3"}, {"front": "ngecas", "back": "colloquial — to charge (a device)", "tags": ["tech"], "wordSrc": "audio/tts/06ff47f46d76fd62.mp3"}, {"front": "kupas / patok", "back": "landmark / marker (for giving directions)", "tags": ["errands"], "wordSrc": "audio/tts/af0ab954bf00f75c.mp3"}, {"front": "belok kanan", "back": "turn right", "tags": ["errands"], "wordSrc": "audio/tts/4702452eb0ff386f.mp3"}, {"front": "belok kiri", "back": "turn left", "tags": ["errands"], "wordSrc": "audio/tts/755acc725dec22cd.mp3"}, {"front": "lurus", "back": "straight (ahead); to straighten", "tags": ["errands", "verb", "handling"], "llSrc": "audio/ll/lurus-SofiSolihah.m4a"}, {"front": "bensin", "back": "gasoline", "tags": ["errands"], "llSrc": "audio/ll/bensin-Xbypass.m4a"}, {"front": "gang", "back": "small alley/lane", "tags": ["errands"], "wordSrc": "audio/tts/a48f1e85751a3c6c.mp3"}, {"front": "jemput", "back": "to pick (someone) up", "tags": ["errands", "verb", "motion"], "wordSrc": "audio/tts/09018c5eff456ce9.mp3"}, {"front": "tiduran", "back": "to lie down", "tags": ["home"], "wordSrc": "audio/tts/070087bb276709b8.mp3"}, {"front": "ganti baju", "back": "to change clothes", "tags": ["home"], "wordSrc": "audio/tts/5e0eb88bf75eb1d9.mp3"}, {"front": "mati lampu", "back": "power outage", "tags": ["home"], "wordSrc": "audio/tts/a137da0c6ff2f66b.mp3"}, {"front": "nyala", "back": "on / lit (of power, lights)", "tags": ["home"], "llSrc": "audio/ll/nyala-Xbypass.m4a"}, {"front": "sedih", "back": "sad", "tags": ["emotion", "adjective"], "llSrc": "audio/ll/sedih-AlfiyahRizzy.m4a"}, {"front": "takut", "back": "scared", "tags": ["emotion", "adjective"], "llSrc": "audio/ll/takut-Xbypass.m4a"}, {"front": "bahaya", "back": "dangerous", "tags": ["emotion"], "llSrc": "audio/ll/bahaya-Xbypass.m4a"}, {"front": "seram", "back": "scary, creepy", "tags": ["emotion"], "wordSrc": "audio/tts/993bc6fecccb4832.mp3"}, {"front": "aduh", "back": "ouch/oh no — general exclamation", "tags": ["emotion"], "llSrc": "audio/ll/aduh-Xbypass.m4a"}, {"front": "astaga", "back": "oh my god — mild exclamation", "tags": ["emotion"], "wordSrc": "audio/tts/e4e957e9cadda886.mp3"}, {"front": "manis", "back": "sweet (also: cute)", "tags": ["emotion", "adjective"], "llSrc": "audio/ll/manis-Xbypass.m4a"}, {"front": "mantap", "back": "awesome, solid — approval", "tags": ["emotion"], "wordSrc": "audio/tts/236170c3d44a5675.mp3"}, {"front": "asik", "back": "fun, enjoyable", "tags": ["emotion"], "llSrc": "audio/ll/asik-KumeGucci.m4a"}, {"front": "lumayan", "back": "decent, not bad, pretty good", "tags": ["emotion"], "wordSrc": "audio/tts/c52087f72ec60203.mp3"}, {"front": "gila", "back": "crazy — used as an intensifier exclamation", "tags": ["emotion"], "llSrc": "audio/ll/gila-Xbypass.m4a"}, {"front": "suku", "back": "ethnic group / tribe (Bali, Lombok/Sasak, Madura, Jawa etc.)", "tags": ["culture"], "llSrc": "audio/ll/suku-Iripseudocor.m4a"}, {"front": "keturunan", "back": "descent, lineage", "tags": ["culture"], "llSrc": "audio/ll/keturunan-Iripseudocor.m4a"}, {"front": "Ini dari sana?", "back": "Is this from there?", "tags": ["phrase"], "wordSrc": "audio/tts/0cb1d55a36cb7445.mp3"}, {"front": "Nggak apa-apa", "back": "It's okay / no worries / it doesn't matter", "tags": ["phrase"], "wordSrc": "audio/tts/099fb698d0a36bd5.mp3"}, {"front": "Ayo kita nonton", "back": "Let's go watch [something]", "tags": ["phrase"], "wordSrc": "audio/tts/64a5fe6f85614e49.mp3"}, {"front": "Sudah semakin lancar", "back": "[You're] getting more fluent already", "tags": ["phrase"], "wordSrc": "audio/tts/72e5ba11708d9786.mp3"}, {"front": "Tahu kan berapa nih harganya?", "back": "You know how much this costs, right?", "tags": ["phrase"], "wordSrc": "audio/tts/815cd4213f8f730d.mp3"}, {"front": "Kalau tak dengar suaramu", "back": "If I don't hear your voice (song lyric quoted mid-conversation)", "tags": ["phrase"], "wordSrc": "audio/tts/ecd868af2b9ab7f8.mp3"}, {"front": "Jangan ganggu", "back": "Don't disturb [me]", "tags": ["phrase"], "wordSrc": "audio/tts/01472b1cd76aad73.mp3"}, {"front": "Sabar", "back": "Be patient / hang on", "tags": ["phrase"], "llSrc": "audio/ll/sabar-Diahasy.m4a"}, {"front": "Ya udah", "back": "Alright then / fine, okay — resigned agreement", "tags": ["phrase"], "wordSrc": "audio/tts/1aa5e44a036c630e.mp3"}, {"front": "Nggak seru", "back": "Not fun / that's no fun", "tags": ["phrase"], "wordSrc": "audio/tts/c07ea16cdba39341.mp3"}, {"front": "Apa namanya?", "back": "What's it called again? — filler while searching for a word", "tags": ["phrase"], "wordSrc": "audio/tts/88a02c78fdb05fe0.mp3"}, {"front": "Kamu mau download di anu, di laptopmu?", "back": "Do you want to download it on your laptop?", "tags": ["phrase"], "wordSrc": "audio/tts/7debd00a80304219.mp3"}, {"front": "Ini di atas dia menunjukkan Indonesia", "back": "Up here it shows Indonesian [on screen]", "tags": ["phrase"], "wordSrc": "audio/tts/59eecef895b3fbc9.mp3"}, {"front": "Nggak keaslian", "back": "It's not the real/original one", "tags": ["phrase"], "wordSrc": "audio/tts/b6e02661462cf0b9.mp3"}, {"front": "Terlalu maksa", "back": "That's too forced / trying too hard", "tags": ["phrase"], "wordSrc": "audio/tts/d67c06e51fa9a199.mp3"}, {"front": "Kok aneh", "back": "That's weird, huh", "tags": ["phrase"], "wordSrc": "audio/tts/c9102d453e5e065f.mp3"}, {"front": "Can I ask a question?", "back": "code-switch: Dila asks permission mid-Indonesian-sentence in English", "tags": ["codeswitch"]}, {"front": "Reprimanded", "back": "code-switch: Devin supplies the English legal term Dila reaches for", "tags": ["codeswitch"], "wordSrc": "audio/tts/51fdbaeccb7c7685.mp3"}, {"front": "sayangku's kids' ankle", "back": "running joke/mishearing during the recording — good example of ASR mangling affectionate teasing", "tags": ["codeswitch"], "wordSrc": "audio/tts/14caae64ec867aa5.mp3"}, {"front": "saya", "back": "I / me (polite, neutral)", "tags": ["pronoun"], "llSrc": "audio/ll/saya-Xbypass.m4a"}, {"front": "aku", "back": "I / me (casual, with family and friends)", "tags": ["pronoun"], "llSrc": "audio/ll/aku-Xbypass.m4a"}, {"front": "kamu", "back": "you (casual)", "tags": ["pronoun"], "llSrc": "audio/ll/kamu-Xbypass.m4a"}, {"front": "kita", "back": "we / us (includes the person you're talking to)", "tags": ["pronoun"], "llSrc": "audio/ll/kita-Xbypass.m4a"}, {"front": "dia", "back": "he / she / it", "tags": ["pronoun"], "llSrc": "audio/ll/dia-Xbypass.m4a"}, {"front": "sendiri", "back": "self / alone / on one's own", "tags": ["pronoun"], "llSrc": "audio/ll/sendiri-CloudyLosstr.m4a"}, {"front": "semua", "back": "all / everyone", "tags": ["pronoun"], "llSrc": "audio/ll/semua-CloudyLosstr.m4a"}, {"front": "semuanya", "back": "all of it / everyone (emphatic)", "tags": ["pronoun"], "llSrc": "audio/ll/semuanya-Iripseudocor.m4a"}, {"front": "ini", "back": "this / here", "tags": ["demonstrative"], "llSrc": "audio/ll/ini-Xbypass.m4a"}, {"front": "itu", "back": "that / those — also a filler, \"y'know\"", "tags": ["demonstrative"], "llSrc": "audio/ll/itu-Swarabakti.m4a"}, {"front": "sini", "back": "here / over here", "tags": ["demonstrative"], "llSrc": "audio/ll/sini-Swarabakti.m4a"}, {"front": "sana", "back": "over there", "tags": ["demonstrative"], "llSrc": "audio/ll/sana-Diahasy.m4a"}, {"front": "gini", "back": "like this (casual, from \"begini\")", "tags": ["demonstrative"], "wordSrc": "audio/tts/ced86c871f2cdaa0.mp3"}, {"front": "gitu", "back": "like that (casual, from \"begitu\") — very frequent filler", "tags": ["demonstrative"], "wordSrc": "audio/tts/e4a4e2563fcb1a61.mp3"}, {"front": "begitu", "back": "like that / so / in that way", "tags": ["demonstrative"], "llSrc": "audio/ll/begitu-CloudyLosstr.m4a"}, {"front": "kayak", "back": "like / such as (casual, replaces \"seperti\" in speech)", "tags": ["demonstrative"], "wordSrc": "audio/tts/508c384852ffcf44.mp3"}, {"front": "apa", "back": "what — also \"huh?\" on its own", "tags": ["question"], "llSrc": "audio/ll/apa-Xbypass.m4a"}, {"front": "siapa", "back": "who", "tags": ["question"], "llSrc": "audio/ll/siapa-SofiSolihah.m4a"}, {"front": "kenapa", "back": "why / what's wrong", "tags": ["question"], "wordSrc": "audio/tts/2550fef2fd3dc287.mp3"}, {"front": "mana", "back": "where / which one", "tags": ["question"], "llSrc": "audio/ll/mana-Swarabakti.m4a"}, {"front": "nanti", "back": "later / in a bit", "tags": ["time"], "llSrc": "audio/ll/nanti-SofiSolihah.m4a"}, {"front": "sudah", "back": "already / done (often shortened to \"udah\")", "tags": ["time"], "llSrc": "audio/ll/sudah-CloudyLosstr.m4a"}, {"front": "dulu", "back": "first / earlier / used to", "tags": ["time"], "wordSrc": "audio/tts/5cbc050fad09aafc.mp3"}, {"front": "tadi", "back": "earlier / just now", "tags": ["time"], "llSrc": "audio/ll/tadi-Iripseudocor.m4a"}, {"front": "sekarang", "back": "now", "tags": ["time"], "llSrc": "audio/ll/sekarang-Xbypass.m4a"}, {"front": "besok", "back": "tomorrow", "tags": ["time"], "llSrc": "audio/ll/besok-Xbypass.m4a"}, {"front": "masih", "back": "still", "tags": ["time"], "llSrc": "audio/ll/masih-CloudyLosstr.m4a"}, {"front": "lagi", "back": "again / more — also \"currently\" before a verb", "tags": ["time"], "llSrc": "audio/ll/lagi-Xbypass.m4a"}, {"front": "sampai", "back": "until / as far as / to arrive", "tags": ["time"], "llSrc": "audio/ll/sampai-Iripseudocor.m4a"}, {"front": "jam", "back": "hour / o'clock / watch", "tags": ["time"], "llSrc": "audio/ll/jam-Xbypass.m4a"}, {"front": "bulan", "back": "month / moon", "tags": ["time"], "llSrc": "audio/ll/bulan-CloudyLosstr.m4a"}, {"front": "hari", "back": "day", "tags": ["time"], "llSrc": "audio/ll/hari-Xbypass.m4a"}, {"front": "tanggal", "back": "date", "tags": ["time"], "wordSrc": "audio/tts/fbe3316ba0bc0882.mp3"}, {"front": "sebentar", "back": "a moment / briefly", "tags": ["time"], "llSrc": "audio/ll/sebentar-CloudyLosstr.m4a"}, {"front": "biasanya", "back": "usually", "tags": ["time"], "llSrc": "audio/ll/biasanya-CloudyLosstr.m4a"}, {"front": "langsung", "back": "directly / straight away", "tags": ["time"], "llSrc": "audio/ll/langsung-CloudyLosstr.m4a"}, {"front": "Agustus", "back": "August", "tags": ["time"], "llSrc": "audio/ll/agustus-Diahasy.m4a"}, {"front": "Juli", "back": "July", "tags": ["time"], "llSrc": "audio/ll/juli-Diahasy.m4a"}, {"front": "yang", "back": "the one that / which — links a noun to its description", "tags": ["grammar"], "llSrc": "audio/ll/yang-Xbypass.m4a"}, {"front": "untuk", "back": "for / in order to", "tags": ["grammar"], "llSrc": "audio/ll/untuk-Xbypass.m4a"}, {"front": "dari", "back": "from", "tags": ["grammar"], "llSrc": "audio/ll/dari-Xbypass.m4a"}, {"front": "dengan", "back": "with", "tags": ["grammar"], "llSrc": "audio/ll/dengan-Xbypass.m4a"}, {"front": "buat", "back": "for / to make (casual)", "tags": ["grammar"], "llSrc": "audio/ll/buat-Iripseudocor.m4a"}, {"front": "saja", "back": "just / only", "tags": ["grammar"], "llSrc": "audio/ll/saja-CloudyLosstr.m4a"}, {"front": "aja", "back": "just / only (casual form of \"saja\")", "tags": ["grammar"], "llSrc": "audio/ll/aja-Diahasy.m4a"}, {"front": "cuma", "back": "only / just", "tags": ["grammar"], "wordSrc": "audio/tts/ba5fcb1ca7e73699.mp3"}, {"front": "tak", "back": "not (short, literary or Javanese-flavoured)", "tags": ["grammar"], "llSrc": "audio/ll/tak-Xbypass.m4a"}, {"front": "nggak", "back": "no / not (the everyday spoken form of \"tidak\")", "tags": ["grammar"], "wordSrc": "audio/tts/15ae0c86edd3535f.mp3"}, {"front": "bukan", "back": "not (negates nouns) — also \"isn't it?\"", "tags": ["grammar"], "llSrc": "audio/ll/bukan-Xbypass.m4a"}, {"front": "jangan", "back": "don't", "tags": ["grammar"], "llSrc": "audio/ll/jangan-CloudyLosstr.m4a"}, {"front": "harus", "back": "must / have to", "tags": ["grammar"], "llSrc": "audio/ll/harus-CloudyLosstr.m4a"}, {"front": "bisa", "back": "can / to be able to", "tags": ["grammar"], "llSrc": "audio/ll/bisa-Xbypass.m4a"}, {"front": "boleh", "back": "may / allowed to", "tags": ["grammar"], "llSrc": "audio/ll/boleh-Iripseudocor.m4a"}, {"front": "mungkin", "back": "maybe / possibly", "tags": ["grammar"], "llSrc": "audio/ll/mungkin-AlfiyahRizzy.m4a"}, {"front": "nggak usah", "back": "no need / don't bother", "tags": ["phrase"], "wordSrc": "audio/tts/89262a445a1e9060.mp3"}, {"front": "apa-apa", "back": "anything / nothing (in negatives)", "tags": ["phrase"], "wordSrc": "audio/tts/a4fa3e0d02314611.mp3"}, {"front": "apa namanya", "back": "what's it called (stalling for a word)", "tags": ["phrase"], "wordSrc": "audio/tts/956c443eaac091ed.mp3"}, {"front": "namanya", "back": "its name / what it's called", "tags": ["grammar"], "llSrc": "audio/ll/namanya-AlfiyahRizzy.m4a"}, {"front": "katanya", "back": "they say / apparently / he said", "tags": ["grammar"], "wordSrc": "audio/tts/bb93e91972654e98.mp3"}, {"front": "nah", "back": "right / so — marks the point you've been building to", "tags": ["particle"], "wordSrc": "audio/tts/179ad06abc79e944.mp3"}, {"front": "tuh", "back": "that / there — points at something, casual", "tags": ["particle"], "wordSrc": "audio/tts/4ff13c2b8a0e0cf9.mp3"}, {"front": "loh", "back": "marks surprise or gently corrects", "tags": ["particle"], "wordSrc": "audio/tts/3a9467c3aa36a0c4.mp3"}, {"front": "duh", "back": "ugh / oh dear", "tags": ["particle"], "llSrc": "audio/ll/duh-Diahasy.m4a"}, {"front": "hah", "back": "huh?", "tags": ["particle"], "wordSrc": "audio/tts/75c6a867d2cc20d8.mp3"}, {"front": "anu", "back": "um / whatsit — filler while you search for a word", "tags": ["particle"], "wordSrc": "audio/tts/c0734b38b0d65831.mp3"}, {"front": "oke", "back": "okay", "tags": ["particle"], "wordSrc": "audio/tts/6db65eed90f7e6a5.mp3"}, {"front": "bapak", "back": "father — also \"sir\" to an older man", "tags": ["family"], "llSrc": "audio/ll/bapak-Xbypass.m4a"}, {"front": "pak", "back": "sir / Mr (short for bapak)", "tags": ["family"], "llSrc": "audio/ll/pak-AlfiyahRizzy.m4a"}, {"front": "ibu", "back": "mother — also \"ma'am\" to an older woman", "tags": ["family"], "llSrc": "audio/ll/ibu-Xbypass.m4a"}, {"front": "nenek", "back": "grandmother", "tags": ["family"], "llSrc": "audio/ll/nenek-Xbypass.m4a"}, {"front": "kakek", "back": "grandfather", "tags": ["family"], "llSrc": "audio/ll/kakek-Xbypass.m4a"}, {"front": "anak", "back": "child / kid", "tags": ["family"], "llSrc": "audio/ll/anak-Xbypass.m4a"}, {"front": "adik", "back": "younger sibling", "tags": ["family"], "llSrc": "audio/ll/adik-Xbypass.m4a"}, {"front": "abang", "back": "older brother — also a term for a male vendor or driver", "tags": ["family"], "llSrc": "audio/ll/abang-Xbypass.m4a"}, {"front": "keluarga", "back": "family", "tags": ["family"], "llSrc": "audio/ll/keluarga-Xbypass.m4a"}, {"front": "rekening", "back": "bank account", "tags": ["money"], "wordSrc": "audio/tts/cc18a4c9a3be4222.mp3"}, {"front": "bendahara", "back": "treasurer", "tags": ["money"], "wordSrc": "audio/tts/142f1e9b63cd7965.mp3"}, {"front": "arisan", "back": "rotating savings club — members pay in and take turns receiving the pot, as much a social gathering as a financial one", "tags": ["culture"], "wordSrc": "audio/tts/927ed927d145f35c.mp3"}, {"front": "nomor", "back": "number", "tags": ["money"], "llSrc": "audio/ll/nomor-Iripseudocor.m4a"}, {"front": "pemberitahuan", "back": "notification / announcement", "tags": ["money"], "wordSrc": "audio/tts/9f5c764cff53b883.mp3"}, {"front": "orang", "back": "person / people", "tags": ["home"], "llSrc": "audio/ll/orang-Xbypass.m4a"}, {"front": "rumah", "back": "house / home", "tags": ["home"], "llSrc": "audio/ll/rumah-Xbypass.m4a"}, {"front": "air", "back": "water", "tags": ["home"], "llSrc": "audio/ll/air-Xbypass.m4a"}, {"front": "depan", "back": "front / ahead", "tags": ["errands"], "llSrc": "audio/ll/depan-AlfiyahRizzy.m4a"}, {"front": "kanan", "back": "right (direction)", "tags": ["errands"], "llSrc": "audio/ll/kanan-Xbypass.m4a"}, {"front": "jalanan", "back": "the road / the streets", "tags": ["errands"], "llSrc": "audio/ll/jalanan-SofiSolihah.m4a"}, {"front": "salam", "back": "greetings / regards", "tags": ["culture"], "llSrc": "audio/ll/salam-SofiSolihah.m4a"}, {"front": "horor", "back": "horror (loanword)", "tags": ["culture"], "wordSrc": "audio/tts/7051ff14ad9a4692.mp3"}, {"front": "titik", "back": "dot / period — said aloud when dictating, or to end an argument", "tags": ["phrase"], "llSrc": "audio/ll/titik-Iripseudocor.m4a"}, {"front": "sekali", "back": "very (after an adjective) / once", "tags": ["grammar"], "llSrc": "audio/ll/sekali-CloudyLosstr.m4a"}, {"front": "cukup", "back": "enough / quite", "tags": ["grammar"], "llSrc": "audio/ll/cukup-Xbypass.m4a"}, {"front": "punya", "back": "to have / to own", "tags": ["verb", "state"], "llSrc": "audio/ll/punya-Xbypass.m4a"}, {"front": "bilang", "back": "to say / to tell", "tags": ["verb", "speech"], "llSrc": "audio/ll/bilang-Xbypass.m4a"}, {"front": "pergi", "back": "to go / to leave", "tags": ["verb", "motion"], "llSrc": "audio/ll/pergi-Xbypass.m4a"}, {"front": "ikut", "back": "to come along / to join in", "tags": ["verb", "motion"], "llSrc": "audio/ll/ikut-AlfiyahRizzy.m4a"}, {"front": "ngerti", "back": "to understand (casual, from \"mengerti\")", "tags": ["verb", "mind"], "llSrc": "audio/ll/ngerti-AlfiyahRizzy.m4a"}, {"front": "coba", "back": "to try — also \"go on, try it\"", "tags": ["verb", "mind"], "llSrc": "audio/ll/coba-AlfiyahRizzy.m4a"}, {"front": "hilang", "back": "to disappear / to be lost", "tags": ["verb", "change"], "llSrc": "audio/ll/hilang-Xbypass.m4a"}, {"front": "goreng", "back": "to fry / fried", "tags": ["verb", "household"], "llSrc": "audio/ll/goreng-AlfiyahRizzy.m4a"}, {"front": "sakit", "back": "sick / hurting / painful", "tags": ["adjective"], "llSrc": "audio/ll/sakit-Xbypass.m4a"}, {"front": "sehat", "back": "healthy / well", "tags": ["adjective"], "llSrc": "audio/ll/sehat-CloudyLosstr.m4a"}, {"front": "cepat", "back": "fast / quick", "tags": ["adjective"], "llSrc": "audio/ll/cepat-Xbypass.m4a"}, {"front": "cantik", "back": "pretty / beautiful", "tags": ["adjective"], "llSrc": "audio/ll/cantik-Xbypass.m4a"}, {"front": "Senin", "back": "Monday", "tags": ["calendar"], "llSrc": "audio/ll/senin-Diahasy.m4a"}, {"front": "Selasa", "back": "Tuesday", "tags": ["calendar"], "llSrc": "audio/ll/selasa-Diahasy.m4a"}, {"front": "Rabu", "back": "Wednesday", "tags": ["calendar"], "llSrc": "audio/ll/rabu-Diahasy.m4a"}, {"front": "Kamis", "back": "Thursday", "tags": ["calendar"], "llSrc": "audio/ll/kamis-Diahasy.m4a"}, {"front": "Jumat", "back": "Friday", "tags": ["calendar"], "llSrc": "audio/ll/jumat-Diahasy.m4a"}, {"front": "Sabtu", "back": "Saturday", "tags": ["calendar"], "llSrc": "audio/ll/sabtu-Diahasy.m4a"}, {"front": "Minggu", "back": "Sunday; also \"week\"", "tags": ["calendar"], "llSrc": "audio/ll/minggu-Xbypass.m4a"}, {"front": "minggu depan", "back": "next week", "tags": ["calendar"], "wordSrc": "audio/tts/0ae4a0c6d260fd4d.mp3"}, {"front": "minggu lalu", "back": "last week", "tags": ["calendar"], "wordSrc": "audio/tts/e3d5926c0ba8a7e9.mp3"}, {"front": "tahun", "back": "year", "tags": ["calendar"], "llSrc": "audio/ll/tahun-Xbypass.m4a"}, {"front": "tahun depan", "back": "next year", "tags": ["calendar"], "wordSrc": "audio/tts/a0f166fa0cc18e62.mp3"}, {"front": "tahun lalu", "back": "last year", "tags": ["calendar"], "wordSrc": "audio/tts/f7bd37380ea8a1c3.mp3"}, {"front": "kemarin", "back": "yesterday", "tags": ["calendar"], "llSrc": "audio/ll/kemarin-Xbypass.m4a"}, {"front": "lusa", "back": "the day after tomorrow", "tags": ["calendar"], "wordSrc": "audio/tts/374b8c37786572a2.mp3"}, {"front": "kemarin dulu", "back": "the day before yesterday", "tags": ["calendar"], "wordSrc": "audio/tts/ba1d00bbc1f06072.mp3"}, {"front": "hari ini", "back": "today", "tags": ["calendar"], "llSrc": "audio/ll/hari_ini-Xbypass.m4a"}, {"front": "pagi", "back": "morning", "tags": ["calendar"], "llSrc": "audio/ll/pagi-Xbypass.m4a"}, {"front": "siang", "back": "midday / early afternoon", "tags": ["calendar"], "llSrc": "audio/ll/siang-Xbypass.m4a"}, {"front": "sore", "back": "late afternoon / early evening", "tags": ["calendar"], "llSrc": "audio/ll/sore-Xbypass.m4a"}, {"front": "malam", "back": "night", "tags": ["calendar"], "llSrc": "audio/ll/malam-Xbypass.m4a"}, {"front": "subuh", "back": "dawn, before sunrise", "tags": ["calendar"], "llSrc": "audio/ll/subuh-AlfiyahRizzy.m4a"}, {"front": "tengah malam", "back": "midnight", "tags": ["calendar"], "wordSrc": "audio/tts/5bff5abcc2cb508f.mp3"}, {"front": "akhir pekan", "back": "weekend", "tags": ["calendar"], "wordSrc": "audio/tts/51d998cd4c94a2ee.mp3"}, {"front": "setiap hari", "back": "every day", "tags": ["calendar"], "wordSrc": "audio/tts/2baef92be1dc6bc2.mp3"}, {"front": "seminggu sekali", "back": "once a week", "tags": ["calendar"], "wordSrc": "audio/tts/51acb04997a6356c.mp3"}, {"front": "Januari", "back": "January", "tags": ["calendar"], "llSrc": "audio/ll/januari-Diahasy.m4a"}, {"front": "Februari", "back": "February", "tags": ["calendar"], "llSrc": "audio/ll/februari-Diahasy.m4a"}, {"front": "Maret", "back": "March", "tags": ["calendar"], "llSrc": "audio/ll/maret-Diahasy.m4a"}, {"front": "April", "back": "April", "tags": ["calendar"], "llSrc": "audio/ll/april-Diahasy.m4a"}, {"front": "Mei", "back": "May", "tags": ["calendar"], "llSrc": "audio/ll/mei-Diahasy.m4a"}, {"front": "Juni", "back": "June", "tags": ["calendar"], "llSrc": "audio/ll/juni-Diahasy.m4a"}, {"front": "September", "back": "September", "tags": ["calendar"], "llSrc": "audio/ll/september-Diahasy.m4a"}, {"front": "Oktober", "back": "October", "tags": ["calendar"], "llSrc": "audio/ll/oktober-Diahasy.m4a"}, {"front": "November", "back": "November", "tags": ["calendar"], "llSrc": "audio/ll/november-Diahasy.m4a"}, {"front": "Desember", "back": "December", "tags": ["calendar"], "llSrc": "audio/ll/desember-Diahasy.m4a"}, {"front": "jam berapa", "back": "what time", "tags": ["calendar"], "wordSrc": "audio/tts/6e326e23d4e3faf3.mp3"}, {"front": "kapan", "back": "when", "tags": ["calendar"], "llSrc": "audio/ll/kapan-Swarabakti.m4a"}, {"front": "menit", "back": "minute", "tags": ["calendar"], "llSrc": "audio/ll/menit-Xbypass.m4a"}, {"front": "detik", "back": "second", "tags": ["calendar"], "llSrc": "audio/ll/detik-Iripseudocor.m4a"}, {"front": "makanan", "back": "food", "tags": ["food"], "llSrc": "audio/ll/makanan-Xbypass.m4a"}, {"front": "minuman", "back": "drink", "tags": ["food"], "llSrc": "audio/ll/minuman-Xbypass.m4a"}, {"front": "sarapan", "back": "breakfast", "tags": ["food"], "llSrc": "audio/ll/sarapan-AlfiyahRizzy.m4a"}, {"front": "makan siang", "back": "lunch", "tags": ["food"], "llSrc": "audio/ll/makan_siang-SofiSolihah.m4a"}, {"front": "makan malam", "back": "dinner", "tags": ["food"], "wordSrc": "audio/tts/40c287f698a7d811.mp3"}, {"front": "roti", "back": "bread", "tags": ["food"], "llSrc": "audio/ll/roti-Xbypass.m4a"}, {"front": "telur", "back": "egg", "tags": ["food"], "llSrc": "audio/ll/telur-Xbypass.m4a"}, {"front": "ikan", "back": "fish", "tags": ["food"], "llSrc": "audio/ll/ikan-Xbypass.m4a"}, {"front": "daging", "back": "meat", "tags": ["food"], "llSrc": "audio/ll/daging-Xbypass.m4a"}, {"front": "sapi", "back": "cow / beef", "tags": ["food"], "llSrc": "audio/ll/sapi-Xbypass.m4a"}, {"front": "kambing", "back": "goat", "tags": ["food"], "llSrc": "audio/ll/kambing-Dvnfit.m4a"}, {"front": "udang", "back": "shrimp / prawn", "tags": ["food"], "llSrc": "audio/ll/udang-Titanboo.m4a"}, {"front": "sayur", "back": "vegetable", "tags": ["food"], "llSrc": "audio/ll/sayur-Xbypass.m4a"}, {"front": "buah", "back": "fruit", "tags": ["food"], "llSrc": "audio/ll/buah-Xbypass.m4a"}, {"front": "pisang", "back": "banana", "tags": ["food"], "llSrc": "audio/ll/pisang-Xbypass.m4a"}, {"front": "mangga", "back": "mango", "tags": ["food"], "llSrc": "audio/ll/mangga-Xbypass.m4a"}, {"front": "jeruk", "back": "orange / citrus", "tags": ["food"], "llSrc": "audio/ll/jeruk-Xbypass.m4a"}, {"front": "kelapa", "back": "coconut", "tags": ["food"], "llSrc": "audio/ll/kelapa-Xbypass.m4a"}, {"front": "bawang", "back": "onion / garlic", "tags": ["food"], "llSrc": "audio/ll/bawang-Xbypass.m4a"}, {"front": "cabai / cabe", "back": "chili", "tags": ["food"], "llSrc": "audio/ll/cabai-Xbypass.m4a"}, {"front": "garam", "back": "salt", "tags": ["food"], "llSrc": "audio/ll/garam-Xbypass.m4a"}, {"front": "gula", "back": "sugar", "tags": ["food"], "llSrc": "audio/ll/gula-Xbypass.m4a"}, {"front": "minyak", "back": "oil", "tags": ["food"], "llSrc": "audio/ll/minyak-Xbypass.m4a"}, {"front": "bumbu", "back": "spices / seasoning paste", "tags": ["food"], "wordSrc": "audio/tts/4497c07fd0754979.mp3"}, {"front": "sambal", "back": "chili paste", "tags": ["food"], "wordSrc": "audio/tts/d64f4164859b475e.mp3"}, {"front": "kecap", "back": "soy sauce", "tags": ["food"], "llSrc": "audio/ll/kecap-CloudyLosstr.m4a"}, {"front": "kopi", "back": "coffee", "tags": ["food"], "llSrc": "audio/ll/kopi-Xbypass.m4a"}, {"front": "teh", "back": "tea", "tags": ["food"], "llSrc": "audio/ll/teh-Xbypass.m4a"}, {"front": "susu", "back": "milk", "tags": ["food"], "llSrc": "audio/ll/susu-Xbypass.m4a"}, {"front": "es", "back": "ice / iced", "tags": ["food"], "llSrc": "audio/ll/es-Xbypass.m4a"}, {"front": "air putih", "back": "plain drinking water", "tags": ["food"], "wordSrc": "audio/tts/764e321d9acb2539.mp3"}, {"front": "mie", "back": "noodles", "tags": ["food"], "wordSrc": "audio/tts/53acaa9e7866a804.mp3"}, {"front": "bakso", "back": "meatball soup", "tags": ["food"], "wordSrc": "audio/tts/1afccb5ea3b036e0.mp3"}, {"front": "sate", "back": "satay, grilled skewers", "tags": ["food"], "llSrc": "audio/ll/sate-Iripseudocor.m4a"}, {"front": "soto", "back": "soto, spiced broth soup", "tags": ["food"], "wordSrc": "audio/tts/63b4316615b6a13d.mp3"}, {"front": "gado-gado", "back": "gado-gado, vegetables in peanut sauce", "tags": ["food"], "wordSrc": "audio/tts/c5cb53a93070ec7b.mp3"}, {"front": "rendang", "back": "rendang, slow-cooked beef", "tags": ["food"], "wordSrc": "audio/tts/28ddcbfad276a104.mp3"}, {"front": "gorengan", "back": "fried snacks", "tags": ["food"], "wordSrc": "audio/tts/535fb0a5800887fa.mp3"}, {"front": "kue", "back": "cake / sweet snack", "tags": ["food"], "llSrc": "audio/ll/kue-Xbypass.m4a"}, {"front": "lapar", "back": "hungry", "tags": ["food"], "llSrc": "audio/ll/lapar-AlfiyahRizzy.m4a"}, {"front": "haus", "back": "thirsty", "tags": ["food"], "llSrc": "audio/ll/haus-Xbypass.m4a"}, {"front": "kenyang", "back": "full (from eating)", "tags": ["food"], "llSrc": "audio/ll/kenyang-CloudyLosstr.m4a"}, {"front": "matang", "back": "cooked / ripe", "tags": ["food"], "llSrc": "audio/ll/matang-AlfiyahRizzy.m4a"}, {"front": "mentah", "back": "raw / uncooked", "tags": ["food"], "llSrc": "audio/ll/mentah-AlfiyahRizzy.m4a"}, {"front": "bungkus", "back": "to wrap / a packet; takeaway", "tags": ["food"], "llSrc": "audio/ll/bungkus-AlfiyahRizzy.m4a"}, {"front": "porsi", "back": "portion / serving", "tags": ["food"], "wordSrc": "audio/tts/b937d4da25819fc1.mp3"}, {"front": "warung", "back": "small family-run eatery or shop", "tags": ["food"], "llSrc": "audio/ll/warung-AlfiyahRizzy.m4a"}, {"front": "resep", "back": "recipe", "tags": ["food"], "wordSrc": "audio/tts/633fb4a8c7a888a3.mp3"}, {"front": "di", "back": "at / in / on — place, not motion", "tags": ["grammar"], "llSrc": "audio/ll/di-Swarabakti.m4a"}, {"front": "ke", "back": "to — motion towards a place", "tags": ["grammar", "motion"], "llSrc": "audio/ll/ke-Xbypass.m4a"}, {"front": "mau", "back": "want; also \"about to\"", "tags": ["verb", "mind"], "llSrc": "audio/ll/mau-Xbypass.m4a"}, {"front": "ya", "back": "yes; also a softening tag at the end", "tags": ["particle"], "llSrc": "audio/ll/ya-Xbypass.m4a"}, {"front": "tidak", "back": "not, no — the standard form of \"nggak\"", "tags": ["grammar"], "llSrc": "audio/ll/tidak-Xbypass.m4a"}, {"front": "bagaimana", "back": "how — the standard form of \"gimana\"", "tags": ["question"], "llSrc": "audio/ll/bagaimana-SofiSolihah.m4a"}, {"front": "terus", "back": "then, and then; also \"keep on\"", "tags": ["connector"], "llSrc": "audio/ll/terus-Iripseudocor.m4a"}, {"front": "memang", "back": "indeed, it's true that — concedes a point", "tags": ["particle"], "llSrc": "audio/ll/memang-SofiSolihah.m4a"}, {"front": "emang", "back": "colloquial \"memang\" — really, actually", "tags": ["particle"], "wordSrc": "audio/tts/783c5fdec295f253.mp3"}, {"front": "pengen", "back": "colloquial \"ingin\" — to want to", "tags": ["mind"], "wordSrc": "audio/tts/dc7d6e35affca760.mp3"}, {"front": "ingin", "back": "to want, to wish — more formal than \"mau\"", "tags": ["mind"], "llSrc": "audio/ll/ingin-Iripseudocor.m4a"}, {"front": "oleh", "back": "by — marks the doer in a passive sentence", "tags": ["grammar"], "llSrc": "audio/ll/oleh-SofiSolihah.m4a"}, {"front": "pada", "back": "at, on — with times, or a formal \"to\"", "tags": ["grammar"], "llSrc": "audio/ll/pada-CloudyLosstr.m4a"}, {"front": "tanpa", "back": "without", "tags": ["grammar"], "llSrc": "audio/ll/tanpa-Xbypass.m4a"}, {"front": "sejak", "back": "since — from a point in time onward", "tags": ["time"], "llSrc": "audio/ll/sejak-SofiSolihah.m4a"}, {"front": "selama", "back": "for, during — across a stretch of time", "tags": ["time"], "wordSrc": "audio/tts/ca3d8356619e4d31.mp3"}, {"front": "menurut", "back": "according to — whose opinion it is", "tags": ["speech"], "wordSrc": "audio/tts/a194b759b11537d9.mp3"}, {"front": "tentang", "back": "about, concerning", "tags": ["grammar"], "llSrc": "audio/ll/tentang-AlfiyahRizzy.m4a"}, {"front": "begini", "back": "like this — the standard form of \"gini\"", "tags": ["demonstrative"], "llSrc": "audio/ll/begini-Writingtradi.m4a"}, {"front": "pernah", "back": "ever, to have once — experience, not past tense", "tags": ["time"], "llSrc": "audio/ll/pernah-Iripseudocor.m4a"}, {"front": "segera", "back": "right away, promptly", "tags": ["time"], "llSrc": "audio/ll/segera-AlfiyahRizzy.m4a"}, {"front": "tiba-tiba", "back": "suddenly, out of nowhere", "tags": ["time"]}, {"front": "ternyata", "back": "it turns out — marks a surprise", "tags": ["particle"], "llSrc": "audio/ll/ternyata-AlfiyahRizzy.m4a"}, {"front": "pasti", "back": "surely, definitely", "tags": ["state"], "llSrc": "audio/ll/pasti-AlfiyahRizzy.m4a"}, {"front": "tentu", "back": "of course, certainly", "tags": ["state"], "llSrc": "audio/ll/tentu-Iripseudocor.m4a"}, {"front": "perlu", "back": "to need; to be necessary", "tags": ["state"], "llSrc": "audio/ll/perlu-Iripseudocor.m4a"}, {"front": "butuh", "back": "to need — more colloquial than \"perlu\"", "tags": ["state"], "llSrc": "audio/ll/butuh-AlfiyahRizzy.m4a"}, {"front": "benci", "back": "to hate", "tags": ["emotion"], "llSrc": "audio/ll/benci-Diahasy.m4a"}, {"front": "hanya", "back": "only, just — more formal than \"cuma\"", "tags": ["grammar"], "llSrc": "audio/ll/hanya-CloudyLosstr.m4a"}, {"front": "malah", "back": "instead, on the contrary — the opposite happened", "tags": ["particle"], "llSrc": "audio/ll/malah-AlfiyahRizzy.m4a"}, {"front": "supaya", "back": "so that, in order to", "tags": ["connector"], "llSrc": "audio/ll/supaya-CloudyLosstr.m4a"}, {"front": "agar", "back": "so that — the formal \"supaya\"", "tags": ["connector"], "llSrc": "audio/ll/agar-CloudyLosstr.m4a"}, {"front": "ketika", "back": "when — at the moment that", "tags": ["connector"], "wordSrc": "audio/tts/c7c2e311b5b743f2.mp3"}, {"front": "sambil", "back": "while — doing two things at once", "tags": ["connector"], "wordSrc": "audio/tts/3b92b8667b1d780a.mp3"}, {"front": "setelah", "back": "after", "tags": ["connector"], "llSrc": "audio/ll/setelah-AlfiyahRizzy.m4a"}, {"front": "sebelum", "back": "before", "tags": ["connector"], "llSrc": "audio/ll/sebelum-CloudyLosstr.m4a"}, {"front": "setiap", "back": "every, each", "tags": ["grammar"], "llSrc": "audio/ll/setiap-SofiSolihah.m4a"}, {"front": "terlalu", "back": "too — more than is wanted", "tags": ["comparison"], "llSrc": "audio/ll/terlalu-AlfiyahRizzy.m4a"}, {"front": "sangat", "back": "very — the formal \"banget\"", "tags": ["comparison"], "llSrc": "audio/ll/sangat-Xbypass.m4a"}, {"front": "barusan", "back": "just now, a moment ago", "tags": ["time"], "wordSrc": "audio/tts/dda34edefb85c79e.mp3"}, {"front": "situ", "back": "there — near you, the listener", "tags": ["demonstrative"], "wordSrc": "audio/tts/0e574cb8c1ef0b48.mp3"}, {"front": "hal", "back": "thing, matter — abstract, never an object", "tags": ["grammar"], "llSrc": "audio/ll/hal-Xbypass.m4a"}, {"front": "cara", "back": "way, method", "tags": ["grammar"], "llSrc": "audio/ll/cara-Xbypass.m4a"}, {"front": "waktu", "back": "time; also \"when\" in a story", "tags": ["time"], "llSrc": "audio/ll/waktu-Xbypass.m4a"}, {"front": "tempat", "back": "place, spot", "tags": ["places"], "llSrc": "audio/ll/tempat-Xbypass.m4a"}, {"front": "kali", "back": "time(s) — counting repetitions", "tags": ["number"], "llSrc": "audio/ll/kali-Iripseudocor.m4a"}, {"front": "ekor", "back": "the counter used for animals", "tags": ["number"], "llSrc": "audio/ll/ekor-Xbypass.m4a"}, {"front": "sedang", "back": "in the middle of — the standard \"lagi\"", "tags": ["grammar"], "llSrc": "audio/ll/sedang-Iripseudocor.m4a"}, {"front": "mengatakan", "back": "to say — the formal \"bilang\"", "tags": ["speech"], "llSrc": "audio/ll/mengatakan-AlfiyahRizzy.m4a"}, {"front": "bekerja", "back": "to work — the formal \"kerja\"", "tags": ["verb", "work"], "llSrc": "audio/ll/bekerja-Iripseudocor.m4a"}, {"front": "selamat pagi", "back": "good morning", "tags": ["greeting"], "llSrc": "audio/ll/selamat_pagi-Xbypass.m4a"}, {"front": "selamat siang", "back": "good day (around midday)", "tags": ["greeting"], "wordSrc": "audio/tts/c03faf10f5c75310.mp3"}, {"front": "selamat sore", "back": "good afternoon (late afternoon)", "tags": ["greeting"], "wordSrc": "audio/tts/fbc0fc21f482d011.mp3"}, {"front": "selamat malam", "back": "good evening / good night", "tags": ["greeting"], "llSrc": "audio/ll/selamat_malam-Xbypass.m4a"}, {"front": "selamat tidur", "back": "good night (going to bed)", "tags": ["greeting"], "wordSrc": "audio/tts/8c22549f54c1a396.mp3"}, {"front": "selamat datang", "back": "welcome", "tags": ["greeting"], "wordSrc": "audio/tts/191b3153c3cbf240.mp3"}, {"front": "selamat jalan", "back": "safe travels (said to the one leaving)", "tags": ["greeting"], "wordSrc": "audio/tts/ad4a0890703e53e3.mp3"}, {"front": "selamat tinggal", "back": "goodbye (said by the one leaving)", "tags": ["greeting"], "wordSrc": "audio/tts/8a0d6499cce0c899.mp3"}, {"front": "halo", "back": "hello", "tags": ["greeting"], "llSrc": "audio/ll/halo-AkbarSoepadh.m4a"}, {"front": "hai", "back": "hi (casual)", "tags": ["greeting"], "wordSrc": "audio/tts/8ce816d4c36e1bf6.mp3"}, {"front": "apa kabar", "back": "how are you", "tags": ["greeting"], "llSrc": "audio/ll/apa_kabar-Muchtarrprin.m4a"}, {"front": "kabar baik", "back": "I'm well (reply to \"apa kabar\")", "tags": ["greeting"], "wordSrc": "audio/tts/bb48bdec3c67bfce.mp3"}, {"front": "terima kasih", "back": "thank you", "tags": ["greeting"], "llSrc": "audio/ll/terima_kasih-Xbypass.m4a"}, {"front": "sama-sama", "back": "you're welcome", "tags": ["greeting"], "llSrc": "audio/ll/sama_sama-SofiSolihah.m4a", "wordSrc": "audio/tts/5172d4fc1a4ff115.mp3"}, {"front": "terima kasih kembali", "back": "you're welcome (more formal)", "tags": ["greeting"], "wordSrc": "audio/tts/94293bbb7bdeac33.mp3"}, {"front": "maaf", "back": "sorry / excuse me", "tags": ["greeting"], "llSrc": "audio/ll/maaf-Iripseudocor.m4a"}, {"front": "maaf mengganggu", "back": "sorry to bother you", "tags": ["greeting"], "wordSrc": "audio/tts/55b64559ddf1ba67.mp3"}, {"front": "permisi", "back": "excuse me (passing by or entering)", "tags": ["greeting"], "wordSrc": "audio/tts/26cf699bb129400c.mp3"}, {"front": "permisi dulu", "back": "excuse me, I'll take my leave", "tags": ["greeting"], "wordSrc": "audio/tts/aad5ac1fae058742.mp3"}, {"front": "silakan", "back": "please, go ahead / help yourself", "tags": ["greeting"], "wordSrc": "audio/tts/32492cfb6bf7f0f6.mp3"}, {"front": "mohon", "back": "please (formal request)", "tags": ["greeting"], "wordSrc": "audio/tts/e4274a2823e914c7.mp3"}, {"front": "hati-hati", "back": "be careful / take care", "tags": ["greeting"], "llSrc": "audio/ll/hati_hati-AlfiyahRizzy.m4a"}, {"front": "sampai jumpa", "back": "see you", "tags": ["greeting"], "wordSrc": "audio/tts/a0d1794804835107.mp3"}, {"front": "sampai nanti", "back": "see you later", "tags": ["greeting"], "wordSrc": "audio/tts/3687bfa18a38bbd9.mp3"}, {"front": "duluan", "back": "going on ahead / leaving first", "tags": ["greeting"], "wordSrc": "audio/tts/d8f351d17ddae5cf.mp3"}, {"front": "mari", "back": "come along / let's (polite)", "tags": ["greeting"], "wordSrc": "audio/tts/4e398a0013500d7c.mp3"}, {"front": "ayo", "back": "come on / let's", "tags": ["greeting"], "llSrc": "audio/ll/ayo-AlfiyahRizzy.m4a"}, {"front": "salam kenal", "back": "nice to meet you (on first meeting)", "tags": ["greeting"], "wordSrc": "audio/tts/53a72f587d5d1e86.mp3"}, {"front": "senang bertemu", "back": "pleased to meet you", "tags": ["greeting"], "wordSrc": "audio/tts/7497e627a3913e07.mp3"}, {"front": "Anda", "back": "you (formal, to a stranger or in writing)", "tags": ["greeting"], "llSrc": "audio/ll/anda-Dvnfit.m4a"}, {"front": "selamat ulang tahun", "back": "happy birthday", "tags": ["greeting"], "wordSrc": "audio/tts/770143b030ea1d9f.mp3"}, {"front": "selamat makan", "back": "enjoy your meal", "tags": ["greeting"], "wordSrc": "audio/tts/729e48e9454d9fba.mp3"}, {"front": "semoga", "back": "hopefully / may (it be so)", "tags": ["greeting"], "llSrc": "audio/ll/semoga-AlfiyahRizzy.m4a"}, {"front": "semoga sukses", "back": "good luck", "tags": ["greeting"], "wordSrc": "audio/tts/5c174f168c0d28fd.mp3"}, {"front": "tidak usah", "back": "no need (polite refusal)", "tags": ["greeting"], "wordSrc": "audio/tts/9a106a77b4b3c3cd.mp3"}, {"front": "tidak masalah", "back": "no problem", "tags": ["greeting"], "wordSrc": "audio/tts/f9d72347f568b828.mp3"}, {"front": "kasihan", "back": "poor thing / what a shame", "tags": ["greeting"], "llSrc": "audio/ll/kasihan-Dvnfit.m4a"}, {"front": "titip", "back": "to entrust / ask someone to pass something along", "tags": ["greeting"], "wordSrc": "audio/tts/bf61f9a964ec807d.mp3"}, {"front": "kamar", "back": "room / bedroom", "tags": ["household"], "llSrc": "audio/ll/kamar-Iripseudocor.m4a"}, {"front": "kamar mandi", "back": "bathroom", "tags": ["household"], "wordSrc": "audio/tts/cc49e20c833edee9.mp3"}, {"front": "dapur", "back": "kitchen", "tags": ["household"], "llSrc": "audio/ll/dapur-Xbypass.m4a"}, {"front": "ruang tamu", "back": "living room", "tags": ["household"], "wordSrc": "audio/tts/93510ca33a3dc3f3.mp3"}, {"front": "halaman", "back": "yard / page", "tags": ["household"], "llSrc": "audio/ll/halaman-Xbypass.m4a"}, {"front": "pintu", "back": "door", "tags": ["household"], "llSrc": "audio/ll/pintu-Xbypass.m4a"}, {"front": "jendela", "back": "window", "tags": ["household"], "llSrc": "audio/ll/jendela-Xbypass.m4a"}, {"front": "lantai", "back": "floor / storey", "tags": ["household"], "wordSrc": "audio/tts/1356f40a8589784b.mp3"}, {"front": "atap", "back": "roof", "tags": ["household"], "llSrc": "audio/ll/atap-Xbypass.m4a"}, {"front": "tangga", "back": "stairs / ladder", "tags": ["household"], "llSrc": "audio/ll/tangga-Xbypass.m4a"}, {"front": "meja", "back": "table / desk", "tags": ["household"], "llSrc": "audio/ll/meja-Xbypass.m4a"}, {"front": "kursi", "back": "chair", "tags": ["household"], "llSrc": "audio/ll/kursi-Xbypass.m4a"}, {"front": "kasur", "back": "mattress / bed", "tags": ["household"], "llSrc": "audio/ll/kasur-Diahasy.m4a"}, {"front": "bantal", "back": "pillow", "tags": ["household"], "llSrc": "audio/ll/bantal-Xbypass.m4a"}, {"front": "selimut", "back": "blanket", "tags": ["household"], "llSrc": "audio/ll/selimut-SofiSolihah.m4a"}, {"front": "lemari", "back": "cupboard / wardrobe", "tags": ["household"], "llSrc": "audio/ll/lemari-SofiSolihah.m4a"}, {"front": "rak", "back": "shelf / rack", "tags": ["household"], "llSrc": "audio/ll/rak-Dvnfit.m4a"}, {"front": "kulkas", "back": "fridge", "tags": ["household"], "llSrc": "audio/ll/kulkas-Xbypass.m4a"}, {"front": "kompor", "back": "stove", "tags": ["household"], "wordSrc": "audio/tts/1f8aa9865ad1e313.mp3"}, {"front": "kipas angin", "back": "electric fan", "tags": ["household"], "wordSrc": "audio/tts/03a86807e6d41a3b.mp3"}, {"front": "AC", "back": "air conditioning", "tags": ["household"], "wordSrc": "audio/tts/1db327b188a56170.mp3"}, {"front": "lampu", "back": "lamp / light", "tags": ["household"], "llSrc": "audio/ll/lampu-Xbypass.m4a"}, {"front": "listrik", "back": "electricity", "tags": ["household"], "llSrc": "audio/ll/listrik-NikolasKHF.m4a"}, {"front": "colokan", "back": "power outlet / socket", "tags": ["household"], "wordSrc": "audio/tts/ae8b8f6355e070a2.mp3"}, {"front": "kunci", "back": "key; to lock", "tags": ["household"], "llSrc": "audio/ll/kunci-Xbypass.m4a"}, {"front": "ember", "back": "bucket", "tags": ["household"], "llSrc": "audio/ll/ember-Xbypass.m4a"}, {"front": "sabun", "back": "soap", "tags": ["household"], "llSrc": "audio/ll/sabun-Xbypass.m4a"}, {"front": "handuk", "back": "towel", "tags": ["household"], "llSrc": "audio/ll/handuk-Xbypass.m4a"}, {"front": "sikat gigi", "back": "toothbrush", "tags": ["household"], "wordSrc": "audio/tts/9788c72e3da7b063.mp3"}, {"front": "piring", "back": "plate", "tags": ["household"], "llSrc": "audio/ll/piring-Xbypass.m4a"}, {"front": "gelas", "back": "glass / cup", "tags": ["household"], "llSrc": "audio/ll/gelas-Xbypass.m4a"}, {"front": "sendok", "back": "spoon", "tags": ["household"], "llSrc": "audio/ll/sendok-Xbypass.m4a"}, {"front": "garpu", "back": "fork", "tags": ["household"], "llSrc": "audio/ll/garpu-Xbypass.m4a"}, {"front": "pisau", "back": "knife", "tags": ["household"], "llSrc": "audio/ll/pisau-Xbypass.m4a"}, {"front": "panci", "back": "pot / saucepan", "tags": ["household"], "llSrc": "audio/ll/panci-Iripseudocor.m4a"}, {"front": "wajan", "back": "wok / frying pan", "tags": ["household"], "llSrc": "audio/ll/wajan-KumeGucci.m4a"}, {"front": "sampah", "back": "rubbish / trash", "tags": ["household"], "wordSrc": "audio/tts/98f9be5093c91f29.mp3"}, {"front": "cermin", "back": "mirror", "tags": ["household"], "llSrc": "audio/ll/cermin-Xbypass.m4a"}, {"front": "jam dinding", "back": "wall clock", "tags": ["household"], "llSrc": "audio/ll/jam_dinding-SofiSolihah.m4a"}, {"front": "televisi", "back": "television", "tags": ["household"], "llSrc": "audio/ll/televisi-Xbypass.m4a"}, {"front": "HP", "back": "mobile phone (from \"handphone\")", "tags": ["household"], "wordSrc": "audio/tts/e41045d03f3b70e5.mp3"}, {"front": "kabel", "back": "cable / cord", "tags": ["household"], "wordSrc": "audio/tts/58ebdbf4831645a6.mp3"}, {"front": "tas", "back": "bag", "tags": ["household"], "llSrc": "audio/ll/tas-AlfiyahRizzy.m4a"}, {"front": "dompet", "back": "wallet / purse", "tags": ["household"], "wordSrc": "audio/tts/acd95aaf82216d3a.mp3"}, {"front": "payung", "back": "umbrella", "tags": ["household"], "wordSrc": "audio/tts/78f8466e7fb81d48.mp3"}, {"front": "berantakan", "back": "messy / in disarray", "tags": ["household"], "llSrc": "audio/ll/berantakan-SofiSolihah.m4a"}, {"front": "rapi", "back": "tidy / neat", "tags": ["household"], "wordSrc": "audio/tts/8da658749a3a8b95.mp3"}, {"front": "nol", "back": "zero", "tags": ["number"], "llSrc": "audio/ll/nol-Xbypass.m4a"}, {"front": "satu", "back": "one", "tags": ["number"], "llSrc": "audio/ll/satu-SofiSolihah.m4a"}, {"front": "dua", "back": "two", "tags": ["number"], "llSrc": "audio/ll/dua-Xbypass.m4a"}, {"front": "tiga", "back": "three", "tags": ["number"], "llSrc": "audio/ll/tiga-Iripseudocor.m4a"}, {"front": "empat", "back": "four", "tags": ["number"], "llSrc": "audio/ll/empat-Nasyaale.m4a"}, {"front": "lima", "back": "five", "tags": ["number"], "llSrc": "audio/ll/lima-Nasyaale.m4a"}, {"front": "enam", "back": "six", "tags": ["number"], "wordSrc": "audio/tts/b4bcd3d5c97ca756.mp3"}, {"front": "tujuh", "back": "seven", "tags": ["number"], "wordSrc": "audio/tts/ffc95dd3c367268a.mp3"}, {"front": "delapan", "back": "eight", "tags": ["number"], "wordSrc": "audio/tts/1a2d0ff901e068e4.mp3"}, {"front": "sembilan", "back": "nine", "tags": ["number"], "wordSrc": "audio/tts/2610b98038b4e15c.mp3"}, {"front": "sepuluh", "back": "ten", "tags": ["number"], "llSrc": "audio/ll/sepuluh-RomoEkoAmida.m4a"}, {"front": "sebelas", "back": "eleven", "tags": ["number"], "llSrc": "audio/ll/sebelas-Xbypass.m4a"}, {"front": "dua belas", "back": "twelve", "tags": ["number"], "llSrc": "audio/ll/dua_belas-Xbypass.m4a"}, {"front": "dua puluh", "back": "twenty", "tags": ["number"], "llSrc": "audio/ll/dua_puluh-Xbypass.m4a"}, {"front": "lima puluh", "back": "fifty", "tags": ["number"], "wordSrc": "audio/tts/d6d8a088ee955e3e.mp3"}, {"front": "seratus", "back": "one hundred", "tags": ["number"], "llSrc": "audio/ll/seratus-DanielWillet.m4a"}, {"front": "dua ratus", "back": "two hundred", "tags": ["number"], "wordSrc": "audio/tts/b590bd89027b2ebf.mp3"}, {"front": "seribu", "back": "one thousand", "tags": ["number"], "llSrc": "audio/ll/seribu-Xbypass.m4a"}, {"front": "sepuluh ribu", "back": "ten thousand", "tags": ["number"], "wordSrc": "audio/tts/f76ca79f18ce41ce.mp3"}, {"front": "satu juta", "back": "one million", "tags": ["number"], "wordSrc": "audio/tts/1a978f990148e3aa.mp3"}, {"front": "setengah", "back": "half", "tags": ["number"], "llSrc": "audio/ll/setengah-Iripseudocor.m4a"}, {"front": "seperempat", "back": "a quarter", "tags": ["number"], "wordSrc": "audio/tts/83f893b772f191bc.mp3"}, {"front": "separuh", "back": "half of (a thing)", "tags": ["number"], "wordSrc": "audio/tts/0602197144e45a5f.mp3"}, {"front": "puluhan", "back": "dozens / tens of", "tags": ["number"], "wordSrc": "audio/tts/a8828fd8b21da341.mp3"}, {"front": "ratusan", "back": "hundreds of", "tags": ["number"], "llSrc": "audio/ll/ratusan-SofiSolihah.m4a"}, {"front": "ribuan", "back": "thousands of", "tags": ["number"], "wordSrc": "audio/tts/ea4f22e12a6122bd.mp3"}, {"front": "belasan", "back": "somewhere in the teens", "tags": ["number"], "wordSrc": "audio/tts/96fd9142060642fb.mp3"}, {"front": "berapa", "back": "how much / how many", "tags": ["number"], "llSrc": "audio/ll/berapa-Xbypass.m4a"}, {"front": "beberapa", "back": "several / a few", "tags": ["number"], "llSrc": "audio/ll/beberapa-AlfiyahRizzy.m4a"}, {"front": "sebagian", "back": "some / part of", "tags": ["number"], "wordSrc": "audio/tts/993f35855bb590ab.mp3"}, {"front": "terakhir", "back": "last / final", "tags": ["number"], "llSrc": "audio/ll/terakhir-Iripseudocor.m4a"}, {"front": "sekali lagi", "back": "once more", "tags": ["number"], "wordSrc": "audio/tts/6933f32a2e614d98.mp3"}, {"front": "dua kali", "back": "twice", "tags": ["number"], "wordSrc": "audio/tts/9b999fc044b05f2e.mp3"}, {"front": "kilo", "back": "kilo (weight)", "tags": ["number"], "wordSrc": "audio/tts/943da8f936c4e897.mp3"}, {"front": "pasar", "back": "market", "tags": ["places"], "llSrc": "audio/ll/pasar-Xbypass.m4a"}, {"front": "toko", "back": "shop / store", "tags": ["places"], "llSrc": "audio/ll/toko-Xbypass.m4a"}, {"front": "mal", "back": "shopping mall", "tags": ["places"], "wordSrc": "audio/tts/f6846d494101be1f.mp3"}, {"front": "bank", "back": "bank", "tags": ["places"], "llSrc": "audio/ll/bank-Xbypass.m4a"}, {"front": "kantor", "back": "office", "tags": ["places"], "llSrc": "audio/ll/kantor-Xbypass.m4a"}, {"front": "sekolah", "back": "school", "tags": ["places"], "llSrc": "audio/ll/sekolah-Xbypass.m4a"}, {"front": "masjid", "back": "mosque", "tags": ["places"], "llSrc": "audio/ll/masjid-Xbypass.m4a"}, {"front": "gereja", "back": "church", "tags": ["places"], "llSrc": "audio/ll/gereja-Xbypass.m4a"}, {"front": "pura", "back": "Balinese Hindu temple", "tags": ["places"], "wordSrc": "audio/tts/5d8117cbeb2c3107.mp3"}, {"front": "kampung", "back": "home village / neighbourhood", "tags": ["places"], "llSrc": "audio/ll/kampung-Xbypass.m4a"}, {"front": "kota", "back": "city / town", "tags": ["places"], "llSrc": "audio/ll/kota-Xbypass.m4a"}, {"front": "desa", "back": "village", "tags": ["places"], "llSrc": "audio/ll/desa-Xbypass.m4a"}, {"front": "jalan raya", "back": "main road", "tags": ["places"], "llSrc": "audio/ll/jalan_raya-SofiSolihah.m4a"}, {"front": "lampu merah", "back": "traffic light", "tags": ["places"], "wordSrc": "audio/tts/26225d8c65c20ce0.mp3"}, {"front": "perempatan", "back": "crossroads / intersection", "tags": ["places"], "wordSrc": "audio/tts/12c688b0271ab1ba.mp3"}, {"front": "stasiun", "back": "train station", "tags": ["places"], "wordSrc": "audio/tts/fd12b572bb00b311.mp3"}, {"front": "terminal", "back": "bus terminal", "tags": ["places"], "wordSrc": "audio/tts/d842d60f3c86a41a.mp3"}, {"front": "bandara", "back": "airport", "tags": ["places"], "wordSrc": "audio/tts/006ea5309c603f38.mp3"}, {"front": "pelabuhan", "back": "port / harbour", "tags": ["places"], "llSrc": "audio/ll/pelabuhan-Xbypass.m4a"}, {"front": "motor", "back": "motorbike", "tags": ["transport"], "llSrc": "audio/ll/motor-AlfiyahRizzy.m4a"}, {"front": "mobil", "back": "car", "tags": ["transport"], "llSrc": "audio/ll/mobil-Xbypass.m4a"}, {"front": "bus", "back": "bus", "tags": ["transport"], "llSrc": "audio/ll/bus-AlfiyahRizzy.m4a"}, {"front": "kereta", "back": "train", "tags": ["transport"], "llSrc": "audio/ll/kereta-Xbypass.m4a"}, {"front": "kapal", "back": "ship / boat", "tags": ["transport"], "llSrc": "audio/ll/kapal-Xbypass.m4a"}, {"front": "pesawat", "back": "aeroplane", "tags": ["transport"], "wordSrc": "audio/tts/81aa2413ce75a157.mp3"}, {"front": "ojek", "back": "motorbike taxi", "tags": ["transport"], "wordSrc": "audio/tts/e30d1837011bb514.mp3"}, {"front": "becak", "back": "pedicab, three-wheeled rickshaw", "tags": ["transport"], "llSrc": "audio/ll/becak-Writingtradi.m4a"}, {"front": "angkot", "back": "shared minibus", "tags": ["transport"], "wordSrc": "audio/tts/8e8aca1246c7aeed.mp3"}, {"front": "taksi", "back": "taxi", "tags": ["transport"], "llSrc": "audio/ll/taksi-Xbypass.m4a"}, {"front": "sepeda", "back": "bicycle", "tags": ["transport"], "llSrc": "audio/ll/sepeda-Xbypass.m4a"}, {"front": "macet", "back": "traffic jam / stuck", "tags": ["transport"], "wordSrc": "audio/tts/c19d5c22daee4f6d.mp3"}, {"front": "parkir", "back": "to park / parking", "tags": ["transport"], "wordSrc": "audio/tts/67022285113cbd29.mp3"}, {"front": "bengkel", "back": "repair shop / garage", "tags": ["transport"], "llSrc": "audio/ll/bengkel-AlfiyahRizzy.m4a"}, {"front": "alamat", "back": "address", "tags": ["places"], "llSrc": "audio/ll/alamat-Xbypass.m4a"}, {"front": "peta", "back": "map", "tags": ["places"], "llSrc": "audio/ll/peta-Iripseudocor.m4a"}, {"front": "dekat", "back": "near / close", "tags": ["places"], "llSrc": "audio/ll/dekat-Xbypass.m4a"}, {"front": "jauh", "back": "far", "tags": ["places"], "llSrc": "audio/ll/jauh-Iripseudocor.m4a"}, {"front": "kiri", "back": "left", "tags": ["places"], "llSrc": "audio/ll/kiri-Iripseudocor.m4a"}, {"front": "sebelah", "back": "next to / the side", "tags": ["places"], "llSrc": "audio/ll/sebelah-CloudyLosstr.m4a"}, {"front": "belakang", "back": "behind / the back", "tags": ["places"], "llSrc": "audio/ll/belakang-AlfiyahRizzy.m4a"}, {"front": "atas", "back": "above / upstairs", "tags": ["places"], "llSrc": "audio/ll/atas-Xbypass.m4a"}, {"front": "bawah", "back": "below / under", "tags": ["places"], "wordSrc": "audio/tts/a87ce99c11352b0d.mp3"}, {"front": "dalam", "back": "inside / deep", "tags": ["places"], "llSrc": "audio/ll/dalam-Xbypass.m4a"}, {"front": "luar", "back": "outside", "tags": ["places"], "llSrc": "audio/ll/luar-SofiSolihah.m4a"}, {"front": "antara", "back": "between", "tags": ["places"], "llSrc": "audio/ll/antara-Xbypass.m4a"}, {"front": "berangkat", "back": "to depart / set off", "tags": ["transport"], "llSrc": "audio/ll/berangkat-Xbypass.m4a"}, {"front": "tiba", "back": "to arrive", "tags": ["transport"], "llSrc": "audio/ll/tiba-RomoEkoAmida.m4a"}, {"front": "tersesat", "back": "lost, having lost the way", "tags": ["transport"], "wordSrc": "audio/tts/8c8b97e93de0af3f.mp3"}, {"front": "uang", "back": "money", "tags": ["money"], "llSrc": "audio/ll/uang-Xbypass.m4a"}, {"front": "harga", "back": "price", "tags": ["money"], "llSrc": "audio/ll/harga-Xbypass.m4a"}, {"front": "rupiah", "back": "rupiah (the currency)", "tags": ["money"], "wordSrc": "audio/tts/ab8fe6c4db97f478.mp3"}, {"front": "kembalian", "back": "change (money back)", "tags": ["money"], "wordSrc": "audio/tts/09f070b55d5eb6cb.mp3"}, {"front": "tunai", "back": "cash", "tags": ["money"], "wordSrc": "audio/tts/6ba50d0beac24b38.mp3"}, {"front": "kartu", "back": "card", "tags": ["money"], "wordSrc": "audio/tts/b3f9d4ddecb22e00.mp3"}, {"front": "transfer", "back": "bank transfer", "tags": ["money"], "wordSrc": "audio/tts/ca279b3adf200de9.mp3"}, {"front": "struk", "back": "receipt", "tags": ["money"], "wordSrc": "audio/tts/17f5bf4d96878a5a.mp3"}, {"front": "bon", "back": "the bill", "tags": ["money"], "wordSrc": "audio/tts/2036418da3e7df34.mp3"}, {"front": "diskon", "back": "discount", "tags": ["money"], "wordSrc": "audio/tts/be8bb619ca19056c.mp3"}, {"front": "gratis", "back": "free of charge", "tags": ["money"], "llSrc": "audio/ll/gratis-Xbypass.m4a"}, {"front": "belanja", "back": "to shop / go shopping", "tags": ["money"], "llSrc": "audio/ll/belanja-Writingtradi.m4a"}, {"front": "pembeli", "back": "buyer / customer", "tags": ["money"], "llSrc": "audio/ll/pembeli-AlfiyahRizzy.m4a"}, {"front": "penjual", "back": "seller / vendor", "tags": ["money"], "wordSrc": "audio/tts/d4738c71ec0c910d.mp3"}, {"front": "kasir", "back": "cashier / checkout", "tags": ["money"], "wordSrc": "audio/tts/a308ee7386f1f0cd.mp3"}, {"front": "antrean", "back": "queue / line", "tags": ["money"], "wordSrc": "audio/tts/8d85a545d90f2b58.mp3"}, {"front": "nawar", "back": "to haggle (casual for \"menawar\")", "tags": ["money"], "wordSrc": "audio/tts/d18789a8a7a84088.mp3"}, {"front": "harga pas", "back": "fixed price, no haggling", "tags": ["money"], "wordSrc": "audio/tts/a667b949de63011b.mp3"}, {"front": "pas", "back": "exact / just right", "tags": ["money"], "wordSrc": "audio/tts/5f6804a98a7ea8f2.mp3"}, {"front": "uang kecil", "back": "small notes / small change", "tags": ["money"], "wordSrc": "audio/tts/2e1a1fec715c324c.mp3"}, {"front": "utang", "back": "debt / to owe", "tags": ["money"], "llSrc": "audio/ll/utang-Mutiaraaisya.m4a"}, {"front": "pinjaman", "back": "loan", "tags": ["money"], "wordSrc": "audio/tts/f3ffc629102aa13e.mp3"}, {"front": "tabungan", "back": "savings", "tags": ["money"], "llSrc": "audio/ll/tabungan-Iripseudocor.m4a"}, {"front": "gaji", "back": "salary / wages", "tags": ["money"], "llSrc": "audio/ll/gaji-Iripseudocor.m4a"}, {"front": "biaya", "back": "cost / fee", "tags": ["money"], "llSrc": "audio/ll/biaya-Iripseudocor.m4a"}, {"front": "ongkos", "back": "fare / charge", "tags": ["money"], "llSrc": "audio/ll/ongkos-SofiSolihah.m4a"}, {"front": "kredit", "back": "credit / paying in instalments", "tags": ["money"], "wordSrc": "audio/tts/bc0d3307460e783c.mp3"}, {"front": "untung", "back": "profit; also \"luckily\"", "tags": ["money"], "wordSrc": "audio/tts/eea965a4f4119033.mp3"}, {"front": "rugi", "back": "a loss; also \"a waste, a shame\"", "tags": ["money"], "wordSrc": "audio/tts/868180bef3495743.mp3"}, {"front": "laris", "back": "selling fast / in demand", "tags": ["money"], "wordSrc": "audio/tts/9d8e3ff7acc841b1.mp3"}, {"front": "Mau ke mana?", "back": "Where are you off to? — the standard passing greeting", "tags": ["smalltalk"], "wordSrc": "audio/tts/250b7e679f6ace20.mp3"}, {"front": "Dari mana?", "back": "Where have you just come from?", "tags": ["smalltalk"], "wordSrc": "audio/tts/86e9fece8b7fdb00.mp3"}, {"front": "Sudah makan?", "back": "Have you eaten? — asked as a friendly opener", "tags": ["smalltalk"], "wordSrc": "audio/tts/eb879daac067a26a.mp3"}, {"front": "Namanya siapa?", "back": "What's your name?", "tags": ["smalltalk"], "wordSrc": "audio/tts/437fab5b7bca55e6.mp3"}, {"front": "Tinggal di mana?", "back": "Where do you live?", "tags": ["smalltalk"], "wordSrc": "audio/tts/57cdb007cf1fee1c.mp3"}, {"front": "Asalnya dari mana?", "back": "Where are you from originally?", "tags": ["smalltalk"], "wordSrc": "audio/tts/bc0da239afa7e80b.mp3"}, {"front": "Berapa harganya?", "back": "How much does it cost?", "tags": ["smalltalk"], "wordSrc": "audio/tts/275e7e8aa8267e4f.mp3"}, {"front": "Di mana…?", "back": "Where is…?", "tags": ["smalltalk"], "wordSrc": "audio/tts/8c95bf34b3e6dc98.mp3"}, {"front": "Boleh minta tolong?", "back": "Could you help me?", "tags": ["smalltalk"], "wordSrc": "audio/tts/ccdf2fda482223fc.mp3"}, {"front": "Bisa bahasa Inggris?", "back": "Do you speak English?", "tags": ["smalltalk"], "wordSrc": "audio/tts/a15bf2047a8bfd99.mp3"}, {"front": "Saya tidak mengerti", "back": "I don't understand", "tags": ["smalltalk"], "wordSrc": "audio/tts/950304768237e640.mp3"}, {"front": "Bisa pelan-pelan?", "back": "Could you say that slowly?", "tags": ["smalltalk"], "wordSrc": "audio/tts/d68493c8996a3397.mp3"}, {"front": "Apa artinya?", "back": "What does it mean?", "tags": ["smalltalk"], "wordSrc": "audio/tts/c558e96bbbf50e2d.mp3"}, {"front": "Bagaimana cara…?", "back": "How do you…?", "tags": ["smalltalk"], "wordSrc": "audio/tts/ccc2606efbfacae5.mp3"}, {"front": "Lagi apa?", "back": "What are you up to?", "tags": ["smalltalk"], "wordSrc": "audio/tts/bd34f990566fabd9.mp3"}, {"front": "Ada apa?", "back": "What's up? / What's wrong?", "tags": ["smalltalk"], "wordSrc": "audio/tts/5130375356cc5c7a.mp3"}, {"front": "Gimana kalau…?", "back": "How about…? — floating a suggestion", "tags": ["smalltalk"], "wordSrc": "audio/tts/94abc90a478ee965.mp3"}, {"front": "Terserah", "back": "up to you / whatever you like", "tags": ["smalltalk"], "wordSrc": "audio/tts/df8bbebb2e6a6de4.mp3"}, {"front": "Mungkin nanti", "back": "maybe later", "tags": ["smalltalk"], "wordSrc": "audio/tts/2908d66f53d9dc9c.mp3"}, {"front": "Nggak tahu", "back": "I don't know", "tags": ["smalltalk"], "wordSrc": "audio/tts/9c121e89e0f4eb84.mp3"}, {"front": "Sebentar ya", "back": "just a moment", "tags": ["smalltalk"], "wordSrc": "audio/tts/1614db925a3034b9.mp3"}, {"front": "Sudah lama nunggu?", "back": "Have you been waiting long?", "tags": ["smalltalk"], "wordSrc": "audio/tts/2476b544409d03f8.mp3"}, {"front": "Jangan lupa", "back": "don't forget", "tags": ["smalltalk"], "wordSrc": "audio/tts/18d9863cd283f8ad.mp3"}, {"front": "Kok bisa?", "back": "How come? / How did that happen?", "tags": ["smalltalk"], "wordSrc": "audio/tts/54edf77683b26e79.mp3"}, {"front": "Masa?", "back": "Really? / No way", "tags": ["smalltalk"], "wordSrc": "audio/tts/169f94b0bb3f5f85.mp3"}, {"front": "Oh ya?", "back": "Oh really?", "tags": ["smalltalk"], "wordSrc": "audio/tts/81d1e67bf1f9b5a5.mp3"}, {"front": "Betul", "back": "right / that's true", "tags": ["smalltalk"], "llSrc": "audio/ll/betul-CloudyLosstr.m4a"}, {"front": "Setuju", "back": "agreed / I agree", "tags": ["smalltalk"], "wordSrc": "audio/tts/72f592d2aaf75c39.mp3"}, {"front": "Kalau boleh tahu", "back": "if I may ask", "tags": ["smalltalk"], "wordSrc": "audio/tts/7d80c316da0efdce.mp3"}, {"front": "Semoga lancar", "back": "hope it goes smoothly", "tags": ["smalltalk"], "wordSrc": "audio/tts/da6952bc885537f2.mp3"}, {"front": "Yuk", "back": "come on, let's (very casual)", "tags": ["smalltalk"], "wordSrc": "audio/tts/8c7af11fa6ebe8a4.mp3"}, {"front": "Boleh juga", "back": "not bad / sounds good", "tags": ["smalltalk"], "wordSrc": "audio/tts/a31d49abe836f7ed.mp3"}, {"front": "ada", "back": "to have / there is", "tags": ["verb", "state"], "llSrc": "audio/ll/ada-Xbypass.m4a"}, {"front": "ajak", "back": "to invite / ask someone along", "tags": ["verb", "speech"], "wordSrc": "audio/tts/0520dcccb14b5a65.mp3"}, {"front": "ambil", "back": "to take", "tags": ["verb", "handling"], "llSrc": "audio/ll/ambil-Iripseudocor.m4a"}, {"front": "antar", "back": "to take / deliver", "tags": ["verb", "motion"], "llSrc": "audio/ll/antar-HzuHzu.m4a"}, {"front": "antri", "back": "to queue", "tags": ["verb", "routine"], "llSrc": "audio/ll/antri-Dvnfit.m4a"}, {"front": "angkat", "back": "to lift / pick up", "tags": ["verb", "handling"], "llSrc": "audio/ll/angkat-NikolasKHF.m4a"}, {"front": "atur", "back": "to arrange", "tags": ["verb", "work"], "llSrc": "audio/ll/atur-Pitchrigi.m4a"}, {"front": "bantu", "back": "to help", "tags": ["verb", "work"], "llSrc": "audio/ll/bantu-Iripseudocor.m4a"}, {"front": "bangun", "back": "to wake up / build", "tags": ["verb", "routine"], "llSrc": "audio/ll/bangun-Xbypass.m4a"}, {"front": "bayar", "back": "to pay", "tags": ["verb", "money"], "llSrc": "audio/ll/bayar-HzuHzu.m4a"}, {"front": "baca", "back": "to read", "tags": ["verb", "mind"], "llSrc": "audio/ll/baca-Xbypass.m4a"}, {"front": "bagi", "back": "to divide / share", "tags": ["verb", "handling"], "llSrc": "audio/ll/bagi-Iripseudocor.m4a"}, {"front": "balik", "back": "to return", "tags": ["verb", "motion"], "llSrc": "audio/ll/balik-Xbypass.m4a"}, {"front": "bangkit", "back": "to rise / get up", "tags": ["verb", "motion"], "llSrc": "audio/ll/bangkit-SofiSolihah.m4a"}, {"front": "bangun tidur", "back": "to wake up", "tags": ["verb", "routine"], "wordSrc": "audio/tts/32a2d6ab81b965f1.mp3"}, {"front": "bawa", "back": "to bring / carry", "tags": ["verb", "motion"], "llSrc": "audio/ll/bawa-Titanboo.m4a"}, {"front": "belajar", "back": "to study / learn", "tags": ["verb", "mind"], "llSrc": "audio/ll/belajar-Xbypass.m4a"}, {"front": "beli", "back": "to buy", "tags": ["verb", "money"], "llSrc": "audio/ll/beli-Xbypass.m4a"}, {"front": "beri", "back": "to give", "tags": ["verb", "handling"], "llSrc": "audio/ll/beri-Xbypass.m4a"}, {"front": "bicara", "back": "to speak", "tags": ["verb", "speech"], "llSrc": "audio/ll/bicara-Xbypass.m4a"}, {"front": "buka", "back": "to open", "tags": ["verb", "handling"], "wordSrc": "audio/tts/97dca865e9534067.mp3"}, {"front": "buang", "back": "to throw away", "tags": ["verb", "household"], "wordSrc": "audio/tts/0c36d107dc5c355a.mp3"}, {"front": "bunuh", "back": "to kill", "tags": ["verb", "change"], "wordSrc": "audio/tts/b4d59c157c743d0b.mp3"}, {"front": "buru", "back": "to hurry / chase", "tags": ["verb", "motion"], "wordSrc": "audio/tts/2ffb170514adde0e.mp3"}, {"front": "cari", "back": "to look for", "tags": ["verb", "mind"], "llSrc": "audio/ll/cari-Xbypass.m4a"}, {"front": "cicip", "back": "to taste", "tags": ["verb", "routine"], "wordSrc": "audio/tts/41ae02475be22045.mp3"}, {"front": "cium", "back": "to kiss / smell", "tags": ["verb", "routine"], "llSrc": "audio/ll/cium-Xbypass.m4a"}, {"front": "catat", "back": "to note down", "tags": ["verb", "mind"], "llSrc": "audio/ll/catat-HzuHzu.m4a"}, {"front": "cuci", "back": "to wash", "tags": ["verb", "household"], "llSrc": "audio/ll/cuci-Iripseudocor.m4a"}, {"front": "curi", "back": "to steal", "tags": ["verb", "handling"], "llSrc": "audio/ll/curi-Xbypass.m4a"}, {"front": "datang", "back": "to come", "tags": ["verb", "motion"], "llSrc": "audio/ll/datang-Xbypass.m4a"}, {"front": "dandan", "back": "to get ready / dress up", "tags": ["verb", "routine"], "llSrc": "audio/ll/dandan-KumeGucci.m4a"}, {"front": "dengar", "back": "to hear / listen", "tags": ["verb", "mind"], "llSrc": "audio/ll/dengar-Xbypass.m4a"}, {"front": "dapat", "back": "to get / can", "tags": ["verb", "state"], "llSrc": "audio/ll/dapat-Xbypass.m4a"}, {"front": "duduk", "back": "to sit", "tags": ["verb", "routine"], "llSrc": "audio/ll/duduk-Xbypass.m4a"}, {"front": "dukung", "back": "to support", "tags": ["verb", "work"], "wordSrc": "audio/tts/888e0ae0bed97c09.mp3"}, {"front": "duduk manis", "back": "to sit quietly", "tags": ["verb", "routine"], "wordSrc": "audio/tts/ad366f1e1abbc692.mp3"}, {"front": "ganti", "back": "to change", "tags": ["verb", "change"], "wordSrc": "audio/tts/32b3bc2a11d1961d.mp3"}, {"front": "gas", "back": "to accelerate / gas up", "tags": ["verb", "motion"], "llSrc": "audio/ll/gas-Iripseudocor.m4a"}, {"front": "gunakan", "back": "to use", "tags": ["verb", "handling"], "wordSrc": "audio/tts/cc81f177e28c88ca.mp3"}, {"front": "habis", "back": "to run out / finish", "tags": ["verb", "change"], "llSrc": "audio/ll/habis-SofiSolihah.m4a"}, {"front": "hadap", "back": "to face", "tags": ["verb", "motion"], "wordSrc": "audio/tts/c6ecbb7d72fc1c87.mp3"}, {"front": "hadir", "back": "to attend", "tags": ["verb", "motion"], "llSrc": "audio/ll/hadir-SofiSolihah.m4a"}, {"front": "hancur", "back": "to break / destroy", "tags": ["verb", "change"], "llSrc": "audio/ll/hancur-Iripseudocor.m4a"}, {"front": "hantar", "back": "to deliver / take", "tags": ["verb", "motion"], "wordSrc": "audio/tts/bf7539bdd35e581e.mp3"}, {"front": "hapus", "back": "to delete / erase", "tags": ["verb", "tech"], "wordSrc": "audio/tts/7e9a16413c409c61.mp3"}, {"front": "hias", "back": "to decorate", "tags": ["verb", "household"], "wordSrc": "audio/tts/4a46c60b63493756.mp3"}, {"front": "hitung", "back": "to count", "tags": ["verb", "mind"], "wordSrc": "audio/tts/afa34545fbdb78a1.mp3"}, {"front": "ingat", "back": "to remember", "tags": ["verb", "mind"], "llSrc": "audio/ll/ingat-AlfiyahRizzy.m4a"}, {"front": "isi", "back": "to fill", "tags": ["verb", "handling"], "llSrc": "audio/ll/isi-CloudyLosstr.m4a"}, {"front": "izin", "back": "to permit / ask permission", "tags": ["verb", "speech"], "llSrc": "audio/ll/izin-AlfiyahRizzy.m4a"}, {"front": "jaga", "back": "to guard / take care", "tags": ["verb", "work"], "llSrc": "audio/ll/jaga-AlfiyahRizzy.m4a"}, {"front": "jalan", "back": "to walk / go", "tags": ["verb", "motion"], "llSrc": "audio/ll/jalan-Xbypass.m4a"}, {"front": "jawab", "back": "to answer", "tags": ["verb", "speech"], "llSrc": "audio/ll/jawab-Xbypass.m4a"}, {"front": "jajan", "back": "to snack / buy snacks", "tags": ["verb", "money"], "llSrc": "audio/ll/jajan-CloudyLosstr.m4a"}, {"front": "jalin", "back": "to build / weave relationships", "tags": ["verb", "work"], "wordSrc": "audio/tts/f438c728e56af580.mp3"}, {"front": "jatuh", "back": "to fall", "tags": ["verb", "motion"], "llSrc": "audio/ll/jatuh-Xbypass.m4a"}, {"front": "jemur", "back": "to dry in the sun", "tags": ["verb", "household"], "wordSrc": "audio/tts/92dde93624cdda11.mp3"}, {"front": "jual", "back": "to sell", "tags": ["verb", "money"], "wordSrc": "audio/tts/d4bcd94c480b32fb.mp3"}, {"front": "jumpa", "back": "to meet", "tags": ["verb", "motion"], "wordSrc": "audio/tts/35362cff9d704f84.mp3"}, {"front": "kabur", "back": "to flee / blur", "tags": ["verb", "motion"], "llSrc": "audio/ll/kabur-SofiSolihah.m4a"}, {"front": "kabulkan", "back": "to grant", "tags": ["verb", "change"], "wordSrc": "audio/tts/16d48825d9c4bc91.mp3"}, {"front": "kagum", "back": "to admire / be amazed", "tags": ["verb", "emotion"], "llSrc": "audio/ll/kagum-AlfiyahRizzy.m4a"}, {"front": "kasih", "back": "to give / love", "tags": ["verb", "handling"], "llSrc": "audio/ll/kasih-Xbypass.m4a"}, {"front": "kata", "back": "to say", "tags": ["verb", "speech"], "llSrc": "audio/ll/kata-Xbypass.m4a"}, {"front": "kejar", "back": "to chase", "tags": ["verb", "motion"], "wordSrc": "audio/tts/a0bdc6dee8ec2f5c.mp3"}, {"front": "kelola", "back": "to manage", "tags": ["verb", "work"], "wordSrc": "audio/tts/bd845e780270fb48.mp3"}, {"front": "kemas", "back": "to tidy up", "tags": ["verb", "household"], "wordSrc": "audio/tts/0d35da8faab048af.mp3"}, {"front": "kena", "back": "to hit / get / must", "tags": ["verb", "state"], "llSrc": "audio/ll/kena-AlfiyahRizzy.m4a"}, {"front": "kenal", "back": "to know / be acquainted", "tags": ["verb", "mind"], "wordSrc": "audio/tts/85fea95c6edda145.mp3"}, {"front": "kerja", "back": "to work", "tags": ["verb", "work"], "llSrc": "audio/ll/kerja-Xbypass.m4a"}, {"front": "kirim", "back": "to send", "tags": ["verb", "speech"], "wordSrc": "audio/tts/310be3b74af3f361.mp3"}, {"front": "kisah", "back": "to tell a story / narrate", "tags": ["verb", "speech"], "wordSrc": "audio/tts/9bde9f681b49fc5a.mp3"}, {"front": "klik", "back": "to click", "tags": ["verb", "tech"], "wordSrc": "audio/tts/3407b3797479bb23.mp3"}, {"front": "kembali", "back": "to return", "tags": ["verb", "motion"], "llSrc": "audio/ll/kembali-CloudyLosstr.m4a"}, {"front": "kumpul", "back": "to gather", "tags": ["verb", "work"], "wordSrc": "audio/tts/16d17712da485b8b.mp3"}, {"front": "kunjung", "back": "to visit", "tags": ["verb", "motion"], "wordSrc": "audio/tts/a816f19320b08538.mp3"}, {"front": "kutip", "back": "to pick up / collect", "tags": ["verb", "handling"], "llSrc": "audio/ll/kutip-Iripseudocor.m4a"}, {"front": "lari", "back": "to run", "tags": ["verb", "motion"], "llSrc": "audio/ll/lari-SKartika.m4a"}, {"front": "layan", "back": "to serve", "tags": ["verb", "work"], "wordSrc": "audio/tts/c3d65fcb93e56b2e.mp3"}, {"front": "lihat", "back": "to see", "tags": ["verb", "mind"], "llSrc": "audio/ll/lihat-Iripseudocor.m4a"}, {"front": "lipat", "back": "to fold", "tags": ["verb", "household"], "llSrc": "audio/ll/lipat-AlfiyahRizzy.m4a"}, {"front": "login", "back": "to log in", "tags": ["verb", "tech"], "wordSrc": "audio/tts/bf2644a2ef5b40f1.mp3"}, {"front": "lupa", "back": "to forget", "tags": ["verb", "mind"], "llSrc": "audio/ll/lupa-Xbypass.m4a"}, {"front": "makan", "back": "to eat", "tags": ["verb", "routine"], "llSrc": "audio/ll/makan-Xbypass.m4a"}, {"front": "main", "back": "to play", "tags": ["verb", "routine"], "llSrc": "audio/ll/main-Iripseudocor.m4a"}, {"front": "maju", "back": "to move forward", "tags": ["verb", "motion"], "llSrc": "audio/ll/maju-Iripseudocor.m4a"}, {"front": "mandi", "back": "to bathe / shower", "tags": ["verb", "routine"], "llSrc": "audio/ll/mandi-AlfiyahRizzy.m4a"}, {"front": "masak", "back": "to cook", "tags": ["verb", "household"], "wordSrc": "audio/tts/f13b2cc31fb61bc1.mp3"}, {"front": "masuk", "back": "to enter", "tags": ["verb", "motion"], "llSrc": "audio/ll/masuk-Xbypass.m4a"}, {"front": "mati", "back": "to die / turn off", "tags": ["verb", "change"], "llSrc": "audio/ll/mati-Xbypass.m4a"}, {"front": "membaca", "back": "to read", "tags": ["verb", "mind"], "llSrc": "audio/ll/membaca-Xbypass.m4a"}, {"front": "menulis", "back": "to write", "tags": ["verb", "mind"], "llSrc": "audio/ll/menulis-Xbypass.m4a"}, {"front": "mengirim", "back": "to send", "tags": ["verb", "speech"], "wordSrc": "audio/tts/022d034c565bc7fe.mp3"}, {"front": "mengerti", "back": "to understand", "tags": ["verb", "mind"], "llSrc": "audio/ll/mengerti-Xbypass.m4a"}, {"front": "minum", "back": "to drink", "tags": ["verb", "routine"], "llSrc": "audio/ll/minum-SofiSolihah.m4a"}, {"front": "mulai", "back": "to begin", "tags": ["verb", "change"], "llSrc": "audio/ll/mulai-Xbypass.m4a"}, {"front": "minta", "back": "to ask for", "tags": ["verb", "speech"], "wordSrc": "audio/tts/4783204f0fd39553.mp3"}, {"front": "naik", "back": "to go up / ride", "tags": ["verb", "motion"], "llSrc": "audio/ll/naik-Sandirambe.m4a"}, {"front": "nonton", "back": "to watch", "tags": ["verb", "routine"], "wordSrc": "audio/tts/610ddbe4fc86f3be.mp3"}, {"front": "nyalakan", "back": "to turn on", "tags": ["verb", "tech"], "wordSrc": "audio/tts/612b3cbf7b3812fb.mp3"}, {"front": "nyanyi", "back": "to sing", "tags": ["verb", "routine"], "wordSrc": "audio/tts/5313ba6a15b119bb.mp3"}, {"front": "oles", "back": "to spread / apply", "tags": ["verb", "household"], "wordSrc": "audio/tts/173d76bd31d1d52b.mp3"}, {"front": "olah", "back": "to process / exercise", "tags": ["verb", "work"], "wordSrc": "audio/tts/bd69469062c3fb61.mp3"}, {"front": "pakai", "back": "to wear / use", "tags": ["verb", "routine"], "wordSrc": "audio/tts/6cafc35a9dee7b29.mp3"}, {"front": "panggil", "back": "to call", "tags": ["verb", "speech"], "wordSrc": "audio/tts/3cfc5cf0a1159c55.mp3"}, {"front": "pantau", "back": "to monitor", "tags": ["verb", "work"], "llSrc": "audio/ll/pantau-Diahasy.m4a"}, {"front": "pegang", "back": "to hold", "tags": ["verb", "handling"], "llSrc": "audio/ll/pegang-AlfiyahRizzy.m4a"}, {"front": "pelajari", "back": "to learn / study", "tags": ["verb", "mind"], "wordSrc": "audio/tts/632f258bea8ad226.mp3"}, {"front": "pesan", "back": "to order / message", "tags": ["verb", "speech"], "llSrc": "audio/ll/pesan-AlfiyahRizzy.m4a"}, {"front": "pikir", "back": "to think", "tags": ["verb", "mind"], "llSrc": "audio/ll/pikir-Xbypass.m4a"}, {"front": "pilih", "back": "to choose", "tags": ["verb", "mind"], "llSrc": "audio/ll/pilih-Iripseudocor.m4a"}, {"front": "pindah", "back": "to move", "tags": ["verb", "motion"], "wordSrc": "audio/tts/648b8ddd8c2233ec.mp3"}, {"front": "pinjam", "back": "to borrow", "tags": ["verb", "money"], "wordSrc": "audio/tts/78f9efbf2afa02b5.mp3"}, {"front": "potong", "back": "to cut", "tags": ["verb", "handling"], "wordSrc": "audio/tts/8b0af01584134e54.mp3"}, {"front": "pulang", "back": "to go home", "tags": ["verb", "motion"], "llSrc": "audio/ll/pulang-Iripseudocor.m4a"}, {"front": "pukul", "back": "to hit / strike", "tags": ["verb", "handling"], "llSrc": "audio/ll/pukul-AlfiyahRizzy.m4a"}, {"front": "putar", "back": "to turn / rotate", "tags": ["verb", "handling"], "wordSrc": "audio/tts/2af09984558df059.mp3"}, {"front": "putus", "back": "to break / disconnect", "tags": ["verb", "change"], "wordSrc": "audio/tts/ac5eeec5935be90c.mp3"}, {"front": "rasa", "back": "to feel / taste", "tags": ["verb", "mind"], "llSrc": "audio/ll/rasa-CloudyLosstr.m4a"}, {"front": "rawat", "back": "to care for", "tags": ["verb", "work"], "wordSrc": "audio/tts/373d4486c05877fb.mp3"}, {"front": "rancang", "back": "to design / plan", "tags": ["verb", "work"], "wordSrc": "audio/tts/8ce22a0a8e2cc96d.mp3"}, {"front": "rayakan", "back": "to celebrate", "tags": ["verb", "routine"], "wordSrc": "audio/tts/7d4e14f8b6326e9a.mp3"}, {"front": "rebut", "back": "to grab / seize", "tags": ["verb", "handling"], "wordSrc": "audio/tts/c91ded3f1664b215.mp3"}, {"front": "rehat", "back": "to rest", "tags": ["verb", "routine"], "wordSrc": "audio/tts/cbc631f49f4ff651.mp3"}, {"front": "rindu", "back": "to miss", "tags": ["verb", "emotion"], "llSrc": "audio/ll/rindu-AlfiyahRizzy.m4a"}, {"front": "rusak", "back": "to damage / break", "tags": ["verb", "change"], "llSrc": "audio/ll/rusak-SofiSolihah.m4a"}, {"front": "sadari", "back": "to realize", "tags": ["verb", "mind"], "wordSrc": "audio/tts/b0e67a0f4b73cee2.mp3"}, {"front": "sambung", "back": "to connect / continue", "tags": ["verb", "change"], "wordSrc": "audio/tts/fcfc7f6ed5102262.mp3"}, {"front": "samakan", "back": "to make equal / match", "tags": ["verb", "change"], "wordSrc": "audio/tts/4258e8900233ad9e.mp3"}, {"front": "sambut", "back": "to welcome", "tags": ["verb", "speech"], "wordSrc": "audio/tts/cdbecc44e93d3a91.mp3"}, {"front": "sapu", "back": "to sweep", "tags": ["verb", "household"], "llSrc": "audio/ll/sapu-SofiSolihah.m4a"}, {"front": "sadar", "back": "to be aware / realize", "tags": ["verb", "mind"], "llSrc": "audio/ll/sadar-SofiSolihah.m4a"}, {"front": "sayang", "back": "to love / care about", "tags": ["verb", "emotion"], "llSrc": "audio/ll/sayang-CloudyLosstr.m4a"}, {"front": "sebar", "back": "to spread", "tags": ["verb", "handling"], "wordSrc": "audio/tts/b808aa5a719ea8e8.mp3"}, {"front": "seduh", "back": "to brew", "tags": ["verb", "household"], "wordSrc": "audio/tts/f3b767e1d0b6177d.mp3"}, {"front": "sebut", "back": "to mention", "tags": ["verb", "speech"], "wordSrc": "audio/tts/8fc298d099cdebcc.mp3"}, {"front": "segel", "back": "to seal", "tags": ["verb", "handling"], "wordSrc": "audio/tts/6be8413192b9e1b4.mp3"}, {"front": "selesaikan", "back": "to finish", "tags": ["verb", "change"], "wordSrc": "audio/tts/a9dbcab7d7460992.mp3"}, {"front": "selip", "back": "to slip in / tuck", "tags": ["verb", "handling"], "wordSrc": "audio/tts/3258c0d19b19ee1d.mp3"}, {"front": "sembunyi", "back": "to hide", "tags": ["verb", "handling"], "wordSrc": "audio/tts/dea0e1b8d5fc7d54.mp3"}, {"front": "simak", "back": "to listen carefully", "tags": ["verb", "mind"], "wordSrc": "audio/tts/91a0404e55bb136c.mp3"}, {"front": "simpan", "back": "to save / store", "tags": ["verb", "household"], "wordSrc": "audio/tts/6b3f450a32b33941.mp3"}, {"front": "singgah", "back": "to stop by", "tags": ["verb", "motion"], "llSrc": "audio/ll/singgah-SofiSolihah.m4a"}, {"front": "siram", "back": "to water / pour", "tags": ["verb", "household"], "wordSrc": "audio/tts/09834c2349e33f83.mp3"}, {"front": "sita", "back": "to confiscate", "tags": ["verb", "handling"], "wordSrc": "audio/tts/61dc0be3194f2dbe.mp3"}, {"front": "sobek", "back": "to tear", "tags": ["verb", "handling"], "llSrc": "audio/ll/sobek-SofiSolihah.m4a"}, {"front": "sorot", "back": "to highlight / shine on", "tags": ["verb", "handling"], "wordSrc": "audio/tts/22d915f28b2f9737.mp3"}, {"front": "suka", "back": "to like", "tags": ["verb", "emotion"], "llSrc": "audio/ll/suka-Xbypass.m4a"}, {"front": "sulap", "back": "to transform / do magic", "tags": ["verb", "change"], "wordSrc": "audio/tts/02766c40c800b268.mp3"}, {"front": "suruh", "back": "to tell / order", "tags": ["verb", "speech"], "wordSrc": "audio/tts/81436b3b1d68ecec.mp3"}, {"front": "susun", "back": "to arrange", "tags": ["verb", "work"], "wordSrc": "audio/tts/e07d109897e676bd.mp3"}, {"front": "tanya", "back": "to ask", "tags": ["verb", "speech"], "llSrc": "audio/ll/tanya-Xbypass.m4a"}, {"front": "tarik", "back": "to pull", "tags": ["verb", "handling"], "wordSrc": "audio/tts/d56fd73a0d302c47.mp3"}, {"front": "tawar", "back": "to offer / bargain", "tags": ["verb", "money"], "llSrc": "audio/ll/tawar-CloudyLosstr.m4a"}, {"front": "tampung", "back": "to accommodate / collect", "tags": ["verb", "work"], "wordSrc": "audio/tts/18d5c776d5e25a42.mp3"}, {"front": "tangkap", "back": "to catch / arrest", "tags": ["verb", "handling"], "llSrc": "audio/ll/tangkap-Iripseudocor.m4a"}, {"front": "tanggung", "back": "to bear / be responsible for", "tags": ["verb", "work"], "wordSrc": "audio/tts/5ccd3d74aa443bf3.mp3"}, {"front": "tawarkan", "back": "to offer", "tags": ["verb", "money"], "wordSrc": "audio/tts/c8cbf8d454b08ea2.mp3"}, {"front": "tebak", "back": "to guess", "tags": ["verb", "mind"], "wordSrc": "audio/tts/9fbc9e84376f10a6.mp3"}, {"front": "tidur", "back": "to sleep", "tags": ["verb", "routine"], "llSrc": "audio/ll/tidur-Xbypass.m4a"}, {"front": "tinggal", "back": "to live / stay", "tags": ["verb", "state"], "llSrc": "audio/ll/tinggal-Iripseudocor.m4a"}, {"front": "tinggalkan", "back": "to leave", "tags": ["verb", "motion"], "wordSrc": "audio/tts/2f84d22bb0a098ae.mp3"}, {"front": "tolong", "back": "to help", "tags": ["verb", "work"], "wordSrc": "audio/tts/5bc68f9f1e30b5ca.mp3"}, {"front": "tumbuh", "back": "to grow", "tags": ["verb", "change"], "llSrc": "audio/ll/tumbuh-Iripseudocor.m4a"}, {"front": "tunggu", "back": "to wait", "tags": ["verb", "routine"], "wordSrc": "audio/tts/af1c8211f43f6a9f.mp3"}, {"front": "tutup", "back": "to close", "tags": ["verb", "handling"], "llSrc": "audio/ll/tutup-Iripseudocor.m4a"}, {"front": "turun", "back": "to go down", "tags": ["verb", "motion"], "llSrc": "audio/ll/turun-Iripseudocor.m4a"}, {"front": "ubah", "back": "to change", "tags": ["verb", "change"], "wordSrc": "audio/tts/ef071132e288c9d3.mp3"}, {"front": "ukur", "back": "to measure", "tags": ["verb", "work"], "llSrc": "audio/ll/ukur-Iripseudocor.m4a"}, {"front": "ulang", "back": "to repeat", "tags": ["verb", "work"], "wordSrc": "audio/tts/6ea99e99626002a4.mp3"}, {"front": "undang", "back": "to invite", "tags": ["verb", "speech"], "wordSrc": "audio/tts/be816d1dd8e162dd.mp3"}, {"front": "urus", "back": "to handle / take care of", "tags": ["verb", "work"], "wordSrc": "audio/tts/3bfdd769ae967696.mp3"}, {"front": "wujudkan", "back": "to realize / make happen", "tags": ["verb", "change"], "wordSrc": "audio/tts/3c31a9668b507514.mp3"}, {"front": "yakin", "back": "to be sure / trust", "tags": ["verb", "mind"], "llSrc": "audio/ll/yakin-AlfiyahRizzy.m4a"}, {"front": "ziarah", "back": "to visit", "tags": ["verb", "motion"], "wordSrc": "audio/tts/909229d7c51169d9.mp3"}, {"front": "cuaca", "back": "weather", "tags": ["nature"], "llSrc": "audio/ll/cuaca-Xbypass.m4a"}, {"front": "hujan", "back": "rain", "tags": ["nature"], "llSrc": "audio/ll/hujan-Xbypass.m4a"}, {"front": "mendung", "back": "overcast / cloudy", "tags": ["nature"], "llSrc": "audio/ll/mendung-MutumanikamA.m4a"}, {"front": "awan", "back": "cloud", "tags": ["nature"], "llSrc": "audio/ll/awan-RomoEkoAmida.m4a"}, {"front": "angin", "back": "wind", "tags": ["nature"], "llSrc": "audio/ll/angin-Xbypass.m4a"}, {"front": "petir", "back": "lightning / thunder", "tags": ["nature"], "wordSrc": "audio/tts/04aa174a7e210998.mp3"}, {"front": "banjir", "back": "flood", "tags": ["nature"], "llSrc": "audio/ll/banjir-Xbypass.m4a"}, {"front": "matahari", "back": "sun", "tags": ["nature"], "llSrc": "audio/ll/matahari-Yuliyudo.m4a"}, {"front": "bintang", "back": "star", "tags": ["nature"], "llSrc": "audio/ll/bintang-Yuliyudo.m4a"}, {"front": "langit", "back": "sky", "tags": ["nature"], "llSrc": "audio/ll/langit-Xbypass.m4a"}, {"front": "cerah", "back": "clear / sunny", "tags": ["nature"], "llSrc": "audio/ll/cerah-AlfiyahRizzy.m4a"}, {"front": "musim", "back": "season", "tags": ["nature"], "llSrc": "audio/ll/musim-Xbypass.m4a"}, {"front": "musim hujan", "back": "rainy season", "tags": ["nature"], "wordSrc": "audio/tts/21fe507ad17f9f7a.mp3"}, {"front": "musim kemarau", "back": "dry season", "tags": ["nature"], "wordSrc": "audio/tts/6f705174918b57f4.mp3"}, {"front": "laut", "back": "sea", "tags": ["nature"], "llSrc": "audio/ll/laut-Xbypass.m4a"}, {"front": "pantai", "back": "beach / coast", "tags": ["nature"], "llSrc": "audio/ll/pantai-Xbypass.m4a"}, {"front": "gunung", "back": "mountain", "tags": ["nature"], "llSrc": "audio/ll/gunung-Xbypass.m4a"}, {"front": "sungai", "back": "river", "tags": ["nature"], "llSrc": "audio/ll/sungai-Xbypass.m4a"}, {"front": "sawah", "back": "rice field", "tags": ["nature"], "wordSrc": "audio/tts/0fec93149b776c3c.mp3"}, {"front": "pohon", "back": "tree", "tags": ["nature"], "llSrc": "audio/ll/pohon-Xbypass.m4a"}, {"front": "bunga", "back": "flower; also bank interest", "tags": ["nature"], "llSrc": "audio/ll/bunga-Xbypass.m4a"}, {"front": "daun", "back": "leaf", "tags": ["nature"], "llSrc": "audio/ll/daun-Xbypass.m4a"}, {"front": "kebun", "back": "garden / plantation", "tags": ["nature"], "llSrc": "audio/ll/kebun-Xbypass.m4a"}, {"front": "tanah", "back": "soil / land", "tags": ["nature"], "llSrc": "audio/ll/tanah-Xbypass.m4a"}, {"front": "hewan", "back": "animal", "tags": ["nature"], "llSrc": "audio/ll/hewan-Xbypass.m4a"}, {"front": "kucing", "back": "cat", "tags": ["nature"], "llSrc": "audio/ll/kucing-Xbypass.m4a"}, {"front": "anjing", "back": "dog", "tags": ["nature"], "llSrc": "audio/ll/anjing-Xbypass.m4a"}, {"front": "burung", "back": "bird", "tags": ["nature"], "llSrc": "audio/ll/burung-Xbypass.m4a"}, {"front": "nyamuk", "back": "mosquito", "tags": ["nature"], "llSrc": "audio/ll/nyamuk-Xbypass.m4a"}, {"front": "semut", "back": "ant", "tags": ["nature"], "llSrc": "audio/ll/semut-Xbypass.m4a"}, {"front": "gempa", "back": "earthquake", "tags": ["nature"], "wordSrc": "audio/tts/a6252c671f2ec940.mp3"}, {"front": "asap", "back": "smoke", "tags": ["nature"], "llSrc": "audio/ll/asap-Xbypass.m4a"}, {"front": "pekerjaan", "back": "job / work", "tags": ["work"], "llSrc": "audio/ll/pekerjaan-Xbypass.m4a"}, {"front": "bos", "back": "boss", "tags": ["work"], "wordSrc": "audio/tts/f7996e9395dfdbcd.mp3"}, {"front": "teman", "back": "friend", "tags": ["work"], "llSrc": "audio/ll/teman-Xbypass.m4a"}, {"front": "rekan kerja", "back": "colleague / co-worker", "tags": ["work"], "wordSrc": "audio/tts/0c7e6d9d97db6608.mp3"}, {"front": "rapat", "back": "meeting", "tags": ["work"], "llSrc": "audio/ll/rapat-SofiSolihah.m4a"}, {"front": "jadwal", "back": "schedule", "tags": ["work"], "llSrc": "audio/ll/jadwal-AlfiyahRizzy.m4a"}, {"front": "lembur", "back": "overtime", "tags": ["work"], "wordSrc": "audio/tts/9e7c6c8fdeba61a9.mp3"}, {"front": "libur", "back": "day off / holiday", "tags": ["work"], "llSrc": "audio/ll/libur-SofiSolihah.m4a"}, {"front": "cuti", "back": "leave (from work)", "tags": ["work"], "llSrc": "audio/ll/cuti-AlfiyahRizzy.m4a"}, {"front": "tugas", "back": "task / assignment", "tags": ["work"], "wordSrc": "audio/tts/4b5975cc1a1a25ab.mp3"}, {"front": "laporan", "back": "report", "tags": ["work"], "wordSrc": "audio/tts/e0f19d84b4693cca.mp3"}, {"front": "proyek", "back": "project", "tags": ["work"], "wordSrc": "audio/tts/0fb31d8498ec1de4.mp3"}, {"front": "guru", "back": "teacher", "tags": ["school"], "llSrc": "audio/ll/guru-Xbypass.m4a"}, {"front": "murid", "back": "pupil / school student", "tags": ["school"], "llSrc": "audio/ll/murid-AlfiyahRizzy.m4a"}, {"front": "mahasiswa", "back": "university student", "tags": ["school"], "llSrc": "audio/ll/mahasiswa-Iripseudocor.m4a"}, {"front": "kelas", "back": "class / classroom", "tags": ["school"], "llSrc": "audio/ll/kelas-SofiSolihah.m4a"}, {"front": "pelajaran", "back": "lesson / school subject", "tags": ["school"], "llSrc": "audio/ll/pelajaran-SofiSolihah.m4a"}, {"front": "ujian", "back": "exam", "tags": ["school"], "llSrc": "audio/ll/ujian-AlfiyahRizzy.m4a"}, {"front": "nilai", "back": "grade / value", "tags": ["school"], "llSrc": "audio/ll/nilai-SofiSolihah.m4a"}, {"front": "PR", "back": "homework (from \"pekerjaan rumah\")", "tags": ["school"], "wordSrc": "audio/tts/19b5f33c0d5cb243.mp3"}, {"front": "kuliah", "back": "university study / a lecture", "tags": ["school"], "wordSrc": "audio/tts/3e48269c89e7e1b9.mp3"}, {"front": "universitas", "back": "university", "tags": ["school"], "llSrc": "audio/ll/universitas-Xbypass.m4a"}, {"front": "lulus", "back": "to graduate / pass", "tags": ["school"], "wordSrc": "audio/tts/1fd3009558aadda6.mp3"}, {"front": "buku", "back": "book", "tags": ["school"], "llSrc": "audio/ll/buku-Xbypass.m4a"}, {"front": "pensil", "back": "pencil", "tags": ["school"], "llSrc": "audio/ll/pensil-Xbypass.m4a"}, {"front": "kertas", "back": "paper", "tags": ["school"], "llSrc": "audio/ll/kertas-Xbypass.m4a"}, {"front": "komputer", "back": "computer", "tags": ["work"], "llSrc": "audio/ll/komputer-Xbypass.m4a"}, {"front": "laptop", "back": "laptop", "tags": ["work"], "wordSrc": "audio/tts/5593391b6da637fb.mp3"}, {"front": "internet", "back": "internet", "tags": ["work"], "wordSrc": "audio/tts/3c38fafc54a8826b.mp3"}, {"front": "sinyal", "back": "signal / reception", "tags": ["work"], "llSrc": "audio/ll/sinyal-AlfiyahRizzy.m4a"}, {"front": "rajin", "back": "diligent / hardworking", "tags": ["work"], "wordSrc": "audio/tts/7e64c2fc698d6a18.mp3"}, {"front": "malas", "back": "lazy / not in the mood", "tags": ["work"], "wordSrc": "audio/tts/57ddebaa856fa890.mp3"}, {"front": "sibuk", "back": "busy", "tags": ["work"], "llSrc": "audio/ll/sibuk-AlfiyahRizzy.m4a"}, {"front": "pintar", "back": "clever / good at", "tags": ["work"], "llSrc": "audio/ll/pintar-Iripseudocor.m4a"}];
+const SRS_KEY = 'bahasa:flashcards:fsrs:v1';
+const PREFS_KEY = 'bahasa:voice:prefs:v1';
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+let srs = srsLoad(SRS_KEY);
+const $ = id => document.getElementById(id);
+
+// Same deck as flashcards.html: built-ins minus removed, plus custom cards.
+function computeDeck() {
+  const removed = syncRead(REMOVED_CARDS_KEY);
+  const custom = syncRead(CUSTOM_CARDS_KEY);
+  const byFront = new Map();
+  BUILTIN_DECK.forEach(d => { if (!removed[d.front]) byFront.set(d.front, d); });
+  Object.values(custom).forEach(d => byFront.set(d.front, Object.assign({}, d, {
+    tags: Array.isArray(d.tags) && d.tags.length ? d.tags : (d.tag ? [d.tag] : ['custom']),
+  })));
+  return [...byFront.values()];
+}
+let DECK = computeDeck();
+
+const prefs = Object.assign({ tag: '', newPer: 5, waitMs: 8000 }, srsLoad(PREFS_KEY));
+function savePrefs() { srsSave(PREFS_KEY, prefs); }
+
+function renderTagSel() {
+  const tags = [...new Set(DECK.flatMap(d => d.tags))].sort();
+  if (prefs.tag && !tags.includes(prefs.tag)) prefs.tag = '';
+  $('tagSel').innerHTML = '<option value="">All words</option>' +
+    tags.map(t => `<option value="${t.replace(/"/g, '&quot;')}">${t}</option>`).join('');
+  $('tagSel').value = prefs.tag;
+}
+renderTagSel();
+$('newSel').value = String(prefs.newPer);
+$('waitSel').value = String(prefs.waitMs);
+$('tagSel').onchange = e => { prefs.tag = e.target.value; savePrefs(); renderStats(); };
+$('newSel').onchange = e => { prefs.newPer = Number(e.target.value); savePrefs(); renderStats(); };
+$('waitSel').onchange = e => { prefs.waitMs = Number(e.target.value); savePrefs(); };
+
+function setSyncState() {}
+syncRemoteAutoPull(() => { srs = srsLoad(SRS_KEY); DECK = computeDeck(); renderTagSel(); renderStats(); }, setSyncState);
+
+// ---- Session state ---------------------------------------------------------
+let running = false;
+let runId = 0;              // bumped to cancel whatever the loop is awaiting
+let current = null;
+let newShown = 0;
+let session = { done: 0, right: 0 };
+let forcedNext = null;      // a card "go back" put back on top
+
+function pool() {
+  return DECK.filter(d => !prefs.tag || d.tags.includes(prefs.tag));
+}
+function pickNext() {
+  if (forcedNext) { const c = forcedNext; forcedNext = null; return c; }
+  const p = pool();
+  const reviews = p.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
+  let due = reviews;
+  if (!due.length && newShown < prefs.newPer) due = p.filter(d => !srs[d.front]);
+  if (!due.length) return null;
+  return srsPickAvoidingRecent(due, srsWordKeys);
+}
+
+function renderStats() {
+  const p = pool();
+  const due = p.filter(d => srs[d.front] && srsIsDue(srs[d.front])).length;
+  const fresh = p.filter(d => !srs[d.front]).length;
+  const s = session.done
+    ? `This session: ${session.done} reviewed, ${session.right} right. `
+    : '';
+  $('stats').textContent = `${s}${due} due · ${fresh} new available`;
+}
+renderStats();
+
+function show(phase, opts) {
+  opts = opts || {};
+  const ph = $('phase');
+  ph.textContent = phase;
+  ph.classList.toggle('listening', !!opts.listening);
+  $('lockPhase').textContent = phase;
+  if ('front' in opts) { $('front').textContent = opts.front; $('lockFront').textContent = opts.front; }
+  if ('answer' in opts) $('answer').textContent = opts.answer;
+  if ('heard' in opts) $('heard').textContent = opts.heard ? '“' + opts.heard + '”' : '';
+  if ('verdict' in opts) {
+    $('verdict').textContent = opts.verdict || '';
+    $('verdict').className = 'verdict' + (opts.grade ? ' g' + opts.grade : '');
+  }
+}
+
+// ---- Audio out -------------------------------------------------------------
+let enVoice = null;
+function pickEnVoice() {
+  if (!ttsHasSupport) return;
+  const vs = speechSynthesis.getVoices() || [];
+  enVoice = vs.find(v => /^en[-_]US/i.test(v.lang) && v.localService)
+    || vs.find(v => /^en[-_]US/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
+}
+pickEnVoice();
+ttsOnVoicesChanged(pickEnVoice);
+
+function sayEn(text) {
+  if (!ttsHasSupport || !text) return Promise.resolve(false);
+  speechSynthesis.cancel();
+  return new Promise(resolve => {
+    const u = new SpeechSynthesisUtterance(text);
+    if (enVoice) { u.voice = enVoice; u.lang = enVoice.lang; } else u.lang = 'en-US';
+    u.rate = 1.0;
+    let done = false;
+    const fin = ok => { if (!done) { done = true; resolve(ok); } };
+    u.onend = () => fin(true);
+    u.onerror = () => fin(false);
+    // iOS occasionally never fires 'end'; don't let that stall the drill.
+    setTimeout(() => fin(false), 1500 + text.length * 120);
+    speechSynthesis.speak(u);
+  });
+}
+
+function sayId(card) {
+  const word = card.front.split(' / ')[0].trim();
+  return ttsSay(word, card.llSrc || card.wordSrc, 0.9);
+}
+
+// iOS only lets a page make sound after a tap. The Start tap plays silence
+// through the same <audio> element and speech engine the drill reuses, which
+// unlocks both for the rest of the session.
+const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+function unlockAudio() {
+  if (ttsClipAudio) { ttsClipAudio.src = SILENCE; ttsClipAudio.play().catch(() => {}); }
+  if (ttsHasSupport) speechSynthesis.speak(new SpeechSynthesisUtterance(' '));
+}
+
+const pause = ms => new Promise(r => setTimeout(r, ms));
+
+// ---- Audio in --------------------------------------------------------------
+// One short recognition per answer window rather than a single continuous
+// session: continuous mode on iOS drops out after a while and hears the page's
+// own voice. Listening only after the audio finishes keeps the page from
+// grading itself. Resolves to the recognizer's alternatives, best first,
+// or [] for silence.
+let activeRec = null;
+let fatalMic = null;
+
+function listen(ms) {
+  return new Promise(resolve => {
+    if (!SR) { resolve([]); return; }
+    const rec = new SR();
+    activeRec = rec;
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.maxAlternatives = 3;
+    rec.continuous = false;
+    let alts = [];
+    let settled = false;
+    let deadline = Date.now() + ms;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearInterval(tick);
+      if (activeRec === rec) activeRec = null;
+      resolve(alts.filter(Boolean));
+    };
+    rec.onresult = e => {
+      const res = e.results[e.results.length - 1];
+      const texts = [];
+      for (let i = 0; i < res.length; i++) texts.push(res[i].transcript.trim());
+      // Earlier final chunks (rare without continuous) are kept in front.
+      const before = [];
+      for (let i = 0; i < e.results.length - 1; i++) before.push(e.results[i][0].transcript.trim());
+      const prefix = before.join(' ');
+      alts = texts.map(t => (prefix ? prefix + ' ' + t : t));
+      show('Heard', { listening: true, heard: alts[0] });
+      // Still talking: don't cut the sentence off at the deadline.
+      deadline = Math.max(deadline, Date.now() + 1200);
+      if (res.isFinal) { try { rec.stop(); } catch (_) {} }
+    };
+    rec.onerror = e => {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') {
+        fatalMic = e.error;
+      }
+    };
+    rec.onend = finish;
+    const tick = setInterval(() => {
+      if (Date.now() > deadline) { try { rec.stop(); } catch (_) {} }
+      if (Date.now() > deadline + 2500) { try { rec.abort(); } catch (_) {} finish(); }
+    }, 200);
+    try { rec.start(); } catch (_) { finish(); }
+  });
+}
+
+function stopListening() {
+  if (activeRec) { try { activeRec.abort(); } catch (_) {} activeRec = null; }
+}
+
+// ---- Rating ----------------------------------------------------------------
+const GRADE_NAME = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
+
+function rate(card, grade) {
+  const isNew = !srs[card.front];
+  if (isNew) newShown++;
+  const ts = srsLogReview('flash', grade, isNew, card.front);
+  srsPushUndo({ card, front: card.front, prev: srs[card.front] || null, ts, isNew });
+  srs[card.front] = fsrsNextState(srs[card.front], grade, Date.now());
+  srsSave(SRS_KEY, srs);
+  syncRemoteQueuePush(setSyncState);
+  session.done++;
+  if (grade >= 3) session.right++;
+  $('undoBtn').disabled = false;
+  renderStats();
+}
+
+function undoLast() {
+  const u = srsPopUndo();
+  if (!u) return null;
+  const restored = srsRestoreState(u.prev);
+  if (restored) srs[u.front] = restored; else delete srs[u.front];
+  srsSave(SRS_KEY, srs);
+  srsUnlogReview(u.ts);
+  syncRemoteQueuePush(setSyncState);
+  session.done = Math.max(0, session.done - 1);
+  if (u.isNew) newShown = Math.max(0, newShown - 1);
+  $('undoBtn').disabled = !srsUndoDepth();
+  renderStats();
+  return u.card;
+}
+
+// ---- The drill -------------------------------------------------------------
+class Cancelled extends Error {}
+function guard(id) { if (id !== runId || !running) throw new Cancelled(); }
+
+// Plays the card, listens, and returns what the answer window decided:
+// a grade, or a control word for the loop to act on.
+async function drillCard(id, card) {
+  let silences = 0;
+  let repeats = 0;
+  for (;;) {
+    show('Listen', { front: card.front.split(' / ')[0], answer: '', heard: '', verdict: '' });
+    await sayId(card);
+    guard(id);
+    await pause(250);
+    guard(id);
+    show('Listening — what does it mean?', { listening: true });
+    const alts = await listen(prefs.waitMs);
+    guard(id);
+    if (fatalMic) return { cmd: 'mic' };
+    const heard = alts[0] || '';
+    const r = alts.some(a => voiceClassifyAnswer(a, card.back).kind === 'correct')
+      ? { kind: 'correct' } : voiceClassifyAnswer(heard, card.back);
+    show(r.kind === 'silent' ? '' : 'Heard', { heard });
+    if (r.kind === 'silent') {
+      if (++silences >= 2) return { cmd: 'idle' };
+      continue;
+    }
+    if (r.kind === 'command') {
+      if (r.cmd === 'repeat' && repeats++ < 3) continue;
+      if (r.cmd === 'repeat') return { grade: 1 };
+      return { cmd: r.cmd };
+    }
+    const gloss = voiceSpokenGloss(card.back);
+    show('Answer', { answer: card.back });
+    if (r.kind === 'correct') {
+      show('Answer', { verdict: 'Right — Good', grade: 3 });
+      await sayEn('Yes. ' + gloss);
+      return { grade: 3 };
+    }
+    if (r.kind === 'grade') {
+      show('Answer', { verdict: GRADE_NAME[r.grade], grade: r.grade });
+      await sayEn(gloss);
+      return { grade: r.grade };
+    }
+    // Said something that isn't the gloss, but could be a fine synonym.
+    for (let ask = 0; ask < 2; ask++) {
+      await sayEn(ask ? 'Right or wrong?' : gloss + '. Right or wrong?');
+      guard(id);
+      await pause(200);
+      show('Right or wrong?', { listening: true });
+      const c = voiceClassifyConfirm((await listen(5000))[0] || '');
+      guard(id);
+      if (fatalMic) return { cmd: 'mic' };
+      if (c.kind === 'grade') {
+        show('Answer', { verdict: GRADE_NAME[c.grade], grade: c.grade });
+        return { grade: c.grade };
+      }
+      if (c.kind === 'command') return { cmd: c.cmd };
+    }
+    return { cmd: 'skip' };
+  }
+}
+
+async function waitForResume(id) {
+  show('Paused — say “resume”', { listening: true });
+  await sayEn('Pausing. Say resume when you’re ready.');
+  const until = Date.now() + 10 * 60 * 1000;
+  while (Date.now() < until) {
+    guard(id);
+    const alts = await listen(10000);
+    guard(id);
+    if (fatalMic) return false;
+    if (alts.some(voiceIsResume)) return true;
+  }
+  return false;
+}
+
+async function run() {
+  const id = ++runId;
+  try {
+    while (true) {
+      guard(id);
+      const card = pickNext();
+      if (!card) {
+        show('All caught up', { front: '', answer: pool().length ? 'Nothing due right now.' : 'No words in this filter.', heard: '', verdict: '' });
+        await sayEn(session.done ? `All caught up. ${session.right} of ${session.done} right.` : 'Nothing due right now.');
+        stop();
+        return;
+      }
+      current = card;
+      srsNoteShown(srsWordKeys(card));
+      const out = await drillCard(id, card);
+      guard(id);
+      if (out.grade) {
+        rate(card, out.grade);
+        current = null;
+        await pause(600);
+        continue;
+      }
+      if (out.cmd === 'mic') { micBlocked(); stop(); return; }
+      if (out.cmd === 'stop') { await sayEn('Stopped.'); stop(); return; }
+      if (out.cmd === 'skip') { show('Skipped', { verdict: '' }); continue; }
+      if (out.cmd === 'undo') {
+        const back = undoLast();
+        if (back) { forcedNext = back; await sayEn('Going back.'); }
+        else await sayEn('Nothing to undo.');
+        continue;
+      }
+      if (out.cmd === 'idle') {
+        forcedNext = card;
+        if (!(await waitForResume(id))) {
+          if (fatalMic) micBlocked();
+          stop();
+          return;
+        }
+        await sayEn('OK.');
+      }
+    }
+  } catch (e) {
+    if (!(e instanceof Cancelled)) { console.error(e); stop(); }
+  }
+}
+
+// ---- Wake lock + pocket lock -----------------------------------------------
+let wakeLock = null;
+async function holdScreen() {
+  try {
+    if ('wakeLock' in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (_) {}
+}
+function releaseScreen() {
+  if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+}
+
+function setLocked(on) {
+  $('lock').hidden = !on;
+}
+(function wireHold() {
+  const btn = $('holdBtn');
+  let timer = null;
+  const cancel = () => { clearTimeout(timer); timer = null; btn.classList.remove('holding'); };
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    btn.classList.add('holding');
+    timer = setTimeout(() => { cancel(); setLocked(false); }, 1500);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => btn.addEventListener(t, cancel));
+  $('lock').addEventListener('touchstart', e => { if (e.target !== btn) e.preventDefault(); }, { passive: false });
+})();
+
+// ---- Start / stop ----------------------------------------------------------
+function start() {
+  if (running) return;
+  if (!SR) return;
+  fatalMic = null;
+  unlockAudio();
+  running = true;
+  holdScreen();
+  $('startBtn').textContent = 'Stop';
+  $('skipBtn').disabled = false;
+  $('lockBtn').disabled = false;
+  run();
+}
+
+function stop() {
+  running = false;
+  runId++;
+  stopListening();
+  ttsStop();
+  releaseScreen();
+  setLocked(false);
+  $('startBtn').textContent = session.done ? 'Resume' : 'Start';
+  $('skipBtn').disabled = true;
+  $('lockBtn').disabled = true;
+  show(session.done ? 'Stopped' : 'Tap Start, then put the phone down', { listening: false });
+  if (current) forcedNext = forcedNext || current;
+}
+
+function micBlocked() {
+  const w = $('unsupported');
+  w.hidden = false;
+  w.innerHTML = fatalMic === 'service-not-allowed'
+    ? 'Speech recognition is turned off on this device. On iPhone: Settings &rarr; Siri &rarr; turn on <b>Siri</b> (or Settings &rarr; General &rarr; Keyboard &rarr; <b>Enable Dictation</b>), then reload.'
+    : 'Microphone access was blocked. Allow the microphone for this site (on iPhone: Settings &rarr; Safari &rarr; Microphone), then reload.';
+}
+
+$('startBtn').onclick = () => (running ? stop() : start());
+$('skipBtn').onclick = () => {
+  if (!running) return;
+  // Restart the loop on a fresh card; the skipped one stays unrated.
+  runId++;
+  stopListening();
+  ttsStop();
+  running = true;
+  run();
+};
+$('undoBtn').onclick = () => {
+  const back = undoLast();
+  if (!back) return;
+  forcedNext = back;
+  if (running) { runId++; stopListening(); ttsStop(); run(); }
+  else show('Went back', { front: back.front.split(' / ')[0], answer: '', heard: '', verdict: '' });
+};
+$('lockBtn').onclick = () => { if (running) setLocked(true); };
+
+// Locking the phone or switching apps kills recognition; stop cleanly so the
+// screen doesn't come back to a loop stuck mid-listen.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && running) {
+    stop();
+    show('Paused — the phone locked. Tap Resume.');
+  }
+});
+
+if (!SR) {
+  const w = $('unsupported');
+  w.hidden = false;
+  const standalone = window.navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  w.innerHTML = standalone
+    ? 'This browser doesn&rsquo;t offer speech recognition inside the home-screen app. Open this page in <b>Safari</b> (or Chrome) instead.'
+    : 'This browser doesn&rsquo;t offer speech recognition. Use Safari on iPhone, or Chrome.';
+  $('startBtn').disabled = true;
+}
+</script>
+</body>
+</html>

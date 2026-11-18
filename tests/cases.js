@@ -466,3 +466,67 @@ asyncSuite('sync: an expired token is detected, reported, and replaceable in pla
   localStorage.clear();
   delete globalThis.fetch;
 });
+
+// ---- Voice drill answer matching ------------------------------------------
+
+suite('voice: accepted phrases come from the meaning, not the notes', () => {
+  deepEq(voiceAccepted('at / in / on — place, not motion'), ['at', 'in', 'on'],
+    'explanation after the dash is not an answer');
+  ok(voiceAccepted('tag question / seeking agreement — "right?"').includes('right'),
+    'quoted gloss after the dash is accepted');
+  ok(voiceAccepted('want; also "about to"').includes('about to'), 'semicolon alternatives + quotes');
+  ok(voiceAccepted('I / me (polite, neutral)').includes('me'), 'parentheticals dropped');
+  ok(!voiceAccepted('I / me (polite, neutral)').includes('polite'), 'parenthetical not accepted');
+});
+
+suite('voice: saying the meaning is correct', () => {
+  const cases = [
+    ['friend', 'friend'], ['a friend', 'friend'], ['eating', 'to eat'], ['it means to eat', 'to eat'],
+    ['shirt', 'clothes / a shirt or top'], ['me', 'I / me (polite, neutral)'],
+    ['2', 'two'], ['1000', 'thousand'], ['Monday', 'Monday'], ['right', 'tag question / seeking agreement — "right?"'],
+    ['what', 'what'], ['go back', 'to go back / return'],
+  ];
+  cases.forEach(([said, back]) =>
+    eq(voiceClassifyAnswer(said, back).kind, 'correct', `"${said}" for "${back}"`));
+});
+
+suite('voice: wrong meanings are not marked correct', () => {
+  eq(voiceClassifyAnswer('motion', 'at / in / on — place, not motion').kind, 'unclear', 'note word is not an answer');
+  eq(voiceClassifyAnswer('kitchen', 'bathroom').kind, 'unclear', 'different word');
+  eq(voiceClassifyAnswer('the', 'the other one').kind, 'unclear', 'stopword alone does not match a content gloss');
+});
+
+suite('voice: self-grades and commands', () => {
+  deepEq(voiceClassifyAnswer("I don't know", 'friend'), { kind: 'grade', grade: 1 }, "don't know");
+  deepEq(voiceClassifyAnswer("don't know", 'to know'), { kind: 'grade', grade: 1 }, "don't know beats the gloss 'know'");
+  deepEq(voiceClassifyAnswer('easy', 'friend'), { kind: 'grade', grade: 4 }, 'easy');
+  deepEq(voiceClassifyAnswer('hard', 'friend'), { kind: 'grade', grade: 2 }, 'hard');
+  deepEq(voiceClassifyAnswer('good', 'friend'), { kind: 'grade', grade: 3 }, 'good');
+  eq(voiceClassifyAnswer('good', 'good / nice').kind, 'correct', '"good" for a card meaning good');
+  deepEq(voiceClassifyAnswer('repeat', 'friend'), { kind: 'command', cmd: 'repeat' }, 'repeat');
+  deepEq(voiceClassifyAnswer('skip', 'friend'), { kind: 'command', cmd: 'skip' }, 'skip');
+  deepEq(voiceClassifyAnswer('go back', 'friend'), { kind: 'command', cmd: 'undo' }, 'go back');
+  deepEq(voiceClassifyAnswer('stop', 'friend'), { kind: 'command', cmd: 'stop' }, 'stop');
+  eq(voiceClassifyAnswer('', 'friend').kind, 'silent', 'silence');
+  eq(voiceClassifyAnswer('I think it means to stop the car', 'friend').kind, 'unclear',
+    'a long answer containing "stop" is not a command');
+});
+
+suite('voice: right-or-wrong confirmation', () => {
+  deepEq(voiceClassifyConfirm('right'), { kind: 'grade', grade: 3 }, 'right');
+  deepEq(voiceClassifyConfirm('yes'), { kind: 'grade', grade: 3 }, 'yes');
+  deepEq(voiceClassifyConfirm('wrong'), { kind: 'grade', grade: 1 }, 'wrong');
+  deepEq(voiceClassifyConfirm('no'), { kind: 'grade', grade: 1 }, 'no');
+  deepEq(voiceClassifyConfirm('almost'), { kind: 'grade', grade: 2 }, 'almost');
+  deepEq(voiceClassifyConfirm('easy'), { kind: 'grade', grade: 4 }, 'easy');
+  deepEq(voiceClassifyConfirm('stop'), { kind: 'command', cmd: 'stop' }, 'stop');
+  eq(voiceClassifyConfirm('').kind, 'silent', 'silence');
+  ok(voiceIsResume('ok resume'), 'resume');
+  ok(!voiceIsResume('hello there'), 'not resume');
+});
+
+suite('voice: spoken gloss drops the notes', () => {
+  eq(voiceSpokenGloss('clothes / a shirt or top'), 'clothes, or a shirt or top', 'slashes become "or"');
+  eq(voiceSpokenGloss('at / in / on — place, not motion'), 'at, or in, or on', 'notes after the dash dropped');
+  eq(voiceSpokenGloss('I / me (polite, neutral)'), 'I, or me', 'parentheticals dropped');
+});

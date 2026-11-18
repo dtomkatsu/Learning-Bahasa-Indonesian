@@ -12,7 +12,7 @@
 // Reads go to the specific cache rather than caches.match(), which searches
 // every cache in the origin and would happily serve a stale copy of something
 // the shell bump was meant to replace.
-const VERSION = 'v8';
+const VERSION = 'v9';
 const MEDIA_VERSION = 'v1';
 const SHELL = `bahasa-shell-${VERSION}`;
 const MEDIA = `bahasa-media-${MEDIA_VERSION}`;
@@ -23,6 +23,7 @@ const PRECACHE = [
   'flashcards.html',
   'quiz.html',
   'study.html',
+  'voice.html',
   'conversation-1-player.html',
   'manifest.json',
   'icon-192.png',

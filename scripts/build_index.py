@@ -120,6 +120,10 @@ __PWA_META__
     <div class="name">Flashcards</div>
     <div class="meta">vocab drill</div>
   </a>
+  <a class="card practice" href="voice.html">
+    <div class="name">Voice drill</div>
+    <div class="meta">hands-free flashcards &mdash; hear it, say the meaning</div>
+  </a>
   <a class="card practice" href="quiz.html">
     <div class="name">Quiz</div>
     <div class="meta">fill-in-the-blank from real lines</div>
