@@ -128,9 +128,11 @@ const VOICE_GRADES = [
   // "don't know" before anything that could find "know" in a gloss.
   [1, ["don't know", 'dont know', 'do not know', 'no idea', 'not sure', 'no clue',
        'forgot', 'i forget', 'pass', 'bad', 'wrong', 'missed', 'miss', 'nope', 'no']],
-  [2, ['hard', 'difficult', 'almost', 'close', 'kind of', 'sort of']],
-  [4, ['easy', 'too easy', 'super easy', 'obvious']],
-  [3, ['good', 'got it', 'right', 'correct', 'yes', 'yeah', 'yep', 'knew it', 'i knew it', 'know it', 'i know it']],
+  [2, ['hard', 'heart', 'hart', 'difficult', 'almost', 'close', 'kind of', 'sort of']],
+  // Plus what recognizers make of a lone one-word answer: "good" comes back
+  // as "could" or "goods", "easy" as "ez" or "easey".
+  [4, ['easy', 'too easy', 'super easy', 'obvious', 'ez', 'easey', 'eazy', 'easily']],
+  [3, ['good', 'could', 'goods', 'gud', 'good good', 'very good', 'got it', 'right', 'correct', 'yes', 'yeah', 'yep', 'knew it', 'i knew it', 'know it', 'i know it']],
 ];
 
 function voiceFind(s, table) {

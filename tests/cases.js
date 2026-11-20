@@ -530,3 +530,11 @@ suite('voice: spoken gloss drops the notes', () => {
   eq(voiceSpokenGloss('at / in / on — place, not motion'), 'at, or in, or on', 'notes after the dash dropped');
   eq(voiceSpokenGloss('I / me (polite, neutral)'), 'I, or me', 'parentheticals dropped');
 });
+
+suite('voice: recognizer spellings of one-word grades', () => {
+  deepEq(voiceClassifyAnswer('Good.', 'friend'), { kind: 'grade', grade: 3 }, 'Good. with punctuation');
+  deepEq(voiceClassifyAnswer('Could', 'friend'), { kind: 'grade', grade: 3 }, '"could" heard for good');
+  deepEq(voiceClassifyAnswer('Easy!', 'friend'), { kind: 'grade', grade: 4 }, 'Easy!');
+  deepEq(voiceClassifyAnswer('Heart', 'friend'), { kind: 'grade', grade: 2 }, '"heart" heard for hard');
+  eq(voiceClassifyAnswer('heart', 'heart / liver').kind, 'correct', 'but "heart" is the meaning for hati');
+});

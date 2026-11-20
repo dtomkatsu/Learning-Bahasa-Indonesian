@@ -125,7 +125,7 @@ __PWA_META__
       <option value="12000">12 s</option></select></label>
   </div>
   <div class="help">
-    <p><b>How it works.</b> You hear an Indonesian word. Say what it means in English
+    <p><b>How it works.</b> You hear an Indonesian word, then a short beep: that&rsquo;s the mic opening. Say what it means in English
     (&ldquo;friend&rdquo;, &ldquo;to eat&rdquo;) and it grades you. Or grade yourself instead:
     <b>good</b>, <b>easy</b>, <b>hard</b>, or <b>don&rsquo;t know</b>. Either way you hear the
     answer before the next word. If it can&rsquo;t tell, it reads the answer and asks
@@ -276,6 +276,11 @@ function sayId(card) {
 // unlocks both for the rest of the session.
 const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
 function unlockAudio() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC && !audioCtx) audioCtx = new AC();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (_) {}
   if (ttsClipAudio) { ttsClipAudio.src = SILENCE; ttsClipAudio.play().catch(() => {}); }
   if (ttsHasSupport) speechSynthesis.speak(new SpeechSynthesisUtterance(' '));
 }
@@ -283,59 +288,105 @@ function unlockAudio() {
 const pause = ms => new Promise(r => setTimeout(r, ms));
 
 // ---- Audio in --------------------------------------------------------------
-// One short recognition per answer window rather than a single continuous
-// session: continuous mode on iOS drops out after a while and hears the page's
-// own voice. Listening only after the audio finishes keeps the page from
-// grading itself. Resolves to the recognizer's alternatives, best first,
-// or [] for silence.
+// One recognition session per answer window, not one for the whole drill:
+// a long-lived session hears the page's own voice, and listening only after
+// the audio finishes keeps the page from grading itself.
+//
+// Safari's recognizer ends on its own, often within a second and before a
+// one-word answer like "good" is out, which read as silence and replayed the
+// word. So the window is ours, not the recognizer's: if it ends early it is
+// restarted until the window closes, and the window closes once you have
+// stopped talking for SPEECH_GAP_MS rather than on the recognizer's verdict.
+// Resolves to the alternatives heard, best first, or [] for silence.
+const SPEECH_GAP_MS = 1100;
 let activeRec = null;
 let fatalMic = null;
 
 function listen(ms) {
   return new Promise(resolve => {
     if (!SR) { resolve([]); return; }
-    const rec = new SR();
-    activeRec = rec;
-    rec.lang = 'en-US';
-    rec.interimResults = true;
-    rec.maxAlternatives = 3;
-    rec.continuous = false;
     let alts = [];
+    let kept = '';             // text from sessions that already ended
     let settled = false;
     let deadline = Date.now() + ms;
+    let lastSpeech = 0;
+    let rec = null;
+    let cued = false;
     const finish = () => {
       if (settled) return;
       settled = true;
       clearInterval(tick);
-      if (activeRec === rec) activeRec = null;
+      if (rec) { try { rec.abort(); } catch (_) {} }
+      activeRec = null;
       resolve(alts.filter(Boolean));
     };
-    rec.onresult = e => {
-      const res = e.results[e.results.length - 1];
-      const texts = [];
-      for (let i = 0; i < res.length; i++) texts.push(res[i].transcript.trim());
-      // Earlier final chunks (rare without continuous) are kept in front.
-      const before = [];
-      for (let i = 0; i < e.results.length - 1; i++) before.push(e.results[i][0].transcript.trim());
-      const prefix = before.join(' ');
-      alts = texts.map(t => (prefix ? prefix + ' ' + t : t));
-      show('Heard', { listening: true, heard: alts[0] });
-      // Still talking: don't cut the sentence off at the deadline.
-      deadline = Math.max(deadline, Date.now() + 1200);
-      if (res.isFinal) { try { rec.stop(); } catch (_) {} }
+    const open = () => {
+      if (settled) return;
+      const r = new SR();
+      rec = activeRec = r;
+      r.lang = 'en-US';
+      r.interimResults = true;
+      r.maxAlternatives = 3;
+      r.continuous = true;
+      r.onstart = () => { if (!cued) { cued = true; earcon(); } };
+      r.onresult = e => {
+        if (r !== rec) return;
+        // Everything this session has heard, final or not; alternatives come
+        // from its latest result.
+        const parts = [];
+        for (let i = 0; i < e.results.length - 1; i++) parts.push(e.results[i][0].transcript.trim());
+        const last = e.results[e.results.length - 1];
+        const head = [kept, parts.join(' ')].filter(Boolean).join(' ');
+        const texts = [];
+        for (let i = 0; i < last.length; i++) texts.push(last[i].transcript.trim());
+        const next = texts.map(t => [head, t].filter(Boolean).join(' ').trim()).filter(Boolean);
+        if (!next.length) return;
+        alts = next;
+        lastSpeech = Date.now();
+        deadline = Math.max(deadline, lastSpeech + SPEECH_GAP_MS);
+        show('Heard', { listening: true, heard: alts[0] });
+      };
+      r.onerror = e => {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') {
+          fatalMic = e.error;
+          finish();
+        }
+      };
+      r.onend = () => {
+        if (r !== rec || settled) return;
+        kept = alts[0] || kept;
+        // Ended on its own with time left: listen again.
+        if (Date.now() < deadline - 300) setTimeout(open, 60);
+        else finish();
+      };
+      try { r.start(); } catch (_) { setTimeout(finish, 0); }
     };
-    rec.onerror = e => {
-      if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') {
-        fatalMic = e.error;
-      }
-    };
-    rec.onend = finish;
     const tick = setInterval(() => {
-      if (Date.now() > deadline) { try { rec.stop(); } catch (_) {} }
-      if (Date.now() > deadline + 2500) { try { rec.abort(); } catch (_) {} finish(); }
-    }, 200);
-    try { rec.start(); } catch (_) { finish(); }
+      const now = Date.now();
+      if (lastSpeech && now - lastSpeech > SPEECH_GAP_MS) finish();
+      else if (now > deadline) finish();
+    }, 100);
+    open();
   });
+}
+
+// A short blip when the mic opens, so you know when to answer without
+// looking. Played through Web Audio, which the Start tap unlocks.
+let audioCtx = null;
+function earcon() {
+  if (!audioCtx) return;
+  try {
+    const t = audioCtx.currentTime;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.frequency.value = 880;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.15, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(t);
+    o.stop(t + 0.13);
+  } catch (_) {}
 }
 
 function stopListening() {
@@ -396,7 +447,7 @@ async function drillCard(id, card) {
     const heard = alts[0] || '';
     const r = alts.some(a => voiceClassifyAnswer(a, card.back).kind === 'correct')
       ? { kind: 'correct' } : voiceClassifyAnswer(heard, card.back);
-    show(r.kind === 'silent' ? '' : 'Heard', { heard });
+    show(r.kind === 'silent' ? 'Didn\u2019t catch that' : 'Heard', { heard });
     if (r.kind === 'silent') {
       if (++silences >= 2) return { cmd: 'idle' };
       continue;
