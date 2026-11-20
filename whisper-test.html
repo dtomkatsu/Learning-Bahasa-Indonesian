@@ -41,7 +41,8 @@
 <body>
 <div class="wrap">
   <h1>Whisper speed test</h1>
-  <p>Tests whether the voice drill can recognise answers on the phone itself, with the mic left open (no iPhone chime). Tap <b>Load</b>, then <b>Start mic</b>, then say <b>good</b>, <b>easy</b>, <b>hard</b>, <b>go back</b> or an English word, one at a time with a pause between. Do about 8, then tap <b>Copy results</b> and paste them to Claude.</p>
+  <p>Tests whether the voice drill can recognise answers on the phone itself, with the mic left open (no iPhone chime). Tap <b>Load</b>, then <b>Start mic</b>, then say <b>good</b>, <b>easy</b>, <b>hard</b>, <b>go back</b> or an English word, one at a time with a pause between. Do about 8. Results go to Claude by themselves through your progress-sync gist.</p>
+  <div class="box" id="sendBox"></div>
 
   <div class="box">
     <div class="row">
@@ -74,7 +75,7 @@
       <tbody id="rows"></tbody>
     </table>
     <p style="margin-top:10px">For comparison, the drill today waits 1.1 s after Safari's last word before grading, plus Safari's own lag.</p>
-    <div class="row"><button id="copyBtn">Copy results</button><span class="muted" id="copied"></span></div>
+    <div class="row"><button id="copyBtn">Copy results (fallback)</button><span class="muted" id="copied"></span></div>
   </div>
 </div>
 
@@ -84,7 +85,47 @@ env.allowLocalModels = false;
 
 const $ = id => document.getElementById(id);
 const MODEL = 'onnx-community/whisper-tiny.en';
-const results = [];
+// Every answer is kept on the device and uploaded to the progress-sync gist
+// as its own file (never touching the progress file), so the numbers reach
+// Claude without anyone copying anything.
+const STORE_KEY = 'bahasa:whisperTest:v1';
+const TOKEN_KEY = 'bahasa:sync:token';
+const GIST_KEY = 'bahasa:sync:gistId';
+const RESULTS_FILE = 'whisper-test-results.json';
+function loadStore() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || { runs: [] }; } catch (_) { return { runs: [] }; } }
+const store = loadStore();
+const run = { started: new Date().toISOString(), ua: navigator.userAgent, webgpuOffered: false, results: [] };
+const results = run.results;
+let sendTimer = null;
+
+function saveStore() {
+  if (!store.runs.includes(run) && results.length) store.runs.push(run);
+  localStorage.setItem(STORE_KEY, JSON.stringify(store));
+}
+function setSend(html) { $('sendBox').innerHTML = html; }
+function canSend() { return !!(localStorage.getItem(TOKEN_KEY) && localStorage.getItem(GIST_KEY)); }
+function queueSend() { clearTimeout(sendTimer); sendTimer = setTimeout(send, 800); }
+async function send() {
+  if (!canSend()) return;
+  const n = store.runs.reduce((k, r) => k + r.results.length, 0);
+  if (!n) return;
+  setSend(`Sending ${n} result(s) to Claude…`);
+  try {
+    const resp = await fetch('https://api.github.com/gists/' + localStorage.getItem(GIST_KEY), {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + localStorage.getItem(TOKEN_KEY), 'Accept': 'application/vnd.github+json' },
+      body: JSON.stringify({ files: { [RESULTS_FILE]: { content: JSON.stringify(store, null, 1) } } }),
+    });
+    if (!resp.ok) throw new Error('GitHub said ' + resp.status);
+    setSend(`&#10003; Sent ${n} result(s) to Claude. Keep going, or just tell Claude you're done.`);
+  } catch (e) {
+    setSend('Couldn&rsquo;t send (' + e.message + '). Results are saved on this phone and will retry on the next answer.');
+  }
+}
+setSend(canSend()
+  ? 'Results will be sent to Claude automatically.'
+  : '<b>No sync token in this browser</b>, so results can&rsquo;t be sent automatically. Open this page from the Bahasa app instead (Voice drill &rarr; &ldquo;Speed test&rdquo; at the bottom), where your sync is set up.');
+
 let asr = null;
 let engineUsed = '';
 let loadMs = 0, warmMs = 0;
@@ -92,6 +133,7 @@ let loadMs = 0, warmMs = 0;
 // WebGPU (the phone's graphics chip) when Safari offers it, else WASM (CPU).
 let gpuOk = false;
 try { gpuOk = !!(navigator.gpu && await navigator.gpu.requestAdapter()); } catch (_) {}
+run.webgpuOffered = gpuOk;
 $('engine').innerHTML = (gpuOk ? '<option value="webgpu">WebGPU (graphics chip)</option>' : '')
   + '<option value="wasm">WASM (CPU)</option>';
 
@@ -208,8 +250,11 @@ async function transcribe(chunks, rate, stoppedAt, waited, spokeMs) {
   const out = await asr(audio);
   const t1 = performance.now();
   const text = (out && out.text || '').trim();
-  const r = { text, speech: spokeMs, wait: waited, whisper: t1 - t0, total: t1 - stoppedAt };
+  const r = { text, speech: spokeMs, wait: waited, whisper: t1 - t0, total: t1 - stoppedAt,
+    engine: engineUsed, hang: Number($('hang').value), loadMs, warmMs };
   results.push(r);
+  saveStore();
+  queueSend();
   $('last').textContent = (r.total / 1000).toFixed(2) + ' s';
   $('lastText').textContent = `"${text}" — wait ${(r.wait / 1000).toFixed(2)} s + Whisper ${(r.whisper / 1000).toFixed(2)} s`;
   const tr = document.createElement('tr');
