@@ -125,12 +125,12 @@ __PWA_META__
       <option value="12000">12 s</option></select></label>
   </div>
   <div class="help">
-    <p><b>How it works.</b> You hear an Indonesian word, then a short beep: that&rsquo;s the mic opening. Say what it means in English
+    <p><b>How it works.</b> You hear an Indonesian word. Say what it means in English
     (&ldquo;friend&rdquo;, &ldquo;to eat&rdquo;) and it grades you. Or grade yourself instead:
     <b>good</b>, <b>easy</b>, <b>hard</b>, or <b>don&rsquo;t know</b>. Either way you hear the
     answer before the next word. If it can&rsquo;t tell, it reads the answer and asks
     <b>right or wrong?</b></p>
-    <p>Any time: <b>repeat</b>, <b>skip</b>, <b>go back</b>, <b>stop</b>. Two silences in a row
+    <p>Any time: <b>repeat</b>, <b>skip</b>, <b>stop</b>, or <b>go back</b> to return to the word before (its grade is taken back so you can answer it again). Two silences in a row
     pause it; say <b>resume</b> to carry on.</p>
     <p><b>Keep the screen on.</b> Browsers stop listening when the phone locks, so this page
     keeps the screen awake. Use <b>Pocket lock</b> to black it out and ignore touches (hold the
@@ -197,13 +197,15 @@ let runId = 0;              // bumped to cancel whatever the loop is awaiting
 let current = null;
 let newShown = 0;
 let session = { done: 0, right: 0 };
-let forcedNext = null;      // a card "go back" put back on top
+let upNext = [];           // cards to show before drawing: "go back" puts them here
+let history = [];          // cards finished this session, newest last: {card, rated}
+const HISTORY_CAP = 30;
 
 function pool() {
   return DECK.filter(d => !prefs.tag || d.tags.includes(prefs.tag));
 }
 function pickNext() {
-  if (forcedNext) { const c = forcedNext; forcedNext = null; return c; }
+  if (upNext.length) return upNext.shift();
   const p = pool();
   const reviews = p.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
   let due = reviews;
@@ -276,11 +278,6 @@ function sayId(card) {
 // unlocks both for the rest of the session.
 const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
 function unlockAudio() {
-  try {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (AC && !audioCtx) audioCtx = new AC();
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  } catch (_) {}
   if (ttsClipAudio) { ttsClipAudio.src = SILENCE; ttsClipAudio.play().catch(() => {}); }
   if (ttsHasSupport) speechSynthesis.speak(new SpeechSynthesisUtterance(' '));
 }
@@ -311,7 +308,6 @@ function listen(ms) {
     let deadline = Date.now() + ms;
     let lastSpeech = 0;
     let rec = null;
-    let cued = false;
     const finish = () => {
       if (settled) return;
       settled = true;
@@ -328,7 +324,6 @@ function listen(ms) {
       r.interimResults = true;
       r.maxAlternatives = 3;
       r.continuous = true;
-      r.onstart = () => { if (!cued) { cued = true; earcon(); } };
       r.onresult = e => {
         if (r !== rec) return;
         // Everything this session has heard, final or not; alternatives come
@@ -370,25 +365,6 @@ function listen(ms) {
   });
 }
 
-// A short blip when the mic opens, so you know when to answer without
-// looking. Played through Web Audio, which the Start tap unlocks.
-let audioCtx = null;
-function earcon() {
-  if (!audioCtx) return;
-  try {
-    const t = audioCtx.currentTime;
-    const o = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    o.frequency.value = 880;
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.15, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    o.connect(g).connect(audioCtx.destination);
-    o.start(t);
-    o.stop(t + 0.13);
-  } catch (_) {}
-}
-
 function stopListening() {
   if (activeRec) { try { activeRec.abort(); } catch (_) {} activeRec = null; }
 }
@@ -400,13 +376,12 @@ function rate(card, grade) {
   const isNew = !srs[card.front];
   if (isNew) newShown++;
   const ts = srsLogReview('flash', grade, isNew, card.front);
-  srsPushUndo({ card, front: card.front, prev: srs[card.front] || null, ts, isNew });
+  srsPushUndo({ card, front: card.front, prev: srs[card.front] || null, ts, isNew, grade });
   srs[card.front] = fsrsNextState(srs[card.front], grade, Date.now());
   srsSave(SRS_KEY, srs);
   syncRemoteQueuePush(setSyncState);
   session.done++;
   if (grade >= 3) session.right++;
-  $('undoBtn').disabled = false;
   renderStats();
 }
 
@@ -419,10 +394,29 @@ function undoLast() {
   srsUnlogReview(u.ts);
   syncRemoteQueuePush(setSyncState);
   session.done = Math.max(0, session.done - 1);
+  if (u.grade >= 3) session.right = Math.max(0, session.right - 1);
   if (u.isNew) newShown = Math.max(0, newShown - 1);
-  $('undoBtn').disabled = !srsUndoDepth();
   renderStats();
   return u.card;
+}
+
+// "Go back" returns to the word before, whether you graded it or skipped it.
+// A graded one has its grade taken back first, so you answer it fresh; the
+// word you were on comes straight after it.
+function remember(card, rated) {
+  history.push({ card, rated });
+  if (history.length > HISTORY_CAP) history.shift();
+  $('undoBtn').disabled = false;
+}
+
+function goBack(onScreen) {
+  const h = history.pop();
+  $('undoBtn').disabled = !history.length;
+  if (!h) return false;
+  if (h.rated) undoLast();
+  upNext = upNext.filter(c => c !== h.card && c !== onScreen);
+  upNext.unshift(h.card, ...(onScreen && onScreen !== h.card ? [onScreen] : []));
+  return true;
 }
 
 // ---- The drill -------------------------------------------------------------
@@ -438,7 +432,7 @@ async function drillCard(id, card) {
     show('Listen', { front: card.front.split(' / ')[0], answer: '', heard: '', verdict: '' });
     await sayId(card);
     guard(id);
-    await pause(250);
+    await pause(100);
     guard(id);
     show('Listening — what does it mean?', { listening: true });
     const alts = await listen(prefs.waitMs);
@@ -520,21 +514,21 @@ async function run() {
       guard(id);
       if (out.grade) {
         rate(card, out.grade);
+        remember(card, true);
         current = null;
         await pause(600);
         continue;
       }
       if (out.cmd === 'mic') { micBlocked(); stop(); return; }
       if (out.cmd === 'stop') { await sayEn('Stopped.'); stop(); return; }
-      if (out.cmd === 'skip') { show('Skipped', { verdict: '' }); continue; }
+      if (out.cmd === 'skip') { remember(card, false); show('Skipped', { verdict: '' }); continue; }
       if (out.cmd === 'undo') {
-        const back = undoLast();
-        if (back) { forcedNext = back; await sayEn('Going back.'); }
-        else await sayEn('Nothing to undo.');
+        if (goBack(card)) await sayEn('Going back.');
+        else { upNext.unshift(card); await sayEn('This is the first word.'); }
         continue;
       }
       if (out.cmd === 'idle') {
-        forcedNext = card;
+        upNext.unshift(card);
         if (!(await waitForResume(id))) {
           if (fatalMic) micBlocked();
           stop();
@@ -603,7 +597,7 @@ function stop() {
   $('skipBtn').disabled = true;
   $('lockBtn').disabled = true;
   show(session.done ? 'Stopped' : 'Tap Start, then put the phone down', { listening: false });
-  if (current) forcedNext = forcedNext || current;
+  if (current && upNext[0] !== current) upNext.unshift(current);
 }
 
 function micBlocked() {
@@ -618,6 +612,7 @@ $('startBtn').onclick = () => (running ? stop() : start());
 $('skipBtn').onclick = () => {
   if (!running) return;
   // Restart the loop on a fresh card; the skipped one stays unrated.
+  if (current) remember(current, false);
   runId++;
   stopListening();
   ttsStop();
@@ -625,11 +620,11 @@ $('skipBtn').onclick = () => {
   run();
 };
 $('undoBtn').onclick = () => {
-  const back = undoLast();
-  if (!back) return;
-  forcedNext = back;
+  const cur = running ? current : null;
+  if (!running && current && upNext[0] === current) upNext.shift();
+  if (!goBack(cur || (running ? null : current))) return;
   if (running) { runId++; stopListening(); ttsStop(); run(); }
-  else show('Went back', { front: back.front.split(' / ')[0], answer: '', heard: '', verdict: '' });
+  else show('Went back', { front: upNext[0].front.split(' / ')[0], answer: '', heard: '', verdict: '' });
 };
 $('lockBtn').onclick = () => { if (running) setLocked(true); };
 

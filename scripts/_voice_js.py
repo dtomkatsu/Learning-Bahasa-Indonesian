@@ -120,7 +120,8 @@ function voiceMatches(said, back) {
 // normalized transcript, so "repeat" never fires on "repeatedly".
 const VOICE_COMMANDS = [
   ['stop', ['stop', 'pause', 'stop listening', 'take a break']],
-  ['undo', ['go back', 'undo', 'previous', 'last one']],
+  ['undo', ['go back', 'back', 'undo', 'previous', 'previous word', 'last one', 'last word',
+    'word before', 'one before', 'go back one']],
   ['repeat', ['repeat', 'again please', 'say again', 'say it again', 'one more time', 'what', 'huh', 'pardon', 'sorry']],
   ['skip', ['skip', 'next', 'next one', 'pass on this']],
 ];
@@ -156,8 +157,8 @@ function voiceCommand(said) {
 //   {kind:'correct'}             said the meaning           -> Good
 //   {kind:'grade', grade}        graded yourself instead     -> that grade
 //   {kind:'unclear'}             said something else         -> ask right/wrong
-// A self-grade or command that is also the meaning ("good" for bagus, "what"
-// for apa) counts as the meaning.
+// A self-grade that is also the meaning ("good" for bagus) counts as the
+// meaning.
 function voiceClassifyAnswer(said, back) {
   const s = voiceNorm(said);
   if (!s) return { kind: 'silent' };
@@ -166,11 +167,12 @@ function voiceClassifyAnswer(said, back) {
   if (dontKnow.some(p => voiceHas(s, p)) && !accepted.some(a => dontKnow.some(p => a.includes(p)))) {
     return { kind: 'grade', grade: 1 };
   }
-  // The meaning wins over a control word: "what" is the answer for apa, and
-  // "go back" for kembali, not a request to repeat or undo.
-  if (voiceMatches(s, back)) return { kind: 'correct' };
+  // A control word is a command, unless it is exactly this card's meaning:
+  // "what" answers apa and "go back" answers kembali, but "go back" on pergi
+  // ("to go") goes back.
   const cmd = voiceCommand(s);
-  if (cmd) return { kind: 'command', cmd };
+  if (cmd && !accepted.includes(s)) return { kind: 'command', cmd };
+  if (voiceMatches(s, back)) return { kind: 'correct' };
   if (s.split(' ').length <= 3) {
     const g = voiceFind(s, VOICE_GRADES);
     if (g) return { kind: 'grade', grade: g };

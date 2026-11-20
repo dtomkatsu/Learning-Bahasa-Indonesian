@@ -538,3 +538,12 @@ suite('voice: recognizer spellings of one-word grades', () => {
   deepEq(voiceClassifyAnswer('Heart', 'friend'), { kind: 'grade', grade: 2 }, '"heart" heard for hard');
   eq(voiceClassifyAnswer('heart', 'heart / liver').kind, 'correct', 'but "heart" is the meaning for hati');
 });
+
+suite('voice: go back', () => {
+  deepEq(voiceClassifyAnswer('go back', 'to go'), { kind: 'command', cmd: 'undo' }, '"go back" on pergi goes back');
+  deepEq(voiceClassifyAnswer('back', 'friend'), { kind: 'command', cmd: 'undo' }, '"back" alone');
+  deepEq(voiceClassifyAnswer('previous word', 'friend'), { kind: 'command', cmd: 'undo' }, 'previous word');
+  eq(voiceClassifyAnswer('go back', 'to go back / return').kind, 'correct', 'but it is the answer for kembali');
+  eq(voiceClassifyAnswer('back', 'back (of the body)').kind, 'correct', 'and "back" is the answer for punggung');
+  deepEq(voiceClassifyConfirm('go back'), { kind: 'command', cmd: 'undo' }, 'go back at right-or-wrong');
+});
