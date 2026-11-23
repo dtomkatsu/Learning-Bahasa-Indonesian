@@ -1569,7 +1569,32 @@ const W_LIB = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
 const W_HANG_MS = 700;        // quiet this long after speech = you're done
 const W_MAX_SPEECH_MS = 7000;
 const W = { asr: null, loading: null, ctx: null, stream: null, proc: null,
-  floor: 0.004, armed: null, gpu: null };
+  floor: 0.004, armed: null, gpu: null, device: null };
+
+// Loading on the graphics chip can take more memory than iOS allows a page,
+// and then Safari kills the page outright ("A problem repeatedly occurred"):
+// no error, no catch. So a marker is set before each load and cleared after
+// it; a marker still there on the next page load means that way crashed, and
+// it isn't tried again. Order: graphics chip, then CPU (smaller int8 model,
+// far less memory), then Safari's recognizer.
+const W_LOADING_KEY = 'bahasa:voice:whisperLoading:v1';
+const W_BAD_KEY = 'bahasa:voice:whisperBad:v1';
+function wBad() { try { return JSON.parse(localStorage.getItem(W_BAD_KEY)) || []; } catch (_) { return []; } }
+(function noteCrashedLoad() {
+  const m = localStorage.getItem(W_LOADING_KEY);
+  if (!m) return;
+  localStorage.removeItem(W_LOADING_KEY);
+  const bad = wBad();
+  if (!bad.includes(m)) bad.push(m);
+  localStorage.setItem(W_BAD_KEY, JSON.stringify(bad));
+  setTimeout(() => vlog('whisper.crashed', m), 0);
+})();
+function whisperDevice() {
+  const bad = wBad();
+  if (W.gpu && !bad.includes('webgpu')) return 'webgpu';
+  if (!bad.includes('wasm')) return 'wasm';
+  return null;
+}
 
 async function whisperHasGpu() {
   if (W.gpu !== null) return W.gpu;
@@ -1582,12 +1607,16 @@ function whisperLoad() {
   if (W.loading) return W.loading;
   W.loading = (async () => {
     const t0 = Date.now();
+    const device = W.device = whisperDevice();
+    if (!device) throw new Error('on-device recognition crashed this phone before');
+    vlog('whisper.load', device);
     const { pipeline, env } = await import(W_LIB);
     env.allowLocalModels = false;
     let last = -1;
+    localStorage.setItem(W_LOADING_KEY, device);
     const asr = await pipeline('automatic-speech-recognition', W_MODEL, {
-      device: 'webgpu',
-      dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
+      device,
+      dtype: device === 'webgpu' ? { encoder_model: 'fp32', decoder_model_merged: 'q4' } : 'q8',
       progress_callback: p => {
         if (p.status !== 'progress' || !p.total) return;
         const pct = Math.round((p.loaded / p.total) * 100);
@@ -1595,11 +1624,22 @@ function whisperLoad() {
       },
     });
     await asr(new Float32Array(16000));      // compile once, before the first answer
-    vlog('whisper.ready', (Date.now() - t0) + 'ms');
+    localStorage.removeItem(W_LOADING_KEY);
+    vlog('whisper.ready', device + ' ' + (Date.now() - t0) + 'ms');
     W.asr = asr;
     return asr;
   })();
-  W.loading.catch(e => { vlog('whisper.loadFailed', String(e && e.message || e)); W.loading = null; });
+  W.loading.catch(e => {
+    // A thrown error (not a crash): this way doesn't work here either.
+    if (W.device) {
+      const bad = wBad();
+      if (!bad.includes(W.device)) bad.push(W.device);
+      localStorage.setItem(W_BAD_KEY, JSON.stringify(bad));
+    }
+    localStorage.removeItem(W_LOADING_KEY);
+    vlog('whisper.loadFailed', (W.device || '') + ' ' + String(e && e.message || e));
+    W.loading = null;
+  });
   return W.loading;
 }
 
@@ -1916,7 +1956,7 @@ function setLocked(on) {
 // ---- Start / stop ----------------------------------------------------------
 function start() {
   if (running) return;
-  const wantWhisper = prefs.engine === 'whisper' && W.gpu;
+  const wantWhisper = prefs.engine === 'whisper' && !!whisperDevice();
   if (!SR && !wantWhisper) return;
   fatalMic = null;
   vlogT0 = Date.now();
@@ -1942,7 +1982,7 @@ function start() {
     if (!running) return;
     if (e && e.name === 'NotAllowedError') { fatalMic = 'not-allowed'; micBlocked(); stop(); return; }
     engine = 'safari';
-    show('Couldn’t load on-device recognition; using Safari');
+    show('On-device recognition didn’t load; using Safari this time');
     if (SR) run(); else stop();
   });
 }
@@ -2000,16 +2040,17 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-whisperHasGpu().then(gpu => {
+whisperHasGpu().then(() => {
   const opt = $('engineSel').querySelector('option[value="whisper"]');
-  if (!gpu) {
+  const dev = whisperDevice();
+  if (!dev) {
     opt.disabled = true;
-    opt.textContent = 'On this phone (needs WebGPU)';
+    opt.textContent = 'On this phone (crashed here)';
     if (prefs.engine === 'whisper') prefs.engine = 'safari';
   }
-  if (!prefs.engine) prefs.engine = gpu ? 'whisper' : 'safari';
+  if (!prefs.engine) prefs.engine = dev ? 'whisper' : 'safari';
   $('engineSel').value = prefs.engine;
-  if (gpu && !SR) { $('unsupported').hidden = true; $('startBtn').disabled = false; }
+  if (dev && !SR) { $('unsupported').hidden = true; $('startBtn').disabled = false; }
 });
 
 if (!SR) {
