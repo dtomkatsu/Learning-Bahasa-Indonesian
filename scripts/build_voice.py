@@ -123,6 +123,9 @@ __PWA_META__
     <label>Time to answer <select id="waitSel">
       <option value="5000">5 s</option><option value="8000">8 s</option>
       <option value="12000">12 s</option></select></label>
+    <label>Recognition <select id="engineSel">
+      <option value="whisper">On this phone (no chime)</option>
+      <option value="safari">Safari</option></select></label>
   </div>
   <div class="help">
     <p><b>How it works.</b> You hear an Indonesian word. Say what it means in English
@@ -132,6 +135,9 @@ __PWA_META__
     <b>right or wrong?</b></p>
     <p>Any time: <b>repeat</b>, <b>skip</b>, <b>stop</b>, or <b>go back</b> to return to the word before (its grade is taken back so you can answer it again). Two silences in a row
     pause it; say <b>resume</b> to carry on.</p>
+    <p><b>Recognition.</b> &ldquo;On this phone&rdquo; opens the mic once and understands you on the
+    phone itself, so there&rsquo;s no chime between words. It downloads a ~40 MB speech model the first
+    time (use Wi-Fi). &ldquo;Safari&rdquo; uses Apple&rsquo;s recognizer instead, which chimes every word.</p>
     <p><b>Keep the screen on.</b> Browsers stop listening when the phone locks, so this page
     keeps the screen awake. Use <b>Pocket lock</b> to black it out and ignore touches (hold the
     button on the black screen to unlock). Earbuds help: the mic won&rsquo;t hear the page
@@ -172,7 +178,7 @@ function computeDeck() {
 }
 let DECK = computeDeck();
 
-const prefs = Object.assign({ tag: '', newPer: 5, waitMs: 8000 }, srsLoad(PREFS_KEY));
+const prefs = Object.assign({ tag: '', newPer: 5, waitMs: 8000, engine: '' }, srsLoad(PREFS_KEY));
 function savePrefs() { srsSave(PREFS_KEY, prefs); }
 
 function renderTagSel() {
@@ -188,6 +194,7 @@ $('waitSel').value = String(prefs.waitMs);
 $('tagSel').onchange = e => { prefs.tag = e.target.value; savePrefs(); renderStats(); };
 $('newSel').onchange = e => { prefs.newPer = Number(e.target.value); savePrefs(); renderStats(); };
 $('waitSel').onchange = e => { prefs.waitMs = Number(e.target.value); savePrefs(); };
+$('engineSel').onchange = e => { prefs.engine = e.target.value; savePrefs(); };
 
 function setSyncState() {}
 syncRemoteAutoPull(() => { srs = srsLoad(SRS_KEY); DECK = computeDeck(); renderTagSel(); renderStats(); }, setSyncState);
@@ -390,6 +397,7 @@ function trackClose(r) {
 function recSettled() { return recClosed; }
 
 function listen(ms) {
+  if (useWhisper()) return whisperListen(ms);
   return new Promise(resolve => {
     if (!SR) { resolve([]); return; }
     let alts = [];
@@ -470,6 +478,149 @@ function listen(ms) {
     open();
   });
 }
+
+// ---- On-device recognition (Whisper) ----------------------------------------
+// Safari's recognizer is a fresh session per answer: iOS chimes on every one,
+// and on the phone's log one of those sessions opened and then heard nothing
+// for two whole windows. This engine opens the mic once per drill (no chime)
+// and transcribes each answer on the phone with Whisper tiny.en, run on the
+// graphics chip via WebGPU. The model (~40 MB) downloads once and is cached.
+// Used when WebGPU is available; Safari's recognizer otherwise, or by choice.
+const W_MODEL = 'onnx-community/whisper-tiny.en';
+const W_LIB = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+const W_HANG_MS = 700;        // quiet this long after speech = you're done
+const W_MAX_SPEECH_MS = 7000;
+const W = { asr: null, loading: null, ctx: null, stream: null, proc: null,
+  floor: 0.004, armed: null, gpu: null };
+
+async function whisperHasGpu() {
+  if (W.gpu !== null) return W.gpu;
+  try { W.gpu = !!(navigator.gpu && await navigator.gpu.requestAdapter()); } catch (_) { W.gpu = false; }
+  return W.gpu;
+}
+
+function whisperLoad() {
+  if (W.asr) return Promise.resolve(W.asr);
+  if (W.loading) return W.loading;
+  W.loading = (async () => {
+    const t0 = Date.now();
+    const { pipeline, env } = await import(W_LIB);
+    env.allowLocalModels = false;
+    let last = -1;
+    const asr = await pipeline('automatic-speech-recognition', W_MODEL, {
+      device: 'webgpu',
+      dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
+      progress_callback: p => {
+        if (p.status !== 'progress' || !p.total) return;
+        const pct = Math.round((p.loaded / p.total) * 100);
+        if (pct !== last && running) { last = pct; show('Downloading speech model\u2026 ' + pct + '% (first time only)'); }
+      },
+    });
+    await asr(new Float32Array(16000));      // compile once, before the first answer
+    vlog('whisper.ready', (Date.now() - t0) + 'ms');
+    W.asr = asr;
+    return asr;
+  })();
+  W.loading.catch(e => { vlog('whisper.loadFailed', String(e && e.message || e)); W.loading = null; });
+  return W.loading;
+}
+
+function wRms(a) { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * a[i]; return Math.sqrt(s / a.length); }
+
+function wResample(chunks, rate) {
+  const len = chunks.reduce((n, c) => n + c.length, 0);
+  const all = new Float32Array(len);
+  let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+  if (rate === 16000) return all;
+  const ratio = rate / 16000, out = new Float32Array(Math.floor(len / ratio));
+  for (let i = 0; i < out.length; i++) {
+    const x = i * ratio, j = Math.floor(x), f = x - j;
+    out[i] = all[j] * (1 - f) + (all[j + 1] || 0) * f;
+  }
+  return out;
+}
+
+// Must run inside the Start tap: iOS only lets a tap start audio capture.
+function whisperMicStart() {
+  if (W.stream) return Promise.resolve();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  W.ctx = W.ctx || new AC();
+  const resumed = W.ctx.resume();
+  return navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+  }).then(stream => resumed.then(() => {
+    W.stream = stream;
+    const src = W.ctx.createMediaStreamSource(stream);
+    W.proc = W.ctx.createScriptProcessor(2048, 1, 1);
+    const mute = W.ctx.createGain(); mute.gain.value = 0;
+    src.connect(W.proc); W.proc.connect(mute); mute.connect(W.ctx.destination);
+    W.proc.onaudioprocess = e => whisperFrame(new Float32Array(e.inputBuffer.getChannelData(0)));
+    vlog('whisper.mic', W.ctx.sampleRate);
+  }));
+}
+
+function whisperMicStop() {
+  if (W.proc) W.proc.onaudioprocess = null;
+  if (W.stream) W.stream.getTracks().forEach(t => t.stop());
+  W.proc = W.stream = null;
+}
+
+// Audio is only examined while an answer window is open, so the page's own
+// voice (which plays between windows) is never transcribed.
+function whisperFrame(a) {
+  const w = W.armed;
+  if (!w) return;
+  const now = Date.now();
+  const level = wRms(a);
+  const thr = Math.max(0.012, W.floor * 3);
+  const loud = level > thr;
+  if (!w.speaking) {
+    if (!loud) W.floor = W.floor * 0.95 + level * 0.05;   // learn the room while waiting
+    w.preroll.push(a); if (w.preroll.length > 6) w.preroll.shift();
+    if (loud) {
+      w.speaking = true; w.buf = w.preroll.slice(); w.lastLoud = now; w.started = now;
+      vlog('whisper.speech', level.toFixed(3) + '>' + thr.toFixed(3));
+      show('Hearing you\u2026', { listening: true });
+    } else if (now > w.deadline) {
+      w.end([]);
+    }
+    return;
+  }
+  w.buf.push(a);
+  if (loud) w.lastLoud = now;
+  if (now - w.lastLoud >= W_HANG_MS || now - w.started > W_MAX_SPEECH_MS) {
+    const chunks = w.buf, spoke = w.lastLoud - w.started;
+    W.armed = null;
+    if (spoke < 150) { vlog('whisper.click', spoke + 'ms'); w.end([]); return; }   // a knock, not a word
+    show('Heard', { listening: true });
+    const t0 = Date.now();
+    W.asr(wResample(chunks, W.ctx.sampleRate)).then(out => {
+      let text = ((out && out.text) || '').trim();
+      // Whisper's habit on noise: bracketed tags, or a stock "Thank you."
+      if (/^[\\[(].*[\\])]$/.test(text) || /^(thank you|thanks for watching)[.!]?$/i.test(text)) text = '';
+      vlog('whisper.text', JSON.stringify(text) + ' ' + (Date.now() - t0) + 'ms');
+      if (text) show('Heard', { listening: true, heard: text });
+      w.end(text ? [text] : []);
+    }).catch(e => { vlog('whisper.error', String(e && e.message || e)); w.end([]); });
+  }
+}
+
+function whisperListen(ms) {
+  return new Promise(resolve => {
+    vlog('listen.w', ms);
+    let done = false;
+    const end = alts => { if (done) return; done = true; if (W.armed === arm) W.armed = null; listenCancel = null; vlog('listen.done', JSON.stringify(alts[0] || '')); resolve(alts); };
+    const arm = { deadline: Date.now() + ms, speaking: false, buf: [], preroll: [], lastLoud: 0, started: 0, end };
+    W.armed = arm;
+    listenCancel = () => end([]);
+    // ScriptProcessor stops firing if the audio context is suspended (a call,
+    // Siri); don't wait on it forever.
+    setTimeout(() => { if (!arm.speaking) end([]); }, ms + 1500);
+  });
+}
+
+function useWhisper() { return engine === 'whisper' && !!W.asr && !!W.stream; }
+let engine = 'safari';
 
 function stopListening() {
   if (listenCancel) listenCancel();
@@ -687,18 +838,35 @@ function setLocked(on) {
 // ---- Start / stop ----------------------------------------------------------
 function start() {
   if (running) return;
-  if (!SR) return;
+  const wantWhisper = prefs.engine === 'whisper' && W.gpu;
+  if (!SR && !wantWhisper) return;
   fatalMic = null;
   vlogT0 = Date.now();
   vlogEntries = [];
-  vlog('start', navigator.userAgent);
+  vlog('start', navigator.userAgent + ' engine=' + (wantWhisper ? 'whisper' : 'safari'));
   unlockAudio();
   running = true;
   holdScreen();
   $('startBtn').textContent = 'Stop';
   $('skipBtn').disabled = false;
   $('lockBtn').disabled = false;
-  run();
+  if (!wantWhisper) { engine = 'safari'; run(); return; }
+  // Mic first, inside the tap; then the model (cached after the first time).
+  const mic = whisperMicStart();
+  show('Loading speech model\u2026');
+  Promise.all([mic, whisperLoad()]).then(() => {
+    if (!running) return;
+    engine = 'whisper';
+    run();
+  }).catch(e => {
+    vlog('whisper.fallback', String(e && e.message || e));
+    whisperMicStop();
+    if (!running) return;
+    if (e && e.name === 'NotAllowedError') { fatalMic = 'not-allowed'; micBlocked(); stop(); return; }
+    engine = 'safari';
+    show('Couldn\u2019t load on-device recognition; using Safari');
+    if (SR) run(); else stop();
+  });
 }
 
 function stop() {
@@ -706,6 +874,7 @@ function stop() {
   running = false;
   runId++;
   stopListening();
+  whisperMicStop();
   ttsStop();
   releaseScreen();
   setLocked(false);
@@ -751,6 +920,18 @@ document.addEventListener('visibilitychange', () => {
     stop();
     show('Paused — the phone locked. Tap Resume.');
   }
+});
+
+whisperHasGpu().then(gpu => {
+  const opt = $('engineSel').querySelector('option[value="whisper"]');
+  if (!gpu) {
+    opt.disabled = true;
+    opt.textContent = 'On this phone (needs WebGPU)';
+    if (prefs.engine === 'whisper') prefs.engine = 'safari';
+  }
+  if (!prefs.engine) prefs.engine = gpu ? 'whisper' : 'safari';
+  $('engineSel').value = prefs.engine;
+  if (gpu && !SR) { $('unsupported').hidden = true; $('startBtn').disabled = false; }
 });
 
 if (!SR) {
