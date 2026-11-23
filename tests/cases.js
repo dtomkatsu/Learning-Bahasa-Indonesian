@@ -559,3 +559,18 @@ suite('voice: sound-alikes and more ways to say right', () => {
   deepEq(voiceClassifyConfirm('not right'), { kind: 'grade', grade: 1 }, 'not right is wrong');
   deepEq(voiceClassifyConfirm('nah'), { kind: 'grade', grade: 1 }, 'nah');
 });
+
+suite('voice: fixes from the phone session log', () => {
+  deepEq(voiceClassifyAnswer('Again.', 'umbrella'), { kind: 'grade', grade: 1 }, '"again" is a miss');
+  deepEq(voiceClassifyConfirm('again'), { kind: 'grade', grade: 1 }, '"again" at right-or-wrong');
+  deepEq(voiceClassifyConfirm('Again, but again.'), { kind: 'grade', grade: 1 }, 'repeated again');
+  eq(voiceClassifyAnswer('Wether.', 'weather').kind, 'correct', 'wether for weather');
+  eq(voiceClassifyAnswer('Meet.', 'meat').kind, 'correct', 'meet for meat');
+  eq(voiceClassifyAnswer('umbrela', 'umbrella').kind, 'correct', 'one-letter slip on a long word');
+  eq(voiceClassifyAnswer('cat', 'car').kind, 'unclear', 'no slips on short words');
+  eq(voiceClassifyAnswer('thirty', 'thirsty').kind, 'correct', 'one letter off counts (accepted leniency: thirty passes for thirsty)');
+  deepEq(voiceClassifyConfirm('Heart.'), { kind: 'grade', grade: 2 }, 'heart at confirm = hard');
+  deepEq(voiceClassifyConfirm('Hot'), { kind: 'grade', grade: 2 }, 'hot at confirm = hard');
+  eq(voiceClassifyAnswer('hot', 'cold').kind, 'unclear', 'but "hot" as an answer is still an answer');
+  deepEq(voiceClassifyConfirm('All right.'), { kind: 'grade', grade: 3 }, 'all right');
+});

@@ -617,7 +617,10 @@ function whisperFrame(a) {
   if (!w.speaking) {
     if (!loud) W.floor = W.floor * 0.95 + level * 0.05;   // learn the room while waiting
     w.preroll.push(a); if (w.preroll.length > 6) w.preroll.shift();
-    if (loud) {
+    // Two loud frames in a row (~85 ms) before it counts as you talking; one
+    // is a tap, a breath or the tail of the clip.
+    w.loudRun = loud ? (w.loudRun || 0) + 1 : 0;
+    if (w.loudRun >= 2) {
       w.speaking = true; w.buf = w.preroll.slice(); w.lastLoud = now; w.started = now;
       vlog('whisper.speech', level.toFixed(3) + '>' + thr.toFixed(3));
       show('Hearing you\u2026', { listening: true });
@@ -630,8 +633,14 @@ function whisperFrame(a) {
   if (loud) w.lastLoud = now;
   if (now - w.lastLoud >= W_HANG_MS || now - w.started > W_MAX_SPEECH_MS) {
     const chunks = w.buf, spoke = w.lastLoud - w.started;
+    if (spoke < 150) {
+      // A knock, not a word. Keep waiting for the answer: ending the window
+      // here read as silence and replayed the word as you started to speak.
+      vlog('whisper.click', spoke + 'ms');
+      w.speaking = false; w.buf = []; w.preroll = []; w.loudRun = 0;
+      return;
+    }
     W.armed = null;
-    if (spoke < 150) { vlog('whisper.click', spoke + 'ms'); w.end([]); return; }   // a knock, not a word
     show('Heard', { listening: true });
     const t0 = Date.now();
     W.asr(wResample(chunks, W.ctx.sampleRate)).then(out => {
@@ -655,7 +664,7 @@ function whisperListen(ms) {
     listenCancel = () => end([]);
     // ScriptProcessor stops firing if the audio context is suspended (a call,
     // Siri); don't wait on it forever.
-    setTimeout(() => { if (!arm.speaking) end([]); }, ms + 1500);
+    setTimeout(() => { if (!arm.speaking && W.armed === arm) end([]); }, ms + 1500);
   });
 }
 

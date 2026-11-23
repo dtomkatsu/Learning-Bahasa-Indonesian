@@ -108,7 +108,7 @@ const VOICE_HOMOPHONES = [
   'male mail', 'whole hole', 'peace piece', 'wood would', 'threw through',
   'sent cent scent', 'sore soar', 'rain reign', 'break brake', 'fair fare',
   'great grate', 'flew flu', 'new knew', 'die dye', 'sole soul', 'toe tow',
-  'wear where', 'witch which', 'weather whether', 'high hi', 'route root',
+  'wear where', 'witch which', 'weather whether wether', 'high hi', 'route root',
   'past passed', 'allowed aloud', 'morning mourning', 'rose rows', 'berry bury',
   'sell cell', 'heal heel', 'nose knows', 'way weigh', 'there their',
   'missed mist', 'guest guessed', 'pour poor', 'stair stare', 'tea tee',
@@ -125,6 +125,16 @@ function voiceHas(said, phrase) {
   return (' ' + said + ' ').includes(' ' + phrase + ' ');
 }
 
+// One-letter slips on longer words ("wether" for weather) still count.
+function voiceNear(a, b) {
+  if (a === b) return true;
+  if (a.length < 5 || b.length < 5 || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  while (i < a.length && a[i] === b[i]) i++;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1);
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : a.slice(i) === b.slice(i + 1);
+}
+
 // True when what you said contains the meaning: a whole accepted phrase, or
 // any content word from one (stemmed), so "it means to eat something" and
 // "eating" both count for "to eat".
@@ -136,7 +146,9 @@ function voiceMatches(said, back) {
     if (voiceHas(s, phrase)) return true;
     for (const w of phrase.split(' ')) {
       if (w.length < 3 || VOICE_STOP.has(w)) continue;
-      if (saidStems.has(voiceStem(w))) return true;
+      const st = voiceStem(w);
+      if (saidStems.has(st)) return true;
+      for (const x of saidStems) if (voiceNear(x, st)) return true;
     }
   }
   return false;
@@ -155,6 +167,7 @@ const VOICE_GRADES = [
   // "don't know" before anything that could find "know" in a gloss.
   [1, ["don't know", 'dont know', 'do not know', 'no idea', 'not sure', 'no clue',
        "didn't know", "didn't get it", 'not right', 'not correct', 'incorrect', 'i was wrong',
+       'again', 'again again', 'but again',
        'forgot', 'i forget', 'pass', 'bad', 'wrong', 'missed', 'miss', 'nope', 'nah', 'no']],
   [2, ['hard', 'heart', 'hart', 'difficult', 'almost', 'close', 'kind of', 'sort of']],
   // Plus what recognizers make of a lone one-word answer: "good" comes back
@@ -211,12 +224,19 @@ function voiceClassifyAnswer(said, back) {
 
 // After the page reads the answer back and asks "right or wrong?".
 // Returns {kind:'grade', grade} | {kind:'command', cmd} | {kind:'silent'} | {kind:'unclear'}.
+// At "right or wrong?" only grades are expected, so common mishearings of
+// them count here (not in the answer window, where "hot" could be a real
+// answer).
+const VOICE_CONFIRM_ALIKE = [
+  [2, ['heart', 'hart', 'hearts', 'hot', 'had', 'hod', 'hide', 'hyde', 'harder', 'hard one', 'hold']],
+  [3, ['god', 'alright', 'all right', 'rite', 'go ahead']],
+];
 function voiceClassifyConfirm(said) {
   const s = voiceNorm(said);
   if (!s) return { kind: 'silent' };
   const cmd = voiceCommand(s);
   if (cmd && cmd !== 'skip') return { kind: 'command', cmd };
-  const g = voiceFind(s, VOICE_GRADES);
+  const g = voiceFind(s, VOICE_GRADES) || voiceFind(s, VOICE_CONFIRM_ALIKE);
   if (g) return { kind: 'grade', grade: g };
   if (cmd) return { kind: 'command', cmd };
   return { kind: 'unclear' };
