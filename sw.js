@@ -12,7 +12,7 @@
 // Reads go to the specific cache rather than caches.match(), which searches
 // every cache in the origin and would happily serve a stale copy of something
 // the shell bump was meant to replace.
-const VERSION = 'v13';
+const VERSION = 'v14';
 const MEDIA_VERSION = 'v1';
 const SHELL = `bahasa-shell-${VERSION}`;
 const MEDIA = `bahasa-media-${MEDIA_VERSION}`;
@@ -97,8 +97,11 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
 
   if (e.request.mode === 'navigate' || url.pathname.endsWith('.html')) {
+    // cache: 'no-cache' makes the browser ask GitHub whether the page changed
+    // instead of trusting Pages' max-age=600, which kept serving the old page
+    // for up to 10 minutes after a deploy.
     e.respondWith(
-      fetch(e.request)
+      fetch(url.href, { cache: 'no-cache', credentials: 'same-origin' })
         .then((r) => {
           const copy = r.clone();
           caches.open(SHELL).then((c) => c.put(e.request, copy));
