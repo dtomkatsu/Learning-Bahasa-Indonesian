@@ -192,6 +192,40 @@ $('waitSel').onchange = e => { prefs.waitMs = Number(e.target.value); savePrefs(
 function setSyncState() {}
 syncRemoteAutoPull(() => { srs = srsLoad(SRS_KEY); DECK = computeDeck(); renderTagSel(); renderStats(); }, setSyncState);
 
+// ---- Diagnostic log --------------------------------------------------------
+// Temporary. "The first word works, the second doesn't" only happens on the
+// iPhone, which can't be reproduced off the device, so the drill records each
+// step (audio out, every recognizer event, what was decided) and uploads it to
+// the progress-sync gist as its own file. The progress file is never touched.
+const VLOG_KEY = 'bahasa:voice:log:v1';
+const VLOG_FILE = 'voice-debug-log.json';
+const VLOG_CAP = 600;
+let vlogT0 = Date.now();
+let vlogEntries = (() => { try { return JSON.parse(localStorage.getItem(VLOG_KEY)) || []; } catch (_) { return []; } })();
+let vlogTimer = null;
+function vlog(ev, d) {
+  vlogEntries.push({ t: Date.now() - vlogT0, ev, d: d === undefined ? '' : d });
+  if (vlogEntries.length > VLOG_CAP) vlogEntries = vlogEntries.slice(-VLOG_CAP);
+  try { localStorage.setItem(VLOG_KEY, JSON.stringify(vlogEntries)); } catch (_) {}
+  clearTimeout(vlogTimer);
+  vlogTimer = setTimeout(vlogSend, 4000);
+}
+async function vlogSend() {
+  const token = localStorage.getItem('bahasa:sync:token');
+  const gist = localStorage.getItem('bahasa:sync:gistId');
+  if (!token || !gist || !vlogEntries.length) return;
+  try {
+    await fetch('https://api.github.com/gists/' + gist, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' },
+      body: JSON.stringify({ files: { [VLOG_FILE]: { content: JSON.stringify({
+        sent: new Date().toISOString(), ua: navigator.userAgent,
+        standalone: !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches),
+        log: vlogEntries }) } } }),
+    });
+  } catch (_) {}
+}
+
 // ---- Session state ---------------------------------------------------------
 let running = false;
 let runId = 0;              // bumped to cancel whatever the loop is awaiting
@@ -254,24 +288,59 @@ ttsOnVoicesChanged(pickEnVoice);
 
 function sayEn(text) {
   if (!ttsHasSupport || !text) return Promise.resolve(false);
-  speechSynthesis.cancel();
+  // cancel() immediately followed by speak() can drop the utterance on iOS,
+  // so only cancel when something is actually speaking.
+  if (speechSynthesis.speaking || speechSynthesis.pending) speechSynthesis.cancel();
+  vlog('sayEn', text);
   return new Promise(resolve => {
     const u = new SpeechSynthesisUtterance(text);
     if (enVoice) { u.voice = enVoice; u.lang = enVoice.lang; } else u.lang = 'en-US';
     u.rate = 1.0;
     let done = false;
-    const fin = ok => { if (!done) { done = true; resolve(ok); } };
-    u.onend = () => fin(true);
-    u.onerror = () => fin(false);
+    const fin = (ok, why) => { if (!done) { done = true; vlog('sayEn.end', why); resolve(ok); } };
+    u.onend = () => fin(true, 'end');
+    u.onerror = e => fin(false, 'error:' + (e && e.error));
     // iOS occasionally never fires 'end'; don't let that stall the drill.
-    setTimeout(() => fin(false), 1500 + text.length * 120);
+    setTimeout(() => fin(false, 'timeout'), 1500 + text.length * 120);
     speechSynthesis.speak(u);
   });
 }
 
-function sayId(card) {
+// If iOS won't play the clip after the mic has been in use (it can leave the
+// <audio> element stuck with no 'ended' and no error), notice within
+// STALL_MS that playback isn't moving and say the word with the device's
+// Indonesian voice instead, rather than waiting forever on the second word.
+const STALL_MS = 1500;
+const CLIP_CAP_MS = 6000;
+function playClipWatched(src) {
+  return new Promise(resolve => {
+    let done = false, lastPos = -1, lastMove = Date.now();
+    const t0 = Date.now();
+    const fin = why => { if (!done) { done = true; clearInterval(watch); resolve(why); } };
+    const watch = setInterval(() => {
+      const pos = ttsClipAudio ? ttsClipAudio.currentTime : 0;
+      if (pos !== lastPos) { lastPos = pos; lastMove = Date.now(); }
+      if (Date.now() - lastMove > STALL_MS) fin('stalled');
+      else if (Date.now() - t0 > CLIP_CAP_MS) fin('timeout');
+    }, 250);
+    ttsPlayClip(src).then(ok => fin(ok ? 'end' : 'failed'));
+  });
+}
+
+async function sayId(card) {
   const word = card.front.split(' / ')[0].trim();
-  return ttsSay(word, card.llSrc || card.wordSrc, 0.9);
+  const src = card.llSrc || card.wordSrc;
+  const t0 = Date.now();
+  vlog('sayId', word + (src ? ' clip' : ' tts'));
+  let why = src && ttsHasClip(src) ? await playClipWatched(src) : 'noclip';
+  if (why !== 'end') {
+    ttsStopClip();
+    if (ttsVoice) {
+      const spoke = await Promise.race([ttsSpeak(word, 0.9), pause(4000).then(() => false)]);
+      why += spoke ? '+synth' : '+synthFailed';
+    }
+  }
+  vlog('sayId.end', why + ' ' + (Date.now() - t0) + 'ms');
 }
 
 // iOS only lets a page make sound after a tap. The Start tap plays silence
@@ -299,6 +368,19 @@ const pause = ms => new Promise(r => setTimeout(r, ms));
 const SPEECH_GAP_MS = 1100;
 let activeRec = null;
 let fatalMic = null;
+let recSerial = 0;
+
+// Safari can refuse a new recognizer while the last one is still shutting
+// down, so a new session waits for the previous one's 'end' (or 1.5 s).
+let recClosed = Promise.resolve();
+function trackClose(r) {
+  let done;
+  const p = new Promise(res => { done = res; });
+  const t = setTimeout(() => { vlog('rec.closeTimeout', r.__n); done(); }, 1500);
+  r.__closed = () => { clearTimeout(t); done(); };
+  recClosed = p;
+}
+function recSettled() { return recClosed; }
 
 function listen(ms) {
   return new Promise(resolve => {
@@ -309,24 +391,33 @@ function listen(ms) {
     let deadline = Date.now() + ms;
     let lastSpeech = 0;
     let rec = null;
-    const finish = () => {
+    const finish = why => {
       if (settled) return;
       settled = true;
+      vlog('listen.done', (why || '') + ' ' + JSON.stringify(alts[0] || ''));
       clearInterval(tick);
       if (rec) { try { rec.abort(); } catch (_) {} }
       activeRec = null;
       resolve(alts.filter(Boolean));
     };
-    const open = () => {
+    const open = async () => {
+      if (settled) return;
+      await recClosed;
       if (settled) return;
       const r = new SR();
+      r.__n = ++recSerial;
+      trackClose(r);
       rec = activeRec = r;
+      vlog('rec.new', r.__n);
+      r.onstart = () => vlog('rec.start', r.__n);
+      r.onaudiostart = () => vlog('rec.audiostart', r.__n);
+      r.onspeechstart = () => vlog('rec.speechstart', r.__n);
       r.lang = 'en-US';
       r.interimResults = true;
       r.maxAlternatives = 3;
       r.continuous = true;
       r.onresult = e => {
-        if (r !== rec) return;
+        if (r !== rec) { vlog('rec.staleResult', r.__n); return; }
         // Everything this session has heard, final or not; alternatives come
         // from its latest result.
         const parts = [];
@@ -336,6 +427,7 @@ function listen(ms) {
         const texts = [];
         for (let i = 0; i < last.length; i++) texts.push(last[i].transcript.trim());
         const next = texts.map(t => [head, t].filter(Boolean).join(' ').trim()).filter(Boolean);
+        vlog('rec.result', r.__n + ' ' + (last.isFinal ? 'final ' : '') + JSON.stringify(next[0] || ''));
         if (!next.length) return;
         alts = next;
         lastSpeech = Date.now();
@@ -343,25 +435,29 @@ function listen(ms) {
         show('Heard', { listening: true, heard: alts[0] });
       };
       r.onerror = e => {
+        vlog('rec.error', r.__n + ' ' + e.error);
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'audio-capture') {
           fatalMic = e.error;
-          finish();
+          finish('fatal');
         }
       };
       r.onend = () => {
+        vlog('rec.end', r.__n);
+        if (r.__closed) r.__closed();
         if (r !== rec || settled) return;
         kept = alts[0] || kept;
         // Ended on its own with time left: listen again.
         if (Date.now() < deadline - 300) setTimeout(open, 60);
-        else finish();
+        else finish('ended');
       };
-      try { r.start(); } catch (_) { setTimeout(finish, 0); }
+      try { r.start(); } catch (e) { vlog('rec.startThrew', r.__n + ' ' + (e && e.message)); if (r.__closed) r.__closed(); setTimeout(finish, 0); }
     };
     const tick = setInterval(() => {
       const now = Date.now();
-      if (lastSpeech && now - lastSpeech > SPEECH_GAP_MS) finish();
-      else if (now > deadline) finish();
+      if (lastSpeech && now - lastSpeech > SPEECH_GAP_MS) finish('gap');
+      else if (now > deadline) finish('deadline');
     }, 100);
+    vlog('listen', ms);
     open();
   });
 }
@@ -437,11 +533,15 @@ async function drillCard(id, card) {
     guard(id);
     show('Listening — what does it mean?', { listening: true });
     const alts = await listen(prefs.waitMs);
+    // Talking over a mic that is still shutting down is the other thing iOS
+    // handles badly; give it a moment to let go first.
+    await Promise.race([recSettled(), pause(800)]);
     guard(id);
     if (fatalMic) return { cmd: 'mic' };
     const heard = alts[0] || '';
     const r = alts.some(a => voiceClassifyAnswer(a, card.back).kind === 'correct')
       ? { kind: 'correct' } : voiceClassifyAnswer(heard, card.back);
+    vlog('decided', card.front + ' -> ' + r.kind + (r.grade ? ' ' + r.grade : '') + (r.cmd ? ' ' + r.cmd : ''));
     show(r.kind === 'silent' ? 'Didn\u2019t catch that' : 'Heard', { heard });
     if (r.kind === 'silent') {
       if (++silences >= 2) return { cmd: 'idle' };
@@ -471,6 +571,7 @@ async function drillCard(id, card) {
       await pause(200);
       show('Right or wrong?', { listening: true });
       const c = voiceClassifyConfirm((await listen(5000))[0] || '');
+      await Promise.race([recSettled(), pause(800)]);
       guard(id);
       if (fatalMic) return { cmd: 'mic' };
       if (c.kind === 'grade') {
@@ -578,6 +679,9 @@ function start() {
   if (running) return;
   if (!SR) return;
   fatalMic = null;
+  vlogT0 = Date.now();
+  vlogEntries = [];
+  vlog('start', navigator.userAgent);
   unlockAudio();
   running = true;
   holdScreen();
@@ -588,6 +692,7 @@ function start() {
 }
 
 function stop() {
+  if (running) { vlog('stop'); clearTimeout(vlogTimer); vlogSend(); }
   running = false;
   runId++;
   stopListening();
