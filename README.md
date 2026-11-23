@@ -103,6 +103,13 @@ more than twice. The "same word over and over" bug came back three times because
 function at a time; it only ever showed up at the tail of a session. CI (`.github/workflows/tests.yml`) runs the
 suite on every push.
 
+The voice drill's answer matching is also checked against real use: `scripts/voice_log_fixture.py` pulls the
+drill's step log from the sync gist after a session and saves every answer (what the recognizer heard, what the
+drill decided, and the learner's own right-or-wrong verdict when asked) to `tests/voice-phone-answers.json`. The
+suite replays them through the current matcher and fails if an answer the learner called wrong would now be
+accepted, or one that was accepted no longer is; otherwise it reports how many answers are now accepted without
+asking.
+
 The suite is deliberately scoped to pure functions, because that's where the real bugs in this project have
 been: an FSRS formula, a merge rule, a parser edge case. It is verified by mutation — breaking the `rev`
 tiebreaker, the parser's separator rule, the goal clamp, the item-key logging, or "Again" scheduling each makes

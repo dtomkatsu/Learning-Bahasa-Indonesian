@@ -1,0 +1,437 @@
+[
+ {
+  "session": "2026-11-23T09:06:33.103Z#0",
+  "t": 5359,
+  "front": "laut",
+  "heard": "See",
+  "then": "unclear",
+  "confirm": [
+   "Great",
+   "Right"
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:06:33.103Z#0",
+  "t": 21227,
+  "front": "lembut",
+  "heard": "Week",
+  "then": "unclear",
+  "confirm": [
+   "Hard"
+  ],
+  "truth": "hard"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 98721,
+  "front": "bekerja",
+  "heard": "to work.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 108598,
+  "front": "di samping itu",
+  "heard": "I don't know.",
+  "then": "grade 1",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 118591,
+  "front": "hias",
+  "heard": "or not.",
+  "then": "unclear",
+  "confirm": [
+   "I don't know."
+  ],
+  "truth": "wrong"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 134703,
+  "front": "harga pas",
+  "heard": "fixed price",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 156438,
+  "front": "tunai",
+  "heard": "Cash.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 176151,
+  "front": "dapur",
+  "heard": "Kitchen.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 192379,
+  "front": "segel",
+  "heard": "to seal.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 200487,
+  "front": "model",
+  "heard": "Model.",
+  "then": "unclear",
+  "confirm": [
+   "All right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 214162,
+  "front": "atuh",
+  "heard": "Softener.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 229264,
+  "front": "Kamis",
+  "heard": "Thursday.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 240496,
+  "front": "katanya",
+  "heard": "It seems like...",
+  "then": "unclear",
+  "confirm": [
+   "Hard."
+  ],
+  "truth": "hard"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 254475,
+  "front": "Nggak apa-apa",
+  "heard": "No problem.",
+  "then": "grade 1",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 262936,
+  "front": "tenang",
+  "heard": "Quiet.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 271244,
+  "front": "mulut",
+  "heard": "I don't know.",
+  "then": "grade 1",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 278467,
+  "front": "simak",
+  "heard": "Listen carefully.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 287151,
+  "front": "hapus",
+  "heard": "To delete erase.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 297031,
+  "front": "rayakan",
+  "heard": "I don't know.",
+  "then": "grade 1",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 305230,
+  "front": "lembur",
+  "heard": "Two at time off.",
+  "then": "unclear",
+  "confirm": [
+   "- All right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 319395,
+  "front": "dari segi",
+  "heard": "from the perspective of.",
+  "then": "unclear",
+  "confirm": [
+   "",
+   "Go ahead."
+  ],
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 332444,
+  "front": "bahkan",
+  "heard": "I don't know.",
+  "then": "grade 1",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 339614,
+  "front": "musim",
+  "heard": "Season.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 351149,
+  "front": "apalagi",
+  "heard": "Besides, moreover.",
+  "then": "unclear",
+  "confirm": [
+   "Again.",
+   "again."
+  ],
+  "truth": "wrong"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 368416,
+  "front": "agar",
+  "heard": "So that.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 380068,
+  "front": "lusa",
+  "heard": "Straight.",
+  "then": "unclear",
+  "confirm": [
+   "Right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 393477,
+  "front": "rehat",
+  "heard": "to relax.",
+  "then": "unclear",
+  "confirm": [
+   "Right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 406112,
+  "front": "sangat",
+  "heard": "Very.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 416561,
+  "front": "kunci",
+  "heard": "Key",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 428181,
+  "front": "titik",
+  "heard": "to entrust.",
+  "then": "unclear",
+  "confirm": [
+   "Party.",
+   "Hard."
+  ],
+  "truth": "hard"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 445699,
+  "front": "daging",
+  "heard": "Meet.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 455651,
+  "front": "separuh",
+  "heard": "Cows.",
+  "then": "unclear",
+  "confirm": [
+   "Right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 468214,
+  "front": "cuma",
+  "heard": "Only / just",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 475814,
+  "front": "punggung",
+  "heard": "Bye.",
+  "then": "unclear",
+  "confirm": [
+   "Right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 487775,
+  "front": "peta",
+  "heard": "MAP!",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 494787,
+  "front": "izin",
+  "heard": "They're asked.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 505853,
+  "front": "maju",
+  "heard": "move forward.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 515406,
+  "front": "mendung",
+  "heard": "Cloudy/overcast.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 526454,
+  "front": "haus",
+  "heard": "Thursday.",
+  "then": "unclear",
+  "confirm": [
+   "Right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 539365,
+  "front": "cuaca",
+  "heard": "Wether.",
+  "then": "unclear",
+  "confirm": [
+   "Right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 555504,
+  "front": "jaga",
+  "heard": "Too guard.",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 566314,
+  "front": "hadir",
+  "heard": "To destroy it.",
+  "then": "unclear",
+  "confirm": [
+   "Wrong."
+  ],
+  "truth": "wrong"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 578498,
+  "front": "lipat",
+  "heard": "I don't know.",
+  "then": "grade 1",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 586905,
+  "front": "apalagi",
+  "heard": "especially...",
+  "then": "correct",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 596069,
+  "front": "musim kemarau",
+  "heard": "You guys see you, dude.",
+  "then": "unclear",
+  "confirm": [
+   "Right."
+  ],
+  "truth": "right"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 608176,
+  "front": "rawat",
+  "heard": "I don't know.",
+  "then": "grade 1",
+  "truth": "unknown"
+ },
+ {
+  "session": "2026-11-23T09:42:12.252Z",
+  "t": 616331,
+  "front": "payung",
+  "heard": "Again.",
+  "then": "unclear",
+  "confirm": [
+   "Again, but again.",
+   "Hard."
+  ],
+  "truth": "wrong"
+ }
+]

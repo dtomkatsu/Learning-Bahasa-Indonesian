@@ -105,6 +105,75 @@ def run_unit_tests():
     return proc.returncode == 0
 
 
+# Replays every answer the voice drill logged on the phone (see
+# scripts/voice_log_fixture.py) through the current matcher, against the
+# card's current back. Fails on a false accept (an answer the learner said
+# was wrong, now marked correct) or a lost accept (one the drill accepted
+# before, now not); otherwise just reports how the mix moved.
+REPLAY = r"""
+let skipped = 0;
+const out = { total: 0, correct: 0, ask: 0, grade: 0, command: 0, rescued: [], falseAccept: [], lost: [], changed: [] };
+for (const c of __CASES) {
+  const back = __BACK[c.front];
+  if (!back) { skipped++; continue; }
+  const r = voiceClassifyAnswer(c.heard, back);
+  const now = r.kind === 'unclear' ? 'unclear' : r.kind + (r.grade ? ' ' + r.grade : '') + (r.cmd ? ' ' + r.cmd : '');
+  out.total++;
+  if (r.kind === 'correct') out.correct++;
+  else if (r.kind === 'unclear') out.ask++;
+  else if (r.kind === 'grade') out.grade++;
+  else out.command++;
+  const tag = `${c.front}: "${c.heard}"`;
+  if (c.truth === 'wrong' && r.kind === 'correct') out.falseAccept.push(tag);
+  if (c.then === 'correct' && r.kind !== 'correct') out.lost.push(tag + ' -> ' + now);
+  if (c.then === 'unclear' && r.kind === 'correct' && (c.truth === 'right' || c.truth === 'hard')) out.rescued.push(tag);
+  if (now !== c.then) out.changed.push(`${tag}  ${c.then} -> ${now}`);
+}
+let replies = 0, understood = 0;
+const missed = [];
+for (const c of __CASES) for (const reply of (c.confirm || [])) {
+  if (!reply) continue;
+  replies++;
+  const k = voiceClassifyConfirm(reply).kind;
+  if (k === 'grade' || k === 'command') understood++; else missed.push(reply);
+}
+const pct = n => Math.round(100 * n / Math.max(1, out.total)) + '%';
+console.log(`  ${out.total} answers from the phone (${skipped} for cards no longer in the deck)`);
+console.log(`  now: ${out.correct} accepted (${pct(out.correct)}), ${out.ask} asked right-or-wrong (${pct(out.ask)}), ` +
+  `${out.grade} self-graded, ${out.command} commands`);
+console.log(`  rescued (learner said right/hard, now accepted without asking): ${out.rescued.length}`);
+out.rescued.forEach(t => console.log('    + ' + t));
+console.log(`  right-or-wrong replies understood: ${understood}/${replies}` + (missed.length ? `  (not: ${missed.map(m => JSON.stringify(m)).join(', ')})` : ''));
+if (out.changed.length) { console.log('  changed since logged:'); out.changed.forEach(t => console.log('    ' + t)); }
+out.falseAccept.forEach(t => console.log('  ✗ false accept (learner said wrong): ' + t));
+out.lost.forEach(t => console.log('  ✗ no longer accepted: ' + t));
+process.exit(out.falseAccept.length || out.lost.length ? 1 : 0);
+"""
+
+
+def run_phone_replay():
+    import json
+    fixture = ROOT / "tests" / "voice-phone-answers.json"
+    print("\nvoice drill: replay of answers logged on the phone")
+    if not fixture.exists():
+        print("  (no tests/voice-phone-answers.json yet: run scripts/voice_log_fixture.py)")
+        return True
+    from build_flashcards import load_decks   # noqa: E402
+    backs = {c["front"]: c["back"] for c in load_decks()}
+    cases = json.loads(fixture.read_text(encoding="utf-8"))
+    bundle = (VOICE_JS + "\nconst __CASES = " + json.dumps(cases, ensure_ascii=False)
+              + ";\nconst __BACK = " + json.dumps(backs, ensure_ascii=False) + ";\n" + REPLAY)
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
+        f.write(bundle)
+        path = f.name
+    proc = subprocess.run(["node", path], capture_output=True, text=True)
+    Path(path).unlink(missing_ok=True)
+    sys.stdout.write(proc.stdout)
+    if proc.stderr.strip():
+        sys.stderr.write(proc.stderr)
+    return proc.returncode == 0
+
+
 def run_syntax_checks():
     print("\nsyntax check of generated pages")
     pages = sorted(ROOT.glob("*.html"))
@@ -134,8 +203,9 @@ def run_syntax_checks():
 
 def main():
     units_ok = run_unit_tests()
+    replay_ok = run_phone_replay()
     syntax_ok = run_syntax_checks()
-    if units_ok and syntax_ok:
+    if units_ok and replay_ok and syntax_ok:
         print("\nall green")
         return 0
     print("\nFAILED")
