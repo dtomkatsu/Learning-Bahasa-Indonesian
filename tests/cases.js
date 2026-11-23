@@ -547,3 +547,15 @@ suite('voice: go back', () => {
   eq(voiceClassifyAnswer('back', 'back (of the body)').kind, 'correct', 'and "back" is the answer for punggung');
   deepEq(voiceClassifyConfirm('go back'), { kind: 'command', cmd: 'undo' }, 'go back at right-or-wrong');
 });
+
+suite('voice: sound-alikes and more ways to say right', () => {
+  eq(voiceClassifyAnswer('See', 'sea').kind, 'correct', '"see" for laut (sea)');
+  eq(voiceClassifyAnswer('weak', 'week').kind, 'correct', '"weak" for minggu (week)');
+  eq(voiceClassifyAnswer('fair', 'fare, or charge').kind, 'correct', '"fair" for ongkos (fare)');
+  eq(voiceClassifyAnswer('nose', 'nose').kind, 'correct', 'unchanged word still matches');
+  eq(voiceClassifyAnswer('see', 'to look / watch').kind, 'unclear', 'sound-alikes do not widen unrelated cards');
+  deepEq(voiceClassifyConfirm('Great'), { kind: 'grade', grade: 3 }, 'great');
+  deepEq(voiceClassifyConfirm("that's right"), { kind: 'grade', grade: 3 }, "that's right");
+  deepEq(voiceClassifyConfirm('not right'), { kind: 'grade', grade: 1 }, 'not right is wrong');
+  deepEq(voiceClassifyConfirm('nah'), { kind: 'grade', grade: 1 }, 'nah');
+});

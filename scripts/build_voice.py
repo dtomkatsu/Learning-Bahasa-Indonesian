@@ -373,15 +373,18 @@ const SPEECH_GAP_MS = 1100;
 let activeRec = null;
 let fatalMic = null;
 let recSerial = 0;
+let listenCancel = null;
 
 // Safari can refuse a new recognizer while the last one is still shutting
 // down, so a new session waits for the previous one's 'end' (or 1.5 s).
 let recClosed = Promise.resolve();
 function trackClose(r) {
-  let done;
+  let done, t = null;
   const p = new Promise(res => { done = res; });
-  const t = setTimeout(() => { vlog('rec.closeTimeout', r.__n); done(); }, 1500);
   r.__closed = () => { clearTimeout(t); done(); };
+  // The 1.5 s grace starts when the session is told to stop, not when it
+  // was created (a long answer window is not a stuck shutdown).
+  r.__closing = () => { if (t === null) t = setTimeout(() => { vlog('rec.closeTimeout', r.__n); done(); }, 1500); };
   recClosed = p;
 }
 function recSettled() { return recClosed; }
@@ -400,8 +403,9 @@ function listen(ms) {
       settled = true;
       vlog('listen.done', (why || '') + ' ' + JSON.stringify(alts[0] || ''));
       clearInterval(tick);
-      if (rec) { try { rec.abort(); } catch (_) {} }
+      if (rec) { if (rec.__closing) rec.__closing(); try { rec.abort(); } catch (_) {} }
       activeRec = null;
+      listenCancel = null;
       resolve(alts.filter(Boolean));
     };
     const open = async () => {
@@ -462,11 +466,13 @@ function listen(ms) {
       else if (now > deadline) finish('deadline');
     }, 100);
     vlog('listen', ms);
+    listenCancel = () => finish('cancelled');
     open();
   });
 }
 
 function stopListening() {
+  if (listenCancel) listenCancel();
   if (activeRec) { try { activeRec.abort(); } catch (_) {} activeRec = null; }
 }
 

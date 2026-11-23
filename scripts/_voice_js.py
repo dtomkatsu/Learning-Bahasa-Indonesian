@@ -95,6 +95,32 @@ function voiceSpokenGloss(back) {
   return head || String(back || '');
 }
 
+// Recognizers spell what they hear, not what you meant: "sea" comes back as
+// "see", "soft" next to "weak" as "week". Each group is rewritten to its
+// first spelling on both sides before matching. Only content words: to/two,
+// for/four, no/know, I/eye and one/won are left alone because they collide
+// with stopwords, grades or commands.
+const VOICE_HOMOPHONES = [
+  'sea see', 'week weak', 'here hear', 'son sun', 'meat meet', 'flower flour',
+  'right write', 'eight ate', 'hair hare', 'tail tale', 'pear pair', 'night knight',
+  'road rode', 'blue blew', 'red read', 'dear deer', 'bear bare', 'buy by bye',
+  'sail sale', 'steal steel', 'wait weight', 'waist waste', 'plain plane',
+  'male mail', 'whole hole', 'peace piece', 'wood would', 'threw through',
+  'sent cent scent', 'sore soar', 'rain reign', 'break brake', 'fair fare',
+  'great grate', 'flew flu', 'new knew', 'die dye', 'sole soul', 'toe tow',
+  'wear where', 'witch which', 'weather whether', 'high hi', 'route root',
+  'past passed', 'allowed aloud', 'morning mourning', 'rose rows', 'berry bury',
+  'sell cell', 'heal heel', 'nose knows', 'way weigh', 'there their',
+  'missed mist', 'guest guessed', 'pour poor', 'stair stare', 'tea tee',
+  'board bored', 'ceiling sealing', 'chilly chili', 'minor miner', 'pray prey',
+  'beat beet', 'due dew', 'heard herd', 'whale wail', 'wheel we\'ll',
+];
+const VOICE_SOUNDALIKE = new Map();
+VOICE_HOMOPHONES.forEach(g => { const ws = g.split(' '); ws.forEach(w => VOICE_SOUNDALIKE.set(w, ws[0])); });
+function voiceCanon(s) {
+  return s.split(' ').map(w => VOICE_SOUNDALIKE.get(w) || w).join(' ');
+}
+
 function voiceHas(said, phrase) {
   return (' ' + said + ' ').includes(' ' + phrase + ' ');
 }
@@ -103,10 +129,10 @@ function voiceHas(said, phrase) {
 // any content word from one (stemmed), so "it means to eat something" and
 // "eating" both count for "to eat".
 function voiceMatches(said, back) {
-  const s = voiceNorm(said);
+  const s = voiceCanon(voiceNorm(said));
   if (!s) return false;
   const saidStems = new Set(s.split(' ').map(voiceStem));
-  for (const phrase of voiceAccepted(back)) {
+  for (const phrase of voiceAccepted(back).map(voiceCanon)) {
     if (voiceHas(s, phrase)) return true;
     for (const w of phrase.split(' ')) {
       if (w.length < 3 || VOICE_STOP.has(w)) continue;
@@ -128,12 +154,15 @@ const VOICE_COMMANDS = [
 const VOICE_GRADES = [
   // "don't know" before anything that could find "know" in a gloss.
   [1, ["don't know", 'dont know', 'do not know', 'no idea', 'not sure', 'no clue',
-       'forgot', 'i forget', 'pass', 'bad', 'wrong', 'missed', 'miss', 'nope', 'no']],
+       "didn't know", "didn't get it", 'not right', 'not correct', 'incorrect', 'i was wrong',
+       'forgot', 'i forget', 'pass', 'bad', 'wrong', 'missed', 'miss', 'nope', 'nah', 'no']],
   [2, ['hard', 'heart', 'hart', 'difficult', 'almost', 'close', 'kind of', 'sort of']],
   // Plus what recognizers make of a lone one-word answer: "good" comes back
   // as "could" or "goods", "easy" as "ez" or "easey".
   [4, ['easy', 'too easy', 'super easy', 'obvious', 'ez', 'easey', 'eazy', 'easily']],
-  [3, ['good', 'could', 'goods', 'gud', 'good good', 'very good', 'got it', 'right', 'correct', 'yes', 'yeah', 'yep', 'knew it', 'i knew it', 'know it', 'i know it']],
+  [3, ['good', 'could', 'goods', 'gud', 'good good', 'very good', 'got it',
+       'great', 'grate', 'perfect', 'nice', 'awesome', 'sure', 'exactly', 'yup', 'nailed it',
+       "that's right", 'that is right', 'i got it', 'write', 'right', 'correct', 'yes', 'yeah', 'yep', 'knew it', 'i knew it', 'know it', 'i know it']],
 ];
 
 function voiceFind(s, table) {
