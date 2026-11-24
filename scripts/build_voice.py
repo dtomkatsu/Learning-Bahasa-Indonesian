@@ -259,7 +259,7 @@ function pickNext() {
   let due = reviews;
   if (!due.length && newShown < prefs.newPer) due = p.filter(d => !srs[d.front]);
   if (!due.length) return null;
-  return srsPickAvoidingRecent(due, srsWordKeys);
+  return srsPickInOrder(due, srsWordKeys, d => srs[d.front], d => d.front);
 }
 
 function renderStats() {

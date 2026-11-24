@@ -229,8 +229,11 @@ function buildSession(practice) {
   if (practice) {
     session = shuffle(all.filter(i => stateFor(i))).slice(0, 20);
   } else {
-    const reviews = shuffle(all.filter(i => stateFor(i) && srsIsDue(stateFor(i))));
-    const fresh = shuffle(all.filter(i => !stateFor(i)));
+    // Same order as Flashcards and the voice drill (srsQueueOrder): most
+    // overdue first, new items in the shared fixed order.
+    const idOf = i => (i.kind === 'flash' ? i.front : i.id);
+    const reviews = srsQueueOrder(all.filter(i => stateFor(i) && srsIsDue(stateFor(i))), stateFor, idOf);
+    const fresh = srsQueueOrder(all.filter(i => !stateFor(i)), stateFor, idOf);
     session = [];
     let f = 0;
     for (let r = 0; r < reviews.length; r++) {
@@ -381,7 +384,7 @@ function next() {
   // (flashcard, cloze, fill-the-blank) and one line twice (sentence,
   // listening). Pull forward a remaining item that shares nothing with what
   // you just saw; the session's contents don't change, only the order.
-  const pick = srsPickAvoidingRecent(session.slice(idx), srsWordKeys);
+  const pick = srsPickFirstAvoiding(session.slice(idx), srsWordKeys);
   const j = session.indexOf(pick, idx);
   [session[idx], session[j]] = [session[j], session[idx]];
   current = session[idx];

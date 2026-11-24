@@ -503,7 +503,7 @@ function pickNext() {
   // schedule entirely once even that pool is exhausted.
   const due = srsDuePool(pool, d => srs[d.front], practiceAhead);
   if (!due.length) { renderAllCaughtUp(); return; }
-  showCard(srsPickAvoidingRecent(due, srsWordKeys));
+  showCard(srsPickInOrder(due, srsWordKeys, d => srs[d.front], d => d.front));
 }
 
 // Split out of pickNext so undo can put a specific card back on screen

@@ -598,3 +598,54 @@ suite('voice: actually right / wrong', () => {
   eq(voiceShortGloss('clothes / a shirt or top'), 'clothes', 'short gloss is the first meaning');
   eq(voiceShortGloss('key; to lock'), 'key', 'short gloss stops at a semicolon');
 });
+
+suite('shared order: every page picks the same next word', () => {
+  srsClearRecent();
+  const now = Date.now();
+  const deck = ['satu', 'dua', 'tiga', 'empat', 'lima', 'enam'].map(front => ({ front }));
+  const srs = { dua: { due: now - 5000, stability: 1, difficulty: 5 }, lima: { due: now - 90000, stability: 1, difficulty: 5 },
+                enam: { due: now + 99999, stability: 1, difficulty: 5 } };
+  const st = d => srs[d.front], id = d => d.front;
+  const due = srsDuePool(deck, st, false);
+  eq(srsPickInOrder(due, srsWordKeys, st, id).front, 'lima', 'most overdue review first');
+  const shuffled = due.slice().reverse();
+  eq(srsPickInOrder(shuffled, srsWordKeys, st, id).front, 'lima', 'same answer whatever order the pool comes in');
+  srsNoteShown(srsWordKeys({ front: 'lima' }));
+  eq(srsPickInOrder(due, srsWordKeys, st, id).front, 'dua', 'skips the word just shown');
+  const fresh = deck.filter(d => !srs[d.front]);
+  const a = srsQueueOrder(fresh, st, id).map(d => d.front).join();
+  const b = srsQueueOrder(fresh.slice().reverse(), st, id).map(d => d.front).join();
+  eq(a, b, 'new words come in one fixed order');
+  srsClearRecent();
+});
+
+suite('shared order: a whole session still never loops a word', () => {
+  const realNow = Date.now;
+  let clock = Date.UTC(2026, 10, 23, 18);
+  Date.now = () => clock;
+  try {
+    const deck = Array.from({ length: 200 }, (_, i) => ({ front: 'w' + i }));
+    const srs = {};
+    deck.forEach((d, i) => { if (i < 40) srs[d.front] = { difficulty: 5, stability: 3, due: clock - DAY_MS * (1 + i % 3), lastReview: clock - 4 * DAY_MS, reps: 2 }; });
+    srsClearRecent();
+    let seed = 7;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const shown = [], counts = {};
+    let idle = 0;
+    while (shown.length < 400 && idle < 120) {
+      const due = srsDuePool(deck, d => srs[d.front], false);
+      if (!due.length) { clock += 60000; idle++; continue; }
+      const c = srsPickInOrder(due, srsWordKeys, d => srs[d.front], d => d.front);
+      srsNoteShown(srsWordKeys(c));
+      if (shown[shown.length - 1] === c.front) throw new Error('back-to-back ' + c.front);
+      shown.push(c.front);
+      counts[c.front] = (counts[c.front] || 0) + 1;
+      srs[c.front] = fsrsNextState(srs[c.front], rnd() < 0.4 ? 1 : 3, clock);
+      clock += 15000;
+    }
+    ok(Math.max(...Object.values(counts)) <= 2, 'no word more than twice');
+  } finally {
+    Date.now = realNow;
+    srsClearRecent();
+  }
+});

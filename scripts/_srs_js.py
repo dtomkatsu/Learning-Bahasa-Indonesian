@@ -296,6 +296,47 @@ function srsPickAvoidingRecent(items, keyOf) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+// ---- One shared order -------------------------------------------------------
+// Flashcards, Study now and the voice drill used to each draw a random card
+// from whatever was due, so the three showed different words even though they
+// share one schedule. Now they all go in the same order: the most overdue
+// review first, then new words in one fixed order that is the same on every
+// page and device (a hash of the word, so it's mixed across categories but
+// never changes). The recent-card ring still skips something you just saw.
+function srsOrderKey(id) {
+  let h = 0x811c9dc5;
+  const s = String(id);
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h;
+}
+function srsQueueOrder(items, stateOf, idOf) {
+  return items.slice().sort((a, b) => {
+    const sa = stateOf(a), sb = stateOf(b);
+    if (sa && sb) return (sa.due || 0) - (sb.due || 0) || srsOrderKey(idOf(a)) - srsOrderKey(idOf(b));
+    if (sa) return -1;
+    if (sb) return 1;
+    return srsOrderKey(idOf(a)) - srsOrderKey(idOf(b));
+  });
+}
+// The first item in the list's own order that shares nothing with the recent
+// ring, letting the oldest ring entries go first when the list is too small
+// (same relaxation as srsPickAvoidingRecent, without the randomness).
+function srsPickFirstAvoiding(list, keyOf) {
+  if (!list.length) return null;
+  const keysOf = d => srsKeyList(keyOf(d));
+  const inPool = new Set(list.flatMap(keysOf));
+  const recent = srsRecent.map(srsKeyList).filter(e => e.some(k => inPool.has(k)));
+  for (let n = recent.length; n > 0; n--) {
+    const avoid = new Set(recent.slice(-n).flat());
+    const hit = list.find(d => !keysOf(d).some(k => avoid.has(k)));
+    if (hit) return hit;
+  }
+  return list[0];
+}
+function srsPickInOrder(items, keyOf, stateOf, idOf) {
+  return srsPickFirstAvoiding(srsQueueOrder(items, stateOf, idOf), keyOf);
+}
+
 // The pool a page draws its next card from: anything due for review, else
 // brand-new cards, else (with practice-ahead on) the whole pool. Flashcards
 // and the quiz both draw through this and srsPickAvoidingRecent, which is
