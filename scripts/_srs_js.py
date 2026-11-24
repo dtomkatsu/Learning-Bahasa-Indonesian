@@ -199,7 +199,11 @@ const RECENT_CAP = 50;
 // differently). Held only in memory it was lost on every reload, so each page
 // load could open on a card you'd just seen.
 // v2: entries are word keys (see srsWordKeys), not item ids. v1 held ids.
-const RECENT_RING_KEY = 'bahasa:recentItems:v2:' + ((typeof location !== 'undefined' && location.pathname) || '');
+// v3: one ring for every page, not one per page. With the shared order
+// (srsQueueOrder) a per-page ring still made pages disagree: the voice drill
+// skipped the words it had just said while Flashcards skipped others, so the
+// two started on different words. Word keys mean the same thing everywhere.
+const RECENT_RING_KEY = 'bahasa:recentItems:v3';
 // A ring entry is one shown item: a key, or an array of keys.
 function srsKeyList(x) {
   return (Array.isArray(x) ? x : [x]).filter(k => typeof k === 'string' && k);
