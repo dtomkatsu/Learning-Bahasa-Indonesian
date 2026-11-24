@@ -649,3 +649,74 @@ suite('shared order: a whole session still never loops a word', () => {
     srsClearRecent();
   }
 });
+
+// ---- Sync writes: one at a time, retried, extra files ride along -----------
+
+// A gist that can be told to refuse writes, and that records whether two
+// writes were ever in flight at once.
+function flakyGist(gistId, refuse) {
+  const g = { files: {}, patches: 0, inFlight: 0, maxInFlight: 0, keepalive: [] };
+  globalThis.fetch = async (url, opts = {}) => {
+    const res = (status, body) => ({ status, ok: status < 300, json: async () => body });
+    if (!url.endsWith('/gists/' + gistId)) return res(404, {});
+    if (opts.method !== 'PATCH') {
+      const files = {};
+      for (const [k, v] of Object.entries(g.files)) files[k] = { content: v };
+      return res(200, { id: gistId, files });
+    }
+    g.inFlight++; g.maxInFlight = Math.max(g.maxInFlight, g.inFlight);
+    g.keepalive.push(!!opts.keepalive);
+    await new Promise(r => setTimeout(r, 5));
+    g.inFlight--;
+    g.patches++;
+    const status = refuse.length ? refuse.shift() : 200;
+    if (status === 200) for (const [k, v] of Object.entries(JSON.parse(opts.body).files)) g.files[k] = v.content;
+    return res(status, {});
+  };
+  return g;
+}
+
+asyncSuite('sync: a refused write is retried before it counts as an error', async () => {
+  localStorage.clear();
+  localStorage.setItem(SYNC_TOKEN_KEY, 't'); localStorage.setItem(SYNC_GIST_KEY, 'g2');
+  const saved = syncRetryDelays; syncRetryDelays = [0, 0, 0];
+  try {
+    const g = flakyGist('g2', [409, 403]);
+    await syncRemotePush();
+    eq(g.patches, 3, 'two refusals, then it went through');
+    ok(g.files[SYNC_FILENAME], 'progress landed');
+    eq(localStorage.getItem(SYNC_ERR_KEY), null, 'no error recorded');
+    flakyGist('g2', [500, 500, 500, 500]);
+    let msg = '';
+    try { await syncRemotePush(); } catch (e) { msg = e.message; }
+    ok(/HTTP 500/.test(msg), 'gives up after the retries, with the status');
+    ok(/HTTP 500/.test(JSON.parse(localStorage.getItem(SYNC_ERR_KEY)).msg), 'and records it for the next look');
+  } finally { syncRetryDelays = saved; localStorage.clear(); delete globalThis.fetch; }
+});
+
+asyncSuite('sync: writes never overlap, and attached files ride along', async () => {
+  localStorage.clear();
+  localStorage.setItem(SYNC_TOKEN_KEY, 't'); localStorage.setItem(SYNC_GIST_KEY, 'g3');
+  const g = flakyGist('g3', []);
+  syncAttachFile('voice-debug-log.json', '{"log":[1]}');
+  await Promise.all([syncRemotePush(), syncRemotePush(), syncRemotePush()]);
+  eq(g.maxInFlight, 1, 'one write at a time');
+  eq(g.files['voice-debug-log.json'], '{"log":[1]}', 'the attached log went up with progress');
+  const before = g.patches;
+  await syncRemotePush();
+  eq(g.patches, before + 1, 'a later push is one write');
+  localStorage.clear(); delete globalThis.fetch;
+});
+
+asyncSuite('sync: the save on leaving works with a big progress file', async () => {
+  localStorage.clear();
+  localStorage.setItem(SYNC_TOKEN_KEY, 't'); localStorage.setItem(SYNC_GIST_KEY, 'g4');
+  const log = {};
+  for (let i = 0; i < 2000; i++) log[1e12 + i] = { g: 3, k: 'flash', n: 0, i: 'word' + i };
+  localStorage.setItem('bahasa:reviewLog:v1', JSON.stringify(log));
+  const g = flakyGist('g4', []);
+  await syncRemoteFlush();
+  eq(g.keepalive[0], false, 'no keepalive for a body over 64 KB (browsers refuse it)');
+  ok(g.files[SYNC_FILENAME] && g.files[SYNC_FILENAME].length > 64000, 'the large file was sent');
+  localStorage.clear(); delete globalThis.fetch;
+});

@@ -898,27 +898,83 @@ async function syncRemotePull() {
   return r;
 }
 
-// Pull-merge first so this device's push can never clobber another device's
-// newer reviews, then upload the merged state.
-async function syncRemotePush() {
-  try { await syncRemotePull(); } catch (e) { /* offline pull is fine; push may still work */ }
-  const id = localStorage.getItem(SYNC_GIST_KEY);
-  const resp = await fetch(GH_API + '/gists/' + id, {
-    method: 'PATCH', headers: syncGhHeaders(),
-    body: JSON.stringify({ files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } } }),
-  });
-  syncNoteResponse(resp);
-  if (!resp.ok) throw new Error('Push failed (HTTP ' + resp.status + ').');
-  localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+// ---- Writes ------------------------------------------------------------------
+// Every write to the gist goes through one queue, one at a time. Two
+// overlapping PATCHes to one gist (a progress push and the voice drill's
+// debug log) can get one refused, and that showed up as a sync error.
+// Other files (that debug log) ride along with the next progress push
+// instead of making writes of their own: GitHub rate-limits content writes
+// per account, and a long drill session was getting close.
+const SYNC_ERR_KEY = 'bahasa:sync:lastError';
+const _syncExtraFiles = {};
+function syncAttachFile(name, content) { _syncExtraFiles[name] = content; }
+
+let _syncChain = Promise.resolve();
+function syncSerial(fn) {
+  const p = _syncChain.then(fn, fn);
+  _syncChain = p.catch(() => {});
+  return p;
 }
 
+// Refusals worth waiting out rather than reporting: 409 (a write raced
+// another), 403/429 (rate limits), 5xx, and no network. A 401 is not one of
+// them; syncNoteResponse reports a dead token straight away.
+let syncRetryDelays = [2000, 6000, 20000];
+function syncTransient(status) { return status === 0 || status === 409 || status === 403 || status === 429 || status >= 500; }
+const _syncSleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Pull-merge first so this device's push can never clobber another device's
+// newer reviews, then upload the merged state.
+function syncRemotePush() {
+  return syncSerial(async () => {
+    const id = localStorage.getItem(SYNC_GIST_KEY);
+    for (let attempt = 0; ; attempt++) {
+      try { await syncRemotePull(); } catch (e) { /* offline pull is fine; push may still work */ }
+      const files = { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } };
+      for (const [name, content] of Object.entries(_syncExtraFiles)) files[name] = { content };
+      let resp = null;
+      try {
+        resp = await fetch(GH_API + '/gists/' + id, {
+          method: 'PATCH', headers: syncGhHeaders(), body: JSON.stringify({ files }),
+        });
+      } catch (e) { /* network: retried below */ }
+      if (resp) syncNoteResponse(resp);           // throws on a dead token
+      if (resp && resp.ok) {
+        for (const name of Object.keys(files)) {
+          if (name !== SYNC_FILENAME && _syncExtraFiles[name] === files[name].content) delete _syncExtraFiles[name];
+        }
+        localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+        localStorage.removeItem(SYNC_ERR_KEY);
+        return;
+      }
+      const status = resp ? resp.status : 0;
+      if (syncTransient(status) && attempt < syncRetryDelays.length) {
+        await _syncSleep(syncRetryDelays[attempt]);
+        continue;
+      }
+      const msg = status ? 'Push failed (HTTP ' + status + ').' : 'Push failed: no connection.';
+      localStorage.setItem(SYNC_ERR_KEY, JSON.stringify({ at: Date.now(), msg }));
+      throw new Error(msg);
+    }
+  });
+}
+
+// Pushes wait for a pause in reviewing (SYNC_PUSH_IDLE_MS) so a run of quick
+// ratings is one write, but never longer than SYNC_PUSH_MAX_MS from the first
+// unsent rating, so steady reviewing still syncs.
+const SYNC_PUSH_IDLE_MS = 8000;
+const SYNC_PUSH_MAX_MS = 30000;
 let _syncPushTimer = null;
+let _syncFirstQueued = 0;
 function syncRemoteQueuePush(statusCb) {
   if (!syncRemoteConfigured()) return;
   if (_syncPushTimer) clearTimeout(_syncPushTimer);
+  if (!_syncFirstQueued) _syncFirstQueued = Date.now();
   statusCb && statusCb('pending');
+  const wait = Math.max(0, Math.min(SYNC_PUSH_IDLE_MS, _syncFirstQueued + SYNC_PUSH_MAX_MS - Date.now()));
   _syncPushTimer = setTimeout(async () => {
     _syncPushTimer = null;
+    _syncFirstQueued = 0;
     try { await syncRemotePush(); statusCb && statusCb('ok'); }
     // The specific reason (bad token, deleted gist, network) used to be
     // thrown away here — every page just showed "sync failed" with no way to
@@ -946,22 +1002,28 @@ async function syncRemoteReplaceToken(token) {
 // Best-effort flush if the tab is backgrounded while a push is still queued.
 // Skips the pre-pull; keepalive bodies are size-capped (~64KB) so this can
 // silently no-op on very large state — the next normal push covers it.
+// Leaving the page with ratings not yet pushed. A keepalive request would
+// survive the page closing, but browsers refuse keepalive bodies over 64 KB
+// and the progress file is ~200 KB, so this flush failed every time. A
+// normal request goes out now; iOS finishes it when the app comes back if it
+// suspends it first, and the next push covers it either way.
 async function syncRemoteFlush() {
   const id = localStorage.getItem(SYNC_GIST_KEY);
   if (!id) return;
+  const body = JSON.stringify({ files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } } });
   try {
-    await fetch(GH_API + '/gists/' + id, {
-      method: 'PATCH', headers: syncGhHeaders(), keepalive: true,
-      body: JSON.stringify({ files: { [SYNC_FILENAME]: { content: JSON.stringify(syncBuildExport()) } } }),
+    const resp = await fetch(GH_API + '/gists/' + id, {
+      method: 'PATCH', headers: syncGhHeaders(), keepalive: body.length < 60000, body,
     });
-    localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
-  } catch (e) { /* best effort */ }
+    if (resp.ok) localStorage.setItem(SYNC_LAST_KEY, String(Date.now()));
+  } catch (e) { /* best effort; the next push covers it */ }
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden' && _syncPushTimer) {
     clearTimeout(_syncPushTimer);
     _syncPushTimer = null;
-    syncRemoteFlush();
+    _syncFirstQueued = 0;
+    syncSerial(syncRemoteFlush);
   }
 });
 

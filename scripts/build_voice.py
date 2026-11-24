@@ -219,25 +219,30 @@ function vlog(ev, d) {
   clearTimeout(vlogTimer);
   vlogTimer = setTimeout(vlogSend, 4000);
 }
-async function vlogSend() {
-  const token = localStorage.getItem('bahasa:sync:token');
-  const gist = localStorage.getItem('bahasa:sync:gistId');
-  if (!token || !gist || !vlogEntries.length) return;
-  try {
-    await fetch('https://api.github.com/gists/' + gist, {
-      method: 'PATCH',
-      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' },
-      body: JSON.stringify({ files: { [VLOG_FILE]: { content: JSON.stringify({
-        sent: new Date().toISOString(), ua: navigator.userAgent,
-        standalone: !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches),
-        log: vlogEntries }) } } }),
-    });
-  } catch (_) {}
+// The log rides along with the next progress push rather than making
+// writes of its own (see syncAttachFile). `push` forces one, for when the
+// session ends or a saved log from last time needs to go out.
+function vlogSend(push) {
+  if (!vlogEntries.length) return;
+  let lastSyncError = null;
+  try { lastSyncError = JSON.parse(localStorage.getItem(SYNC_ERR_KEY)); } catch (_) {}
+  syncAttachFile(VLOG_FILE, JSON.stringify({
+    sent: new Date().toISOString(), ua: navigator.userAgent,
+    standalone: !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches),
+    lastSyncError, log: vlogEntries }));
+  if (push) syncRemoteQueuePush(setSyncState);
 }
 // A log saved by an earlier session that couldn't get out (no sync token at
 // the time) goes out as soon as the page opens, before a new session's log
 // replaces it.
-setTimeout(vlogSend, 1500);
+// Only if it hasn't gone already, or every page open would be a write.
+const VLOG_SENT_KEY = 'bahasa:voice:logSent:v1';
+setTimeout(() => {
+  const mark = String(vlogEntries.length) + ':' + (vlogEntries.length ? vlogEntries[vlogEntries.length - 1].t : 0);
+  if (!vlogEntries.length || localStorage.getItem(VLOG_SENT_KEY) === mark) return;
+  localStorage.setItem(VLOG_SENT_KEY, mark);
+  vlogSend(true);
+}, 1500);
 
 // ---- Session state ---------------------------------------------------------
 let running = false;
@@ -1002,7 +1007,7 @@ function start() {
 }
 
 function stop() {
-  if (running) { vlog('stop'); clearTimeout(vlogTimer); vlogSend(); }
+  if (running) { vlog('stop'); clearTimeout(vlogTimer); vlogSend(true); }
   running = false;
   runId++;
   stopListening();
