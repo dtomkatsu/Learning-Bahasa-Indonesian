@@ -61,7 +61,7 @@ function voiceStem(w) {
   if (w.length > 4 && w.endsWith('ed')) return w.slice(0, -2);
   if (w.length > 4 && w.endsWith('es')) return w.slice(0, -2);
   if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) return w.slice(0, -1);
-  if (w.length > 4 && w.endsWith('e')) return w.slice(0, -1);
+  if (w.length > 3 && w.endsWith('e')) return w.slice(0, -1);   // take/taking, make/making
   return w;
 }
 
@@ -70,7 +70,9 @@ function voiceHead(back) {
   return String(back || '').split(/\s[—–-]\s|\s[—–]|[—–]\s/)[0];
 }
 
-// Phrases that count as a correct answer for this card.
+// Phrases that count as a correct answer for this card. Synonyms the back
+// doesn't spell out (vocab/voice-answers.json) are passed separately as
+// `extra` and matched more strictly, in voiceMatchesExtra.
 function voiceAccepted(back) {
   const quoted = [...String(back || '').matchAll(/["“]([^"”]+)["”]/g)].map(m => m[1]);
   const head = voiceHead(back).replace(/\([^)]*\)/g, ' ').replace(/["“”]/g, ' ');
@@ -85,6 +87,17 @@ function voiceAccepted(back) {
     if (bare !== p && bare) out.push(bare);
   }
   return [...new Set(out)];
+}
+
+// A synonym counts only when all its words are there ("take a break", not
+// just "take"): one key word is enough for the back's own meanings, but a
+// phrase like "when it comes to" would otherwise make "when" correct.
+function voiceMatchesExtra(saidStems, extra) {
+  for (const x of extra || []) {
+    const words = voiceCanon(voiceNorm(x)).split(' ').filter(w => w && !VOICE_STOP.has(w));
+    if (words.length && words.every(w => saidStems.has(voiceStem(w)))) return true;
+  }
+  return false;
 }
 
 // What the page reads aloud as the answer: the meaning, without the notes.
@@ -121,6 +134,29 @@ function voiceCanon(s) {
   return s.split(' ').map(w => VOICE_SOUNDALIKE.get(w) || w).join(' ');
 }
 
+// After a right answer only the first meaning is read ("Yes. clothes"), so
+// the drill keeps moving; the full list is for when you missed it.
+function voiceShortGloss(back) {
+  return voiceSpokenGloss(back).split(/, or |[;,]/)[0].trim();
+}
+
+// Everything the drill says in English apart from the card meanings. Fixed
+// strings, so scripts/build_voice_tts.py can have them recorded once.
+const VOICE_PHRASES = {
+  yes: 'Yes.',
+  rightOrWrong: 'Right or wrong?',
+  pausing: 'Pausing. Say resume when you\u2019re ready.',
+  ok: 'OK.',
+  goingBack: 'Going back.',
+  firstWord: 'This is the first word.',
+  stopped: 'Stopped.',
+  caughtUp: 'All caught up.',
+  nothingDue: 'Nothing due right now.',
+  changedRight: 'Changed it to right.',
+  changedWrong: 'Changed it to wrong.',
+  nothingToChange: 'There\u2019s nothing to change yet.',
+};
+
 function voiceHas(said, phrase) {
   return (' ' + said + ' ').includes(' ' + phrase + ' ');
 }
@@ -138,10 +174,11 @@ function voiceNear(a, b) {
 // True when what you said contains the meaning: a whole accepted phrase, or
 // any content word from one (stemmed), so "it means to eat something" and
 // "eating" both count for "to eat".
-function voiceMatches(said, back) {
+function voiceMatches(said, back, extra) {
   const s = voiceCanon(voiceNorm(said));
   if (!s) return false;
   const saidStems = new Set(s.split(' ').map(voiceStem));
+  if (voiceMatchesExtra(saidStems, extra)) return true;
   for (const phrase of voiceAccepted(back).map(voiceCanon)) {
     if (voiceHas(s, phrase)) return true;
     for (const w of phrase.split(' ')) {
@@ -157,6 +194,13 @@ function voiceMatches(said, back) {
 // Control words, checked in this order. Each is a whole-phrase match on the
 // normalized transcript, so "repeat" never fires on "repeatedly".
 const VOICE_COMMANDS = [
+  // "Actually right/wrong" changes the grade of the word before, when the
+  // drill got it wrong. Checked first: "that was right" must not read as a
+  // plain "right".
+  ['override-right', ['actually right', 'actually i was right', 'that was right', 'mark it right',
+    'mark that right', 'change it to right', 'i got that one', 'actually correct']],
+  ['override-wrong', ['actually wrong', 'actually i was wrong', 'that was wrong', 'mark it wrong',
+    'mark that wrong', 'change it to wrong', 'actually incorrect']],
   ['stop', ['stop', 'pause', 'stop listening', 'take a break']],
   ['undo', ['go back', 'back', 'undo', 'previous', 'previous word', 'last one', 'last word',
     'word before', 'one before', 'go back one']],
@@ -177,6 +221,20 @@ const VOICE_GRADES = [
        'great', 'grate', 'perfect', 'nice', 'awesome', 'sure', 'exactly', 'yup', 'nailed it',
        "that's right", 'that is right', 'i got it', 'write', 'right', 'correct', 'yes', 'yeah', 'yep', 'knew it', 'i knew it', 'know it', 'i know it']],
 ];
+
+// In the answer window, a grade only counts when that's all you said: "no
+// problem" is an answer that happens to contain "no", and grading it Again
+// was a real miss on the phone.
+const VOICE_FILLER = new Set(('it its it\'s that that\'s was is i a very too so oh um uh ok okay '
+  + 'well hmm the one this').split(' '));
+let VOICE_GRADE_WORDS = null;
+function voiceOnlyGradeWords(s) {
+  if (!VOICE_GRADE_WORDS) {
+    VOICE_GRADE_WORDS = new Set(VOICE_GRADES.flatMap(([, ps]) => ps.flatMap(p => p.split(' '))));
+  }
+  const words = s.split(' ');
+  return words.length <= 4 && words.every(w => VOICE_GRADE_WORDS.has(w) || VOICE_FILLER.has(w));
+}
 
 function voiceFind(s, table) {
   for (const [value, phrases] of table) {
@@ -201,10 +259,10 @@ function voiceCommand(said) {
 //   {kind:'unclear'}             said something else         -> ask right/wrong
 // A self-grade that is also the meaning ("good" for bagus) counts as the
 // meaning.
-function voiceClassifyAnswer(said, back) {
+function voiceClassifyAnswer(said, back, extra) {
   const s = voiceNorm(said);
   if (!s) return { kind: 'silent' };
-  const accepted = voiceAccepted(back);
+  const accepted = voiceAccepted(back).concat((extra || []).map(voiceNorm));
   const dontKnow = ["don't know", 'dont know', 'do not know', 'no idea', 'no clue'];
   if (dontKnow.some(p => voiceHas(s, p)) && !accepted.some(a => dontKnow.some(p => a.includes(p)))) {
     return { kind: 'grade', grade: 1 };
@@ -214,8 +272,8 @@ function voiceClassifyAnswer(said, back) {
   // ("to go") goes back.
   const cmd = voiceCommand(s);
   if (cmd && !accepted.includes(s)) return { kind: 'command', cmd };
-  if (voiceMatches(s, back)) return { kind: 'correct' };
-  if (s.split(' ').length <= 3) {
+  if (voiceMatches(s, back, extra)) return { kind: 'correct' };
+  if (voiceOnlyGradeWords(s)) {
     const g = voiceFind(s, VOICE_GRADES);
     if (g) return { kind: 'grade', grade: g };
   }
@@ -235,6 +293,9 @@ function voiceClassifyConfirm(said) {
   const s = voiceNorm(said);
   if (!s) return { kind: 'silent' };
   const cmd = voiceCommand(s);
+  // Here "that was right" answers the question being asked.
+  if (cmd === 'override-right') return { kind: 'grade', grade: 3 };
+  if (cmd === 'override-wrong') return { kind: 'grade', grade: 1 };
   if (cmd && cmd !== 'skip') return { kind: 'command', cmd };
   const g = voiceFind(s, VOICE_GRADES) || voiceFind(s, VOICE_CONFIRM_ALIKE);
   if (g) return { kind: 'grade', grade: g };

@@ -133,6 +133,8 @@ __PWA_META__
     <b>good</b>, <b>easy</b>, <b>hard</b>, or <b>don&rsquo;t know</b>. Either way you hear the
     answer before the next word. If it can&rsquo;t tell, it reads the answer and asks
     <b>right or wrong?</b></p>
+    <p>Graded you wrong when you were right (or the reverse)? Say <b>actually right</b> or
+    <b>actually wrong</b> during the next word and it changes that grade.</p>
     <p>Any time: <b>repeat</b>, <b>skip</b>, <b>stop</b>, or <b>go back</b> to return to the word before (its grade is taken back so you can answer it again). Two silences in a row
     pause it; say <b>resume</b> to carry on.</p>
     <p><b>Recognition.</b> &ldquo;On this phone&rdquo; opens the mic once and understands you on the
@@ -297,6 +299,46 @@ function pickEnVoice() {
 pickEnVoice();
 ttsOnVoicesChanged(pickEnVoice);
 
+// The drill's English is recorded once with ElevenLabs
+// (scripts/build_voice_tts.py) wherever a clip exists, with the device voice
+// as the fallback for anything not recorded yet. Its own <audio> element, so
+// the Indonesian clip's slowed playback rate never applies to it.
+const EN_CLIPS = __EN_CLIPS__;
+const enAudio = new Audio();
+
+function playEnClip(src) {
+  return new Promise(resolve => {
+    let done = false, lastPos = -1, lastMove = Date.now();
+    const t0 = Date.now();
+    const fin = ok => {
+      if (done) return;
+      done = true; clearInterval(watch);
+      enAudio.removeEventListener('ended', onEnd); enAudio.removeEventListener('error', onErr);
+      if (!ok) enAudio.pause();
+      resolve(ok);
+    };
+    const onEnd = () => fin(true), onErr = () => fin(false);
+    const watch = setInterval(() => {
+      if (enAudio.currentTime !== lastPos) { lastPos = enAudio.currentTime; lastMove = Date.now(); }
+      if (Date.now() - lastMove > STALL_MS || Date.now() - t0 > 8000) fin(false);
+    }, 250);
+    enAudio.addEventListener('ended', onEnd); enAudio.addEventListener('error', onErr);
+    enAudio.src = src; enAudio.playbackRate = 1; enAudio.currentTime = 0;
+    enAudio.play().catch(() => fin(false));
+  });
+}
+
+// Says each piece in turn: "Yes." then the meaning, or the meaning then
+// "Right or wrong?". Pieces are recorded separately so they combine freely.
+async function sayEnParts(parts) {
+  for (const p of parts.filter(Boolean)) {
+    const src = EN_CLIPS[p];
+    vlog('sayEn', p + (src ? ' clip' : ' synth'));
+    if (src && await playEnClip(src)) continue;
+    await sayEn(p);
+  }
+}
+
 function sayEn(text) {
   if (!ttsHasSupport || !text) return Promise.resolve(false);
   // cancel() immediately followed by speak() can drop the utterance on iOS,
@@ -360,6 +402,7 @@ async function sayId(card) {
 const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
 function unlockAudio() {
   if (ttsClipAudio) { ttsClipAudio.src = SILENCE; ttsClipAudio.play().catch(() => {}); }
+  enAudio.src = SILENCE; enAudio.play().catch(() => {});
   if (ttsHasSupport) speechSynthesis.speak(new SpeechSynthesisUtterance(' '));
 }
 
@@ -716,6 +759,19 @@ function remember(card, rated) {
   $('undoBtn').disabled = false;
 }
 
+// "Actually right" / "actually wrong": swap the last grade for Good or Again
+// without making you answer that word again.
+function overrideLast(grade) {
+  const h = history[history.length - 1];
+  if (!h || !h.rated) return VOICE_PHRASES.nothingToChange;
+  const u = srsUndoStack[srsUndoStack.length - 1];
+  if (u && u.grade === grade) return grade >= 3 ? VOICE_PHRASES.changedRight : VOICE_PHRASES.changedWrong;
+  undoLast();
+  rate(h.card, grade);
+  vlog('override', h.card.front + ' -> ' + grade);
+  return grade >= 3 ? VOICE_PHRASES.changedRight : VOICE_PHRASES.changedWrong;
+}
+
 function goBack(onScreen) {
   const h = history.pop();
   $('undoBtn').disabled = !history.length;
@@ -749,8 +805,8 @@ async function drillCard(id, card) {
     guard(id);
     if (fatalMic) return { cmd: 'mic' };
     const heard = alts[0] || '';
-    const r = alts.some(a => voiceClassifyAnswer(a, card.back).kind === 'correct')
-      ? { kind: 'correct' } : voiceClassifyAnswer(heard, card.back);
+    const r = alts.some(a => voiceClassifyAnswer(a, card.back, card.alt).kind === 'correct')
+      ? { kind: 'correct' } : voiceClassifyAnswer(heard, card.back, card.alt);
     vlog('decided', card.front + ' -> ' + r.kind + (r.grade ? ' ' + r.grade : '') + (r.cmd ? ' ' + r.cmd : ''));
     show(r.kind === 'silent' ? 'Didn\u2019t catch that' : 'Heard', { heard });
     if (r.kind === 'silent') {
@@ -763,20 +819,22 @@ async function drillCard(id, card) {
       return { cmd: r.cmd };
     }
     const gloss = voiceSpokenGloss(card.back);
+    const short = voiceShortGloss(card.back);
     show('Answer', { answer: card.back });
+    // Knew it: "Yes" and the first meaning, and on. Missed it: every meaning.
     if (r.kind === 'correct') {
-      show('Answer', { verdict: 'Right — Good', grade: 3 });
-      await sayEn('Yes. ' + gloss);
+      show('Answer', { verdict: 'Right \u2014 Good', grade: 3 });
+      await sayEnParts([VOICE_PHRASES.yes, short]);
       return { grade: 3 };
     }
     if (r.kind === 'grade') {
       show('Answer', { verdict: GRADE_NAME[r.grade], grade: r.grade });
-      await sayEn(gloss);
+      await sayEnParts([r.grade >= 3 ? short : gloss]);
       return { grade: r.grade };
     }
     // Said something that isn't the gloss, but could be a fine synonym.
     for (let ask = 0; ask < 2; ask++) {
-      await sayEn(ask ? 'Right or wrong?' : gloss + '. Right or wrong?');
+      await sayEnParts(ask ? [VOICE_PHRASES.rightOrWrong] : [gloss, VOICE_PHRASES.rightOrWrong]);
       guard(id);
       await pause(200);
       show('Right or wrong?', { listening: true });
@@ -796,7 +854,7 @@ async function drillCard(id, card) {
 
 async function waitForResume(id) {
   show('Paused — say “resume”', { listening: true });
-  await sayEn('Pausing. Say resume when you’re ready.');
+  await sayEnParts([VOICE_PHRASES.pausing]);
   const until = Date.now() + 10 * 60 * 1000;
   while (Date.now() < until) {
     guard(id);
@@ -816,7 +874,7 @@ async function run() {
       const card = pickNext();
       if (!card) {
         show('All caught up', { front: '', answer: pool().length ? 'Nothing due right now.' : 'No words in this filter.', heard: '', verdict: '' });
-        await sayEn(session.done ? `All caught up. ${session.right} of ${session.done} right.` : 'Nothing due right now.');
+        await sayEnParts([session.done ? VOICE_PHRASES.caughtUp : VOICE_PHRASES.nothingDue]);
         stop();
         return;
       }
@@ -832,11 +890,18 @@ async function run() {
         continue;
       }
       if (out.cmd === 'mic') { micBlocked(); stop(); return; }
-      if (out.cmd === 'stop') { await sayEn('Stopped.'); stop(); return; }
+      if (out.cmd === 'stop') { await sayEnParts([VOICE_PHRASES.stopped]); stop(); return; }
       if (out.cmd === 'skip') { remember(card, false); show('Skipped', { verdict: '' }); continue; }
       if (out.cmd === 'undo') {
-        if (goBack(card)) await sayEn('Going back.');
-        else { upNext.unshift(card); await sayEn('This is the first word.'); }
+        if (goBack(card)) await sayEnParts([VOICE_PHRASES.goingBack]);
+        else { upNext.unshift(card); await sayEnParts([VOICE_PHRASES.firstWord]); }
+        continue;
+      }
+      if (out.cmd === 'override-right' || out.cmd === 'override-wrong') {
+        // Regrade the word before; the current one comes straight back.
+        upNext.unshift(card);
+        const said = overrideLast(out.cmd === 'override-right' ? 3 : 1);
+        await sayEnParts([said]);
         continue;
       }
       if (out.cmd === 'idle') {
@@ -846,7 +911,7 @@ async function run() {
           stop();
           return;
         }
-        await sayEn('OK.');
+        await sayEnParts([VOICE_PHRASES.ok]);
       }
     }
   } catch (e) {
@@ -1002,9 +1067,30 @@ if (!SR) {
 # family-clip fields would triple the page for nothing.
 FIELDS = ("front", "back", "tags", "llSrc", "wordSrc")
 
+# Extra accepted answers per card (synonyms the back doesn't spell out), and
+# the ElevenLabs recordings of the drill's English (build_voice_tts.py).
+ANSWERS = ROOT / "vocab" / "voice-answers.json"
+EN_DIR = ROOT / "audio" / "tts-en"
+EN_INDEX = EN_DIR / "index.json"
+
+
+def _read_json(path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
 
 def main():
-    deck = [{k: c[k] for k in FIELDS if k in c} for c in load_decks()]
+    alts = _read_json(ANSWERS)
+    deck = []
+    for c in load_decks():
+        card = {k: c[k] for k in FIELDS if k in c}
+        if alts.get(c["front"]):
+            card["alt"] = alts[c["front"]]
+        deck.append(card)
+    en = {text: f"audio/tts-en/{name}" for text, name in _read_json(EN_INDEX).items()
+          if (EN_DIR / name).exists()}
     html = (
         PAGE.replace("__SRS_JS__", SRS_JS)
         .replace("__SYNC_JS__", SYNC_JS)
@@ -1013,11 +1099,14 @@ def main():
         .replace("__PWA_META__", PWA_META_TAGS)
         .replace("__PWA_SW__", PWA_SW_JS)
         .replace("__DATA__", json.dumps(deck, ensure_ascii=False))
+        .replace("__EN_CLIPS__", json.dumps(en, ensure_ascii=False))
     )
     OUT.write_text(html, encoding="utf-8")
     clips = sum(1 for c in deck if c.get("llSrc") or c.get("wordSrc"))
     print(f"wrote {OUT} with {len(deck)} cards; {clips} with a recorded word clip, "
-          f"{len(deck) - clips} use the device's Indonesian voice")
+          f"{len(deck) - clips} use the device's Indonesian voice; "
+          f"{sum(1 for c in deck if c.get('alt'))} with extra answers; "
+          f"{len(en)} English lines recorded")
 
 
 if __name__ == "__main__":

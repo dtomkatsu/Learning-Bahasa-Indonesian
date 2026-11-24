@@ -116,7 +116,7 @@ const out = { total: 0, correct: 0, ask: 0, grade: 0, command: 0, rescued: [], f
 for (const c of __CASES) {
   const back = __BACK[c.front];
   if (!back) { skipped++; continue; }
-  const r = voiceClassifyAnswer(c.heard, back);
+  const r = voiceClassifyAnswer(c.heard, back, __ALT[c.front]);
   const now = r.kind === 'unclear' ? 'unclear' : r.kind + (r.grade ? ' ' + r.grade : '') + (r.cmd ? ' ' + r.cmd : '');
   out.total++;
   if (r.kind === 'correct') out.correct++;
@@ -160,9 +160,12 @@ def run_phone_replay():
         return True
     from build_flashcards import load_decks   # noqa: E402
     backs = {c["front"]: c["back"] for c in load_decks()}
+    answers = ROOT / "vocab" / "voice-answers.json"
+    alts = json.loads(answers.read_text(encoding="utf-8")) if answers.exists() else {}
     cases = json.loads(fixture.read_text(encoding="utf-8"))
     bundle = (VOICE_JS + "\nconst __CASES = " + json.dumps(cases, ensure_ascii=False)
-              + ";\nconst __BACK = " + json.dumps(backs, ensure_ascii=False) + ";\n" + REPLAY)
+              + ";\nconst __BACK = " + json.dumps(backs, ensure_ascii=False)
+              + ";\nconst __ALT = " + json.dumps(alts, ensure_ascii=False) + ";\n" + REPLAY)
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as f:
         f.write(bundle)
         path = f.name

@@ -574,3 +574,27 @@ suite('voice: fixes from the phone session log', () => {
   eq(voiceClassifyAnswer('hot', 'cold').kind, 'unclear', 'but "hot" as an answer is still an answer');
   deepEq(voiceClassifyConfirm('All right.'), { kind: 'grade', grade: 3 }, 'all right');
 });
+
+suite('voice: a grade word inside an answer is not a grade', () => {
+  eq(voiceClassifyAnswer('No problem.', 'friend').kind, 'unclear', '"no problem" is not "no"');
+  eq(voiceClassifyAnswer('bad luck', 'friend').kind, 'unclear', '"bad luck" is not "bad"');
+  deepEq(voiceClassifyAnswer('no', 'friend'), { kind: 'grade', grade: 1 }, 'plain "no" still is');
+  deepEq(voiceClassifyAnswer("that's easy", 'friend'), { kind: 'grade', grade: 4 }, "that's easy");
+  deepEq(voiceClassifyAnswer('too hard', 'friend'), { kind: 'grade', grade: 2 }, 'too hard');
+  deepEq(voiceClassifyAnswer("I don't know.", 'friend'), { kind: 'grade', grade: 1 }, "don't know");
+});
+
+suite('voice: synonyms match as whole phrases', () => {
+  eq(voiceClassifyAnswer('take a break', 'to rest', ['take a break']).kind, 'correct', 'whole phrase');
+  eq(voiceClassifyAnswer('taking a break', 'to rest', ['take a break']).kind, 'correct', 'inflected phrase');
+  eq(voiceClassifyAnswer('take', 'to rest', ['take a break']).kind, 'unclear', 'one word of it is not enough');
+  eq(voiceClassifyAnswer('when', 'in terms of', ['when it comes to']).kind, 'unclear', '"when" alone is not "when it comes to"');
+});
+
+suite('voice: actually right / wrong', () => {
+  deepEq(voiceClassifyAnswer('actually right', 'friend'), { kind: 'command', cmd: 'override-right' }, 'actually right');
+  deepEq(voiceClassifyAnswer('that was wrong', 'friend'), { kind: 'command', cmd: 'override-wrong' }, 'that was wrong');
+  deepEq(voiceClassifyConfirm('that was right'), { kind: 'grade', grade: 3 }, 'at right-or-wrong it answers the question');
+  eq(voiceShortGloss('clothes / a shirt or top'), 'clothes', 'short gloss is the first meaning');
+  eq(voiceShortGloss('key; to lock'), 'key', 'short gloss stops at a semicolon');
+});

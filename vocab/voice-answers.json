@@ -1,0 +1,5563 @@
+{
+ "AC": [
+  "air con",
+  "air conditioner",
+  "aircon",
+  "a c"
+ ],
+ "Ada apa?": [
+  "what is going on",
+  "what happened",
+  "what is the matter",
+  "is something wrong"
+ ],
+ "Anda": [
+  "formal you",
+  "you formal",
+  "polite you",
+  "you sir",
+  "you madam"
+ ],
+ "Apa artinya?": [
+  "what is the meaning",
+  "what is the meaning of that",
+  "whats the meaning",
+  "what does that mean",
+  "what does this mean",
+  "what is that supposed to mean"
+ ],
+ "Apa namanya?": [
+  "what do you call it",
+  "what is it called",
+  "what's it called",
+  "what's the name",
+  "what was it called"
+ ],
+ "Asalnya dari mana?": [
+  "where are you from",
+  "where do you come from",
+  "where is your hometown",
+  "where is your origin",
+  "what is your origin"
+ ],
+ "Ayo kita nonton": [
+  "let's watch",
+  "let's watch something",
+  "come on let's watch",
+  "let's go see a movie"
+ ],
+ "Bagaimana cara…?": [
+  "what is the way to",
+  "how can you",
+  "how do i"
+ ],
+ "Berapa harganya?": [
+  "how much is it",
+  "what is the price",
+  "how much is this",
+  "what does it cost",
+  "whats the price",
+  "how much"
+ ],
+ "Betul": [
+  "correct",
+  "exactly",
+  "you're right",
+  "that is right"
+ ],
+ "Bisa bahasa Inggris?": [
+  "can you speak english",
+  "do you know english",
+  "speak english",
+  "can you speak english please",
+  "are you able to speak english"
+ ],
+ "Bisa pelan-pelan?": [
+  "can you slow down",
+  "could you speak slowly",
+  "slower please",
+  "please speak slowly",
+  "can you speak slowly",
+  "say it more slowly"
+ ],
+ "Boleh juga": [
+  "not too bad",
+  "pretty good",
+  "sounds great",
+  "that sounds good",
+  "i like it"
+ ],
+ "Boleh minta tolong?": [
+  "can you help me",
+  "may i ask for help",
+  "could i ask a favor",
+  "can i ask for help",
+  "would you help me",
+  "may i ask a favor"
+ ],
+ "Dari mana?": [
+  "where did you come from",
+  "where are you coming from",
+  "where were you",
+  "where have you been",
+  "where from"
+ ],
+ "Dek / Adek": [
+  "little brother",
+  "little sister",
+  "little one",
+  "kid",
+  "younger brother",
+  "younger sister"
+ ],
+ "Di mana…?": [
+  "where is the",
+  "where are",
+  "where can i find",
+  "where is it",
+  "whereabouts of"
+ ],
+ "Gimana kalau…?": [
+  "what if",
+  "what about",
+  "how about if",
+  "what do you think about"
+ ],
+ "HP": [
+  "cell phone",
+  "mobile",
+  "handphone",
+  "phone",
+  "cellphone",
+  "smartphone"
+ ],
+ "Ini dari sana?": [
+  "is this from over there",
+  "does this come from there",
+  "is it from there"
+ ],
+ "Ini di atas dia menunjukkan Indonesia": [
+  "up here it shows indonesian",
+  "at the top it shows indonesian",
+  "above it shows indonesian"
+ ],
+ "Jangan ganggu": [
+  "don't bother me",
+  "leave me alone",
+  "do not disturb",
+  "don't interrupt me"
+ ],
+ "Jangan lupa": [
+  "do not forget",
+  "remember to",
+  "make sure to",
+  "remember"
+ ],
+ "Kalau boleh tahu": [
+  "if i could ask",
+  "if you don't mind me asking",
+  "may i ask",
+  "if i may know"
+ ],
+ "Kalau tak dengar suaramu": [
+  "if i can't hear your voice",
+  "if i do not hear your voice",
+  "when i don't hear your voice",
+  "without hearing your voice"
+ ],
+ "Kamu mau download di anu, di laptopmu?": [
+  "do you want to download it on your laptop",
+  "want to download it to your laptop",
+  "download it on your laptop"
+ ],
+ "Kok aneh": [
+  "that's strange",
+  "why so strange",
+  "how strange",
+  "that's odd",
+  "it's weird",
+  "how odd"
+ ],
+ "Kok bisa?": [
+  "how is that possible",
+  "why is that",
+  "how so"
+ ],
+ "Lagi apa?": [
+  "what are you doing",
+  "what are you doing now",
+  "what are you doing right now"
+ ],
+ "Mami": [
+  "mommy",
+  "mum",
+  "mother",
+  "mama"
+ ],
+ "Masa?": [
+  "seriously",
+  "are you serious",
+  "you're kidding",
+  "no kidding",
+  "for real",
+  "can't be"
+ ],
+ "Mau ke mana?": [
+  "where are you going",
+  "where to",
+  "where are you headed",
+  "where you off to",
+  "where are you heading"
+ ],
+ "Mbak": [
+  "big sister",
+  "miss",
+  "elder sister",
+  "sis"
+ ],
+ "Mungkin nanti": [
+  "perhaps later",
+  "maybe some other time",
+  "possibly later",
+  "some other time"
+ ],
+ "Namanya siapa?": [
+  "who are you",
+  "what is your name",
+  "whats your name",
+  "what are you called",
+  "who is this"
+ ],
+ "Nggak apa-apa": [
+  "it's fine",
+  "never mind",
+  "no problem",
+  "don't worry",
+  "it's alright",
+  "not a problem"
+ ],
+ "Nggak keaslian": [
+  "not authentic",
+  "it's not genuine",
+  "not the original",
+  "not original",
+  "it's not authentic"
+ ],
+ "Nggak seru": [
+  "not fun",
+  "boring",
+  "no fun",
+  "that's boring",
+  "not exciting"
+ ],
+ "Nggak tahu": [
+  "i have no idea",
+  "no idea",
+  "i do not know",
+  "i'm not sure",
+  "dunno"
+ ],
+ "Oh ya?": [
+  "is that so",
+  "oh yeah",
+  "is that right",
+  "oh is that so"
+ ],
+ "PR": [
+  "school assignment",
+  "take-home work",
+  "homework assignment"
+ ],
+ "Papi / Bapak": [
+  "daddy",
+  "father",
+  "papa"
+ ],
+ "Sabar": [
+  "be patient",
+  "patience",
+  "hold on",
+  "wait a moment",
+  "calm down",
+  "hold your horses"
+ ],
+ "Saya tidak mengerti": [
+  "i dont get it",
+  "i dont know what you mean",
+  "i do not understand",
+  "i cannot follow",
+  "i dont follow",
+  "i didnt understand"
+ ],
+ "Sebentar ya": [
+  "one moment",
+  "one moment please",
+  "wait a moment",
+  "hold on",
+  "wait a minute"
+ ],
+ "Semoga lancar": [
+  "hope it goes well",
+  "hope all goes well",
+  "hope things go smoothly",
+  "good luck",
+  "i hope it goes smoothly"
+ ],
+ "Setuju": [
+  "i agree with you",
+  "same here",
+  "i concur"
+ ],
+ "Sudah lama nunggu?": [
+  "have you been waiting a long time",
+  "did you wait long",
+  "have you waited long"
+ ],
+ "Sudah makan?": [
+  "did you eat",
+  "have you had a meal",
+  "have you had lunch",
+  "did you have dinner",
+  "have you had food"
+ ],
+ "Sudah semakin lancar": [
+  "you're getting fluent",
+  "more and more fluent",
+  "already more fluent",
+  "getting smoother",
+  "improving"
+ ],
+ "Tahu kan berapa nih harganya?": [
+  "you know the price right",
+  "you know what this costs",
+  "do you know the price",
+  "you know how much it costs"
+ ],
+ "Terlalu maksa": [
+  "too pushy",
+  "trying too hard",
+  "too forced",
+  "overdoing it",
+  "too much effort"
+ ],
+ "Terserah": [
+  "as you wish",
+  "whatever you want",
+  "your choice",
+  "i don't mind",
+  "it's your call"
+ ],
+ "Tinggal di mana?": [
+  "where are you staying",
+  "where do you stay",
+  "where is your home",
+  "where are you living",
+  "where is your place"
+ ],
+ "Ya udah": [
+  "fine",
+  "okay then",
+  "all right then",
+  "oh well",
+  "fine then",
+  "so be it"
+ ],
+ "Yuk": [
+  "let's go",
+  "c'mon",
+  "shall we"
+ ],
+ "abang": [
+  "big brother",
+  "elder brother",
+  "vendor",
+  "driver",
+  "bro"
+ ],
+ "abu-abu": [
+  "grey"
+ ],
+ "ada": [
+  "there are",
+  "to exist",
+  "exists",
+  "there exists",
+  "there is some"
+ ],
+ "adik": [
+  "little brother",
+  "little sister",
+  "younger brother",
+  "younger sister",
+  "sibling"
+ ],
+ "aduh": [
+  "ouch",
+  "oh dear",
+  "oops",
+  "oh no",
+  "ow"
+ ],
+ "agak": [
+  "fairly",
+  "quite",
+  "a bit",
+  "slightly",
+  "kind of"
+ ],
+ "agar": [
+  "in order that",
+  "in order to",
+  "so as to",
+  "so"
+ ],
+ "air": [
+  "h2o",
+  "liquid",
+  "aqua"
+ ],
+ "air putih": [
+  "drinking water",
+  "plain water",
+  "white water",
+  "regular water",
+  "water"
+ ],
+ "aja": [
+  "merely",
+  "simply",
+  "only",
+  "nothing but"
+ ],
+ "ajak": [
+  "to invite along",
+  "to ask along",
+  "to bring along",
+  "to call along"
+ ],
+ "akhir pekan": [
+  "weekends",
+  "saturday and sunday",
+  "end of the week",
+  "weekend break"
+ ],
+ "akhirnya": [
+  "at last",
+  "eventually",
+  "lastly",
+  "ultimately"
+ ],
+ "akibatnya": [
+  "thus",
+  "resulting in",
+  "as a consequence"
+ ],
+ "aku": [
+  "me",
+  "myself"
+ ],
+ "alamat": [
+  "addresses",
+  "location address",
+  "street address",
+  "home address"
+ ],
+ "alergi": [
+  "allergic reaction"
+ ],
+ "aman": [
+  "secure",
+  "protected"
+ ],
+ "ambil": [
+  "to grab",
+  "to pick up",
+  "to get",
+  "to fetch"
+ ],
+ "anak": [
+  "children",
+  "son",
+  "daughter",
+  "offspring",
+  "youngster"
+ ],
+ "andaikan": [
+  "what if",
+  "suppose",
+  "imagine if",
+  "assuming"
+ ],
+ "angkat": [
+  "to raise",
+  "to hold up",
+  "to carry",
+  "to elevate"
+ ],
+ "angkot": [
+  "minibus",
+  "public minibus",
+  "mini bus",
+  "shared taxi",
+  "microbus",
+  "city minibus"
+ ],
+ "antar": [
+  "to bring",
+  "to drop off",
+  "to escort",
+  "to accompany",
+  "to give a ride"
+ ],
+ "antara": [
+  "among",
+  "amongst",
+  "in between",
+  "in the middle of",
+  "betwixt",
+  "midway between"
+ ],
+ "antrean": [
+  "line",
+  "queue up",
+  "waiting line",
+  "line up",
+  "line of people",
+  "waiting in line"
+ ],
+ "antri": [
+  "to line up",
+  "to wait in line",
+  "to stand in line",
+  "queue up"
+ ],
+ "anu": [
+  "uh",
+  "whatchamacallit",
+  "thingamajig",
+  "umm"
+ ],
+ "apa": [
+  "huh",
+  "pardon",
+  "excuse me"
+ ],
+ "apa kabar": [
+  "how are you doing",
+  "how is it going",
+  "how have you been",
+  "whats up",
+  "how do you do"
+ ],
+ "apa namanya": [
+  "what do you call it",
+  "what is it called",
+  "what's the name",
+  "what was it called",
+  "what's it called again"
+ ],
+ "apa-apa": [
+  "something",
+  "everything",
+  "whatever",
+  "any",
+  "nothing"
+ ],
+ "apalagi": [
+  "particularly",
+  "all the more",
+  "not to mention",
+  "much less"
+ ],
+ "aplikasi": [
+  "application",
+  "program",
+  "software"
+ ],
+ "apotek": [
+  "drugstore",
+  "chemist"
+ ],
+ "arisan": [
+  "savings club",
+  "social savings group",
+  "rotating credit group",
+  "money pool",
+  "savings gathering"
+ ],
+ "asam": [
+  "tart",
+  "acidic"
+ ],
+ "asap": [
+  "fumes",
+  "smoke from fire"
+ ],
+ "asik": [
+  "cool",
+  "enjoyable",
+  "entertaining",
+  "nice",
+  "fun"
+ ],
+ "asin": [
+  "salt"
+ ],
+ "asing": [
+  "alien",
+  "overseas",
+  "unfamiliar"
+ ],
+ "assalamualaikum": [
+  "peace be with you",
+  "peace upon you",
+  "muslim greeting",
+  "hello"
+ ],
+ "astaga": [
+  "oh my gosh",
+  "oh my goodness",
+  "goodness",
+  "oh my god",
+  "my goodness"
+ ],
+ "atap": [
+  "rooftop",
+  "roofing"
+ ],
+ "atas": [
+  "on top",
+  "up above",
+  "top",
+  "over",
+  "overhead",
+  "upper"
+ ],
+ "atau": [
+  "alternatively",
+  "otherwise"
+ ],
+ "atuh": [
+  "come on",
+  "please",
+  "emphasis"
+ ],
+ "atur": [
+  "to organize",
+  "to set",
+  "to regulate",
+  "to set up"
+ ],
+ "awal": [
+  "beginning",
+  "start"
+ ],
+ "ayam": [
+  "hen",
+  "poultry"
+ ],
+ "ayo": [
+  "lets go",
+  "come along",
+  "hurry up",
+  "lets"
+ ],
+ "baca": [
+  "to read out",
+  "to peruse"
+ ],
+ "badan": [
+  "torso"
+ ],
+ "bagaimana": [
+  "in what way",
+  "what way"
+ ],
+ "bagi": [
+  "to split",
+  "to distribute",
+  "to share out",
+  "to portion"
+ ],
+ "bagus": [
+  "excellent",
+  "fine",
+  "wonderful"
+ ],
+ "bahagia": [
+  "joyful",
+  "blissful",
+  "content"
+ ],
+ "bahan": [
+  "fabric",
+  "substance"
+ ],
+ "bahaya": [
+  "danger",
+  "hazardous",
+  "risky",
+  "unsafe",
+  "peril"
+ ],
+ "bahkan": [
+  "even so",
+  "in fact",
+  "indeed"
+ ],
+ "baik": [
+  "fine",
+  "kind"
+ ],
+ "baik … maupun …": [
+  "not only but also",
+  "both and"
+ ],
+ "baiknya": [
+  "ideally",
+  "best to",
+  "should",
+  "it would be better"
+ ],
+ "baju": [
+  "garment"
+ ],
+ "bakso": [
+  "meatballs",
+  "meatball",
+  "beef ball soup",
+  "meatball noodle soup"
+ ],
+ "balik": [
+  "to go back",
+  "to come back",
+  "to turn back",
+  "to go home"
+ ],
+ "bandara": [
+  "air port",
+  "airfield",
+  "airports",
+  "aerodrome"
+ ],
+ "bandingkan dengan": [
+  "contrast with",
+  "compare to"
+ ],
+ "banget": [
+  "really",
+  "extremely",
+  "super",
+  "so much",
+  "totally"
+ ],
+ "bangkit": [
+  "to stand up",
+  "to arise",
+  "to get back up",
+  "to revive"
+ ],
+ "bangun": [
+  "to get up",
+  "to awaken",
+  "to construct",
+  "to erect"
+ ],
+ "bangun tidur": [
+  "to awaken",
+  "to get up",
+  "to rise"
+ ],
+ "banjir": [
+  "flooding",
+  "floods",
+  "inundation",
+  "flash flood"
+ ],
+ "bantal": [
+  "cushion",
+  "head pillow"
+ ],
+ "bantu": [
+  "to assist",
+  "to aid",
+  "to lend a hand",
+  "to give a hand"
+ ],
+ "banyak": [
+  "lots",
+  "plenty",
+  "numerous"
+ ],
+ "bapak": [
+  "dad",
+  "papa",
+  "mister",
+  "sir",
+  "gentleman"
+ ],
+ "baru": [
+  "brand new",
+  "recent"
+ ],
+ "barusan": [
+  "a second ago",
+  "recently",
+  "a little while ago",
+  "moments ago",
+  "just then"
+ ],
+ "basah": [
+  "damp",
+  "soaked"
+ ],
+ "bawa": [
+  "to take",
+  "to transport",
+  "to bear",
+  "to haul"
+ ],
+ "bawah": [
+  "beneath",
+  "underneath",
+  "down below",
+  "lower",
+  "bottom",
+  "underneath it"
+ ],
+ "bawang": [
+  "shallot",
+  "garlic",
+  "onions"
+ ],
+ "bayam": [
+  "spinach greens"
+ ],
+ "bayar": [
+  "to settle",
+  "to pay for",
+  "to pay up",
+  "to make payment"
+ ],
+ "beberapa": [
+  "a couple",
+  "a handful",
+  "some",
+  "few",
+  "a number of"
+ ],
+ "becak": [
+  "trishaw",
+  "rickshaw",
+  "cycle rickshaw",
+  "pedicab",
+  "three wheeler",
+  "tricycle taxi"
+ ],
+ "begini": [
+  "like so",
+  "this way",
+  "in this way",
+  "such as this"
+ ],
+ "begitu": [
+  "thus",
+  "that way",
+  "as such",
+  "in that manner",
+  "once",
+  "just like that"
+ ],
+ "bekerja": [
+  "working",
+  "labor",
+  "have a job",
+  "do a job"
+ ],
+ "belajar": [
+  "to learn about",
+  "to be studying",
+  "to practice"
+ ],
+ "belakang": [
+  "rear",
+  "at the back",
+  "in back",
+  "behind it",
+  "the rear"
+ ],
+ "belanja": [
+  "go shopping",
+  "do the shopping",
+  "go to shops",
+  "buy things",
+  "grocery shopping",
+  "shopping"
+ ],
+ "belasan": [
+  "teens",
+  "in the teens",
+  "between ten and twenty"
+ ],
+ "beli": [
+  "to purchase",
+  "to get",
+  "to shop for",
+  "to pick up"
+ ],
+ "belok kanan": [
+  "make a right",
+  "take a right",
+  "go right"
+ ],
+ "belok kiri": [
+  "make a left",
+  "take a left",
+  "go left"
+ ],
+ "belum": [
+  "haven't yet",
+  "not as yet"
+ ],
+ "benar": [
+  "accurate",
+  "true"
+ ],
+ "benci": [
+  "despise",
+  "loathe",
+  "detest"
+ ],
+ "bendahara": [
+  "finance officer",
+  "money keeper",
+  "bursar",
+  "cashier"
+ ],
+ "bengkel": [
+  "workshop",
+  "mechanic",
+  "auto shop",
+  "car repair shop",
+  "garage workshop",
+  "mechanics shop"
+ ],
+ "bensin": [
+  "gas",
+  "petrol",
+  "fuel"
+ ],
+ "berangkat": [
+  "leave",
+  "go off",
+  "head off",
+  "set out",
+  "take off",
+  "depart for"
+ ],
+ "berantakan": [
+  "in a mess",
+  "untidy",
+  "disorganized",
+  "cluttered",
+  "a mess",
+  "disordered"
+ ],
+ "berapa": [
+  "what number",
+  "what quantity",
+  "what amount",
+  "how big a number"
+ ],
+ "berat": [
+  "weighty"
+ ],
+ "berbahaya": [
+  "risky",
+  "hazardous",
+  "unsafe"
+ ],
+ "berbeda": [
+  "unlike",
+  "distinct",
+  "not the same"
+ ],
+ "beri": [
+  "to hand",
+  "to offer",
+  "to provide",
+  "to grant"
+ ],
+ "berikutnya": [
+  "following",
+  "next one",
+  "upcoming",
+  "subsequent"
+ ],
+ "bersih": [
+  "tidy",
+  "spotless"
+ ],
+ "besar": [
+  "large"
+ ],
+ "besok": [
+  "the next day",
+  "tomorrow's"
+ ],
+ "biasanya": [
+  "normally",
+  "typically",
+  "generally",
+  "customarily",
+  "as a rule",
+  "ordinarily"
+ ],
+ "biaya": [
+  "expense",
+  "charge",
+  "expenses",
+  "costs",
+  "fees",
+  "price tag"
+ ],
+ "bicara": [
+  "to talk",
+  "to say",
+  "to converse",
+  "to chat"
+ ],
+ "bilang": [
+  "tell",
+  "state",
+  "speak",
+  "said",
+  "mention"
+ ],
+ "bisa": [
+  "able",
+  "capable",
+  "is able",
+  "be able"
+ ],
+ "bising": [
+  "loud"
+ ],
+ "boleh": [
+  "permitted",
+  "can",
+  "okay to",
+  "permission",
+  "allowed"
+ ],
+ "bon": [
+  "check",
+  "invoice",
+  "tab",
+  "restaurant bill",
+  "tally",
+  "the check"
+ ],
+ "bos": [
+  "manager",
+  "supervisor",
+  "chief",
+  "employer",
+  "head"
+ ],
+ "buah": [
+  "fruits",
+  "piece"
+ ],
+ "buang": [
+  "to dispose of",
+  "to discard",
+  "to toss",
+  "to get rid of",
+  "to throw out"
+ ],
+ "buat": [
+  "create",
+  "intended for"
+ ],
+ "buka": [
+  "to unlock",
+  "to turn on",
+  "to uncover",
+  "to unwrap"
+ ],
+ "bukan": [
+  "isn't",
+  "is not",
+  "not a"
+ ],
+ "buku": [
+  "textbook",
+  "notebook"
+ ],
+ "bulan": [
+  "months",
+  "the moon",
+  "lunar"
+ ],
+ "bumbu": [
+  "spice",
+  "seasoning",
+  "marinade",
+  "spice paste",
+  "condiments",
+  "flavoring"
+ ],
+ "bunga": [
+  "blossom",
+  "bloom",
+  "flowers"
+ ],
+ "bungkus": [
+  "wrapped",
+  "take away",
+  "takeout",
+  "to go",
+  "pack",
+  "package"
+ ],
+ "bunuh": [
+  "to murder",
+  "to slay",
+  "to execute",
+  "to assassinate"
+ ],
+ "buru": [
+  "to rush",
+  "to pursue",
+  "to hunt",
+  "to go after"
+ ],
+ "buruk": [
+  "poor",
+  "terrible",
+  "awful"
+ ],
+ "bus": [
+  "coach",
+  "buses"
+ ],
+ "busuk": [
+  "spoiled",
+  "rancid",
+  "putrid"
+ ],
+ "butuh": [
+  "require",
+  "necessary",
+  "want"
+ ],
+ "cabai / cabe": [
+  "chilli",
+  "chili pepper",
+  "chilies",
+  "hot pepper",
+  "pepper",
+  "chile"
+ ],
+ "cantik": [
+  "gorgeous",
+  "lovely",
+  "attractive",
+  "stunning",
+  "good looking"
+ ],
+ "capek / lelah": [
+  "exhausted",
+  "weary",
+  "fatigued",
+  "worn out"
+ ],
+ "cara": [
+  "manner",
+  "means",
+  "approach",
+  "technique",
+  "how to",
+  "style"
+ ],
+ "cari": [
+  "to search for",
+  "to seek",
+  "to find",
+  "to search",
+  "to hunt for"
+ ],
+ "catat": [
+  "to write down",
+  "to jot down",
+  "to record",
+  "to take note",
+  "to make a note"
+ ],
+ "celana": [
+  "slacks"
+ ],
+ "cepat": [
+  "rapid",
+  "swift",
+  "speedy",
+  "quickly",
+  "hurry"
+ ],
+ "cerah": [
+  "bright",
+  "fair",
+  "sunny weather",
+  "cloudless",
+  "fine weather"
+ ],
+ "cermin": [
+  "looking glass",
+  "mirrors"
+ ],
+ "cicip": [
+  "to sample",
+  "to try",
+  "to try the taste of",
+  "to have a taste"
+ ],
+ "cium": [
+  "to smooch",
+  "to sniff",
+  "to smell"
+ ],
+ "coba": [
+  "attempt",
+  "give it a go",
+  "have a go",
+  "try out",
+  "try it"
+ ],
+ "coklat": [
+  "chocolate"
+ ],
+ "colokan": [
+  "plug socket",
+  "power point",
+  "plug",
+  "electrical outlet",
+  "plug point",
+  "wall socket"
+ ],
+ "contohnya": [
+  "for example",
+  "such as",
+  "e.g"
+ ],
+ "cuci": [
+  "to clean",
+  "to rinse",
+  "to launder",
+  "to wash up"
+ ],
+ "cukup": [
+  "sufficient",
+  "adequate",
+  "fairly",
+  "reasonably",
+  "ample"
+ ],
+ "cuma": [
+  "merely",
+  "simply",
+  "nothing but",
+  "just only"
+ ],
+ "curi": [
+  "to rob",
+  "to take",
+  "to pinch",
+  "to swipe",
+  "to burgle"
+ ],
+ "cuti": [
+  "time off",
+  "vacation",
+  "paid leave",
+  "vacation days",
+  "leave of absence"
+ ],
+ "dada": [
+  "breast"
+ ],
+ "dalam": [
+  "within",
+  "in depth",
+  "interior",
+  "into",
+  "in the inside",
+  "indoors"
+ ],
+ "dan": [
+  "plus",
+  "as well as"
+ ],
+ "dandan": [
+  "to dress",
+  "to put on makeup",
+  "to doll up",
+  "to primp",
+  "to prepare yourself"
+ ],
+ "dapat": [
+  "to receive",
+  "to obtain",
+  "to be able to",
+  "to be able",
+  "to acquire"
+ ],
+ "dapur": [
+  "cooking area",
+  "kitchen area"
+ ],
+ "dari": [
+  "out of",
+  "starting from"
+ ],
+ "dari segi": [
+  "from the perspective of",
+  "regarding",
+  "as far as",
+  "with respect to",
+  "when it comes to"
+ ],
+ "dari sisi": [
+  "in terms of",
+  "from the perspective of",
+  "regarding",
+  "as for"
+ ],
+ "dari sudut pandang": [
+  "from the perspective of",
+  "from the standpoint of",
+  "in terms of",
+  "from the viewpoint of"
+ ],
+ "daripada": [
+  "rather than",
+  "instead of",
+  "compared to"
+ ],
+ "datang": [
+  "to arrive",
+  "to show up",
+  "to get here",
+  "to turn up"
+ ],
+ "deh": [
+  "okay then",
+  "fine then",
+  "i guess",
+  "alright then",
+  "go on"
+ ],
+ "dekat": [
+  "nearby",
+  "close by",
+  "close to",
+  "not far",
+  "near to"
+ ],
+ "demam": [
+  "high temperature"
+ ],
+ "dengan": [
+  "by means of",
+  "together with",
+  "using",
+  "along with"
+ ],
+ "dengar": [
+  "to listen to",
+  "to overhear",
+  "to catch",
+  "to listen"
+ ],
+ "depan": [
+  "in front",
+  "front of",
+  "forward"
+ ],
+ "desa": [
+  "countryside village",
+  "rural village",
+  "hamlet",
+  "rural area"
+ ],
+ "detik": [
+  "seconds",
+  "secs",
+  "sec",
+  "moment"
+ ],
+ "di": [
+  "located at",
+  "located in"
+ ],
+ "di samping itu": [
+  "additionally",
+  "furthermore",
+  "apart from that",
+  "also"
+ ],
+ "di satu sisi": [
+  "one hand",
+  "from one perspective",
+  "one side"
+ ],
+ "di sisi lain": [
+  "other hand",
+  "from another perspective",
+  "alternatively",
+  "then again"
+ ],
+ "dia": [
+  "her",
+  "him",
+  "she",
+  "he",
+  "it"
+ ],
+ "dibandingkan": [
+  "in comparison",
+  "relative to",
+  "versus"
+ ],
+ "dibandingkan dengan": [
+  "in comparison to",
+  "versus",
+  "relative to"
+ ],
+ "dingin": [
+  "chilly",
+  "freezing"
+ ],
+ "diskon": [
+  "markdown",
+  "price cut",
+  "reduction",
+  "sale price",
+  "money off",
+  "percent off"
+ ],
+ "dompet": [
+  "billfold",
+  "coin purse",
+  "purse",
+  "wallets"
+ ],
+ "dong": [
+  "obviously",
+  "come on",
+  "of course",
+  "please"
+ ],
+ "dua kali": [
+  "two times",
+  "double",
+  "doubly"
+ ],
+ "duduk": [
+  "to be seated",
+  "to take a seat",
+  "to seat yourself",
+  "sit down"
+ ],
+ "duduk manis": [
+  "to sit nicely",
+  "to sit still",
+  "to sit calmly",
+  "to sit politely",
+  "to sit well-behaved"
+ ],
+ "duh": [
+  "oh no",
+  "ugh",
+  "oh dear",
+  "oh man",
+  "alas"
+ ],
+ "dukung": [
+  "to back",
+  "to help",
+  "to endorse",
+  "to uphold",
+  "to be behind"
+ ],
+ "dulu": [
+  "previously",
+  "formerly",
+  "in the past",
+  "before",
+  "back then",
+  "at first"
+ ],
+ "duluan": [
+  "ahead of you",
+  "go first",
+  "im heading out",
+  "leaving ahead",
+  "ill go first",
+  "going first"
+ ],
+ "ekor": [
+  "animal counter",
+  "tail",
+  "counter for animals"
+ ],
+ "emang": [
+  "for real",
+  "truly",
+  "in fact",
+  "indeed"
+ ],
+ "ember": [
+  "pail",
+  "buckets"
+ ],
+ "enak": [
+  "yummy",
+  "good tasting",
+  "nice",
+  "comfortable",
+  "pleasant"
+ ],
+ "entah … entah …": [
+  "whether or",
+  "either or"
+ ],
+ "entar": [
+  "in a bit",
+  "in a while",
+  "afterwards"
+ ],
+ "es": [
+  "iced",
+  "ice cube"
+ ],
+ "gado-gado": [
+  "vegetable salad with peanut sauce",
+  "peanut sauce salad",
+  "indonesian salad",
+  "peanut salad"
+ ],
+ "gaji": [
+  "pay",
+  "wage",
+  "paycheck",
+  "income",
+  "earnings",
+  "pay packet"
+ ],
+ "gampang": [
+  "simple",
+  "a breeze"
+ ],
+ "gang": [
+  "alleyway",
+  "narrow street",
+  "side street",
+  "alley",
+  "lane"
+ ],
+ "ganti": [
+  "to replace",
+  "to swap",
+  "to switch",
+  "to substitute",
+  "to exchange"
+ ],
+ "ganti baju": [
+  "change clothes",
+  "get changed",
+  "change outfit",
+  "change clothing"
+ ],
+ "garam": [
+  "table salt",
+  "sodium",
+  "sea salt"
+ ],
+ "garpu": [
+  "forks"
+ ],
+ "gas": [
+  "to speed up",
+  "to step on the gas",
+  "to hit the gas",
+  "to put the pedal down"
+ ],
+ "gelap": [
+  "dim",
+  "pitch black"
+ ],
+ "gelas": [
+  "tumbler",
+  "mug",
+  "drinking glass"
+ ],
+ "gempa": [
+  "tremor",
+  "seismic activity",
+  "earth tremor"
+ ],
+ "gereja": [
+  "christian church",
+  "churches",
+  "chapel"
+ ],
+ "gila": [
+  "insane",
+  "mad",
+  "wow",
+  "wild",
+  "nuts"
+ ],
+ "gimana": [
+  "how come",
+  "how about",
+  "how is it"
+ ],
+ "gini": [
+  "like so",
+  "this way",
+  "in this way",
+  "like this",
+  "as follows"
+ ],
+ "gitu": [
+  "like so",
+  "that way",
+  "in that way",
+  "you know",
+  "like that"
+ ],
+ "gitu / begitu": [
+  "like so",
+  "that way",
+  "and so on",
+  "or something",
+  "thus",
+  "such"
+ ],
+ "goreng": [
+  "deep fry",
+  "pan fry",
+  "frying",
+  "fry up"
+ ],
+ "gorengan": [
+  "fritters",
+  "fried food",
+  "deep fried snacks",
+  "street snacks",
+  "fried treats"
+ ],
+ "gratis": [
+  "free",
+  "at no cost",
+  "no charge",
+  "complimentary",
+  "for nothing",
+  "on the house"
+ ],
+ "gula": [
+  "sweetener",
+  "granulated sugar",
+  "table sugar"
+ ],
+ "gunakan": [
+  "to utilize",
+  "to employ",
+  "to make use of",
+  "to apply"
+ ],
+ "guru": [
+  "instructor",
+  "educator",
+  "tutor",
+  "schoolteacher"
+ ],
+ "habis": [
+  "to be used up",
+  "to be finished",
+  "to be gone",
+  "to be depleted",
+  "to end"
+ ],
+ "hadap": [
+  "to turn towards",
+  "to be facing",
+  "to look towards",
+  "to face toward"
+ ],
+ "hadir": [
+  "to be present",
+  "to show up",
+  "to be there",
+  "to turn up",
+  "to participate in"
+ ],
+ "hah": [
+  "eh",
+  "pardon",
+  "say what",
+  "what's that"
+ ],
+ "hai": [
+  "hello",
+  "hey",
+  "hiya"
+ ],
+ "hal": [
+  "issue",
+  "subject",
+  "point",
+  "affair"
+ ],
+ "halaman": [
+  "garden",
+  "front yard",
+  "courtyard",
+  "leaf of a book",
+  "page of a book"
+ ],
+ "halo": [
+  "hi",
+  "hey",
+  "hiya"
+ ],
+ "hambar": [
+  "tasteless",
+  "flavorless",
+  "insipid"
+ ],
+ "hamil": [
+  "expecting",
+  "with child"
+ ],
+ "hampir": [
+  "just about",
+  "close to"
+ ],
+ "hancur": [
+  "to be destroyed",
+  "to shatter",
+  "to be ruined",
+  "to crumble",
+  "to collapse"
+ ],
+ "handuk": [
+  "bath towel",
+  "towels"
+ ],
+ "hantar": [
+  "to bring",
+  "to drop off",
+  "to send",
+  "to escort",
+  "to accompany"
+ ],
+ "hanya": [
+  "merely",
+  "simply",
+  "solely",
+  "nothing but"
+ ],
+ "hapus": [
+  "to remove",
+  "to wipe",
+  "to wipe out",
+  "to clear",
+  "to get rid of"
+ ],
+ "harga": [
+  "cost",
+  "prices",
+  "rate",
+  "charge"
+ ],
+ "harga pas": [
+  "set price",
+  "no bargaining",
+  "fixed rate",
+  "no haggling",
+  "non negotiable price",
+  "price is fixed"
+ ],
+ "hari": [
+  "days"
+ ],
+ "hari ini": [
+  "this day",
+  "this very day",
+  "presently"
+ ],
+ "harus": [
+  "need to",
+  "should",
+  "got to",
+  "required",
+  "obliged"
+ ],
+ "hati-hati": [
+  "watch out",
+  "take care",
+  "look out",
+  "mind yourself",
+  "be cautious",
+  "stay safe"
+ ],
+ "haus": [
+  "parched",
+  "dry",
+  "need a drink",
+  "dehydrated",
+  "thirst"
+ ],
+ "hewan": [
+  "creature",
+  "beast",
+  "animals",
+  "pet"
+ ],
+ "hias": [
+  "to adorn",
+  "to ornament",
+  "to beautify",
+  "to embellish",
+  "to garnish"
+ ],
+ "hilang": [
+  "vanish",
+  "missing",
+  "gone",
+  "go missing",
+  "lost"
+ ],
+ "hitung": [
+  "to calculate",
+  "to compute",
+  "to tally",
+  "to add up",
+  "to total"
+ ],
+ "horor": [
+  "horror movie",
+  "scary",
+  "frightening",
+  "spooky"
+ ],
+ "ibu": [
+  "mom",
+  "mum",
+  "mommy",
+  "madam",
+  "mrs",
+  "lady"
+ ],
+ "idealnya": [
+  "in an ideal world",
+  "optimally",
+  "ideally speaking"
+ ],
+ "ikan": [
+  "fishes"
+ ],
+ "ikut": [
+  "tag along",
+  "come with",
+  "accompany",
+  "participate",
+  "join"
+ ],
+ "ingat": [
+  "to recall",
+  "to remember that",
+  "to bear in mind",
+  "to recollect",
+  "to keep in mind"
+ ],
+ "ingin": [
+  "would like",
+  "desire",
+  "wish to"
+ ],
+ "ini": [
+  "these",
+  "this one",
+  "right here"
+ ],
+ "internet": [
+  "the web",
+  "web",
+  "online",
+  "the net",
+  "wifi"
+ ],
+ "isi": [
+  "to stuff",
+  "to fill up",
+  "to fill in",
+  "to load",
+  "to put in"
+ ],
+ "istirahat": [
+  "relax",
+  "take a break",
+  "break"
+ ],
+ "itu": [
+  "those",
+  "that one",
+  "you know",
+  "um"
+ ],
+ "iya": [
+  "yeah",
+  "yep",
+  "yup",
+  "okay"
+ ],
+ "izin": [
+  "to allow",
+  "to ask for permission",
+  "to authorize",
+  "to get permission",
+  "to permit someone"
+ ],
+ "jadi": [
+  "thus",
+  "hence",
+  "so then"
+ ],
+ "jadwal": [
+  "timetable",
+  "agenda",
+  "calendar",
+  "itinerary"
+ ],
+ "jaga": [
+  "to protect",
+  "to watch over",
+  "to look after",
+  "to watch",
+  "to keep watch"
+ ],
+ "jajan": [
+  "to buy food",
+  "to buy street food",
+  "to buy treats",
+  "to get snacks",
+  "to eat snacks"
+ ],
+ "jalan": [
+  "to travel",
+  "to stroll",
+  "to walk around",
+  "to move",
+  "to proceed"
+ ],
+ "jalan raya": [
+  "highway",
+  "big road",
+  "major road",
+  "high road",
+  "main street",
+  "principal road"
+ ],
+ "jalanan": [
+  "street",
+  "streets",
+  "roadway",
+  "road",
+  "roads"
+ ],
+ "jalin": [
+  "to establish relationships",
+  "to form relationships",
+  "to forge ties",
+  "to build ties",
+  "to weave"
+ ],
+ "jam": [
+  "clock",
+  "hours",
+  "o clock",
+  "wristwatch"
+ ],
+ "jam berapa": [
+  "what's the time",
+  "what hour",
+  "at what time",
+  "what o'clock"
+ ],
+ "jam dinding": [
+  "clock on the wall",
+  "wall time piece",
+  "clock"
+ ],
+ "jam tangan": [
+  "watch",
+  "wrist watch"
+ ],
+ "jangan": [
+  "do not",
+  "never",
+  "stop",
+  "please don't",
+  "you mustn't"
+ ],
+ "jarang": [
+  "infrequently",
+  "not often",
+  "hardly ever"
+ ],
+ "jatuh": [
+  "to drop",
+  "to tumble",
+  "to fall down",
+  "to collapse",
+  "to topple"
+ ],
+ "jauh": [
+  "distant",
+  "far away",
+  "a long way",
+  "faraway",
+  "remote"
+ ],
+ "jawab": [
+  "to reply",
+  "to respond",
+  "to give an answer",
+  "to respond to"
+ ],
+ "jelek": [
+  "unattractive",
+  "lousy"
+ ],
+ "jemput": [
+  "to collect",
+  "collect",
+  "pick up",
+  "fetch",
+  "get someone"
+ ],
+ "jemur": [
+  "to sun-dry",
+  "to air dry",
+  "to dry outside",
+  "to dry in the sunshine",
+  "to put out to dry"
+ ],
+ "jendela": [
+  "windows",
+  "windowpane"
+ ],
+ "jeruk": [
+  "citrus fruit",
+  "mandarin"
+ ],
+ "jika": [
+  "in case",
+  "provided that",
+  "when"
+ ],
+ "jilbab": [
+  "hijab",
+  "head covering",
+  "veil"
+ ],
+ "jual": [
+  "to sell off",
+  "to vend",
+  "to put on sale",
+  "to market",
+  "to retail"
+ ],
+ "juga": [
+  "too",
+  "as well",
+  "additionally"
+ ],
+ "jumpa": [
+  "to encounter",
+  "to see someone",
+  "to run into",
+  "to get together",
+  "to come across"
+ ],
+ "kabar baik": [
+  "doing well",
+  "im fine",
+  "im good",
+  "fine thanks",
+  "good news",
+  "im doing well"
+ ],
+ "kabel": [
+  "wire",
+  "cord",
+  "cables",
+  "lead"
+ ],
+ "kabulkan": [
+  "to approve",
+  "to accept",
+  "to allow",
+  "to fulfill",
+  "to answer a prayer"
+ ],
+ "kabur": [
+  "to run away",
+  "to escape",
+  "to bolt",
+  "to get away",
+  "to become blurry"
+ ],
+ "kacamata": [
+  "spectacles",
+  "eyeglasses"
+ ],
+ "kadang-kadang": [
+  "occasionally",
+  "at times",
+  "once in a while"
+ ],
+ "kagum": [
+  "to be impressed",
+  "to marvel",
+  "to be in awe",
+  "to be astonished",
+  "to wonder at"
+ ],
+ "kakek": [
+  "grandpa",
+  "granddad",
+  "grandfather"
+ ],
+ "kaki": [
+  "feet",
+  "legs"
+ ],
+ "kalau": [
+  "in case"
+ ],
+ "kali": [
+  "occasions",
+  "instances",
+  "multiplied by",
+  "times"
+ ],
+ "kamar": [
+  "bedroom",
+  "chamber"
+ ],
+ "kamar mandi": [
+  "restroom",
+  "washroom",
+  "shower room",
+  "bath room"
+ ],
+ "kambing": [
+  "goats"
+ ],
+ "kampung": [
+  "hometown",
+  "village",
+  "neighborhood",
+  "community",
+  "hamlet",
+  "rural village"
+ ],
+ "kamu": [
+  "you"
+ ],
+ "kan": [
+  "isn't it",
+  "you know",
+  "don't you think",
+  "isn't that so"
+ ],
+ "kanan": [
+  "right hand",
+  "right side",
+  "to the right",
+  "rightward"
+ ],
+ "kantor": [
+  "workplace",
+  "work office",
+  "offices"
+ ],
+ "kapal": [
+  "vessel",
+  "boats",
+  "ships",
+  "ferry",
+  "steamer"
+ ],
+ "kapan": [
+  "at what time",
+  "what time",
+  "which time"
+ ],
+ "karena": [
+  "since",
+  "due to",
+  "as",
+  "because of"
+ ],
+ "kartu": [
+  "cards",
+  "credit card",
+  "debit card",
+  "playing card"
+ ],
+ "kasar": [
+  "impolite",
+  "coarse",
+  "harsh"
+ ],
+ "kasih": [
+  "to hand over",
+  "to provide",
+  "to offer"
+ ],
+ "kasihan": [
+  "poor you",
+  "how sad",
+  "what a pity",
+  "too bad",
+  "poor thing"
+ ],
+ "kasir": [
+  "checkout",
+  "till",
+  "teller",
+  "checkout counter",
+  "cash desk",
+  "checkout clerk"
+ ],
+ "kasur": [
+  "bed",
+  "bedding",
+  "mattresses"
+ ],
+ "kata": [
+  "to state",
+  "to remark",
+  "to utter"
+ ],
+ "katanya": [
+  "reportedly",
+  "supposedly",
+  "it seems",
+  "allegedly",
+  "they said",
+  "apparently"
+ ],
+ "kaus": [
+  "tee",
+  "tee shirt",
+  "tshirt"
+ ],
+ "kayak": [
+  "as",
+  "similar to",
+  "such as",
+  "for example",
+  "kind of"
+ ],
+ "kayaknya": [
+  "looks like",
+  "seems",
+  "i guess",
+  "probably",
+  "apparently"
+ ],
+ "ke": [
+  "toward",
+  "towards",
+  "heading to"
+ ],
+ "kebun": [
+  "orchard",
+  "farm",
+  "yard",
+  "vegetable garden"
+ ],
+ "kecap": [
+  "soya sauce",
+  "soy",
+  "sweet soy sauce",
+  "soybean sauce",
+  "soya"
+ ],
+ "kecewa": [
+  "let down",
+  "dissatisfied",
+  "disheartened"
+ ],
+ "kecil": [
+  "little",
+  "tiny"
+ ],
+ "kedua": [
+  "secondly",
+  "number two"
+ ],
+ "kejar": [
+  "to pursue",
+  "to run after",
+  "to go after",
+  "to follow",
+  "to catch up"
+ ],
+ "kelapa": [
+  "coconuts"
+ ],
+ "kelas": [
+  "lesson"
+ ],
+ "kelola": [
+  "to run",
+  "to administer",
+  "to handle",
+  "to oversee",
+  "to operate"
+ ],
+ "keluarga": [
+  "relatives",
+  "household",
+  "kin",
+  "family members"
+ ],
+ "kemarin": [
+  "the day before today",
+  "a day ago",
+  "previous day"
+ ],
+ "kemarin dulu": [
+  "two days ago",
+  "two days back",
+  "a couple days ago"
+ ],
+ "kemas": [
+  "to pack",
+  "to clean up",
+  "to put in order",
+  "to pack up"
+ ],
+ "kembali": [
+  "to go back",
+  "to come back",
+  "to be back",
+  "to get back",
+  "to revert"
+ ],
+ "kembalian": [
+  "change back",
+  "money back",
+  "the change",
+  "rest of the money",
+  "coins back",
+  "remaining change"
+ ],
+ "kemeja": [
+  "dress shirt",
+  "collared shirt"
+ ],
+ "kemudian": [
+  "after that",
+  "next",
+  "later",
+  "afterward"
+ ],
+ "kena": [
+  "to be struck",
+  "to get hit",
+  "to have to",
+  "to be subject to"
+ ],
+ "kenal": [
+  "to be familiar with",
+  "to recognize",
+  "to know someone",
+  "to be acquainted with",
+  "to be familiar"
+ ],
+ "kenapa": [
+  "how come",
+  "what happened",
+  "what's the matter",
+  "what's wrong",
+  "what for"
+ ],
+ "kenyang": [
+  "stuffed",
+  "satisfied",
+  "sated",
+  "full up",
+  "had enough",
+  "satiated"
+ ],
+ "keras": [
+  "firm",
+  "stiff",
+  "loud"
+ ],
+ "kereta": [
+  "railway",
+  "rail",
+  "train carriage",
+  "trains",
+  "railroad"
+ ],
+ "kering": [
+  "parched"
+ ],
+ "kerja": [
+  "to labor",
+  "to be employed",
+  "to have a job",
+  "to do work",
+  "to be working"
+ ],
+ "kertas": [
+  "sheet",
+  "page",
+  "sheet of paper",
+  "paperwork",
+  "stationery"
+ ],
+ "ketiga": [
+  "thirdly",
+  "number three"
+ ],
+ "ketika": [
+  "as",
+  "at the time",
+  "at the time when"
+ ],
+ "keturunan": [
+  "ancestry",
+  "heritage",
+  "descendant",
+  "origin",
+  "offspring"
+ ],
+ "khusus": [
+  "particular",
+  "specific",
+  "exclusive"
+ ],
+ "khususnya": [
+  "especially",
+  "in particular",
+  "specially",
+  "notably"
+ ],
+ "kilo": [
+  "kilogram",
+  "kilos",
+  "kg"
+ ],
+ "kipas angin": [
+  "fan",
+  "electric fan",
+  "standing fan",
+  "wind fan"
+ ],
+ "kira-kira": [
+  "approximately",
+  "around",
+  "estimated"
+ ],
+ "kiri": [
+  "left side",
+  "to the left",
+  "on the left",
+  "left hand"
+ ],
+ "kirim": [
+  "to dispatch",
+  "to mail",
+  "to ship",
+  "to forward",
+  "to transmit"
+ ],
+ "kisah": [
+  "to narrate a story",
+  "to recount",
+  "to relate",
+  "to tell the tale",
+  "to tell a tale"
+ ],
+ "kita": [
+  "us",
+  "we all"
+ ],
+ "klik": [
+  "to press",
+  "to tap",
+  "to click on",
+  "to hit"
+ ],
+ "kok": [
+  "why",
+  "how come",
+  "how is that",
+  "why on earth"
+ ],
+ "kompor": [
+  "cooker",
+  "cooktop",
+  "burner",
+  "gas stove",
+  "hob"
+ ],
+ "komputer": [
+  "pc",
+  "desktop",
+  "computing machine",
+  "desktop computer"
+ ],
+ "kopi": [
+  "coffee drink",
+  "cup of coffee"
+ ],
+ "kosong": [
+  "vacant",
+  "blank"
+ ],
+ "kota": [
+  "town",
+  "urban area",
+  "cities",
+  "municipality"
+ ],
+ "kotor": [
+  "filthy",
+  "messy",
+  "unclean"
+ ],
+ "kredit": [
+  "on credit",
+  "installments",
+  "instalment plan",
+  "buy on credit",
+  "credit payment",
+  "pay in installments"
+ ],
+ "kuat": [
+  "sturdy"
+ ],
+ "kue": [
+  "pastry",
+  "cakes",
+  "dessert",
+  "snack",
+  "sweet",
+  "treat"
+ ],
+ "kuliah": [
+  "attend college",
+  "go to college",
+  "study at university"
+ ],
+ "kulit": [
+  "hide"
+ ],
+ "kulkas": [
+  "refrigerator",
+  "freezer",
+  "icebox"
+ ],
+ "kumpul": [
+  "to meet up",
+  "to assemble",
+  "to collect",
+  "to get together",
+  "to congregate"
+ ],
+ "kunci": [
+  "lock",
+  "keys",
+  "padlock",
+  "to lock up"
+ ],
+ "kunjung": [
+  "to pay a visit",
+  "to drop by",
+  "to call on",
+  "to go to see",
+  "to visit a place"
+ ],
+ "kupas / patok": [
+  "marker",
+  "signpost",
+  "milestone",
+  "reference point"
+ ],
+ "kupingmu": [
+  "your ears",
+  "ear"
+ ],
+ "kurang": [
+  "insufficient",
+  "fewer",
+  "lack"
+ ],
+ "kurang lebih": [
+  "approximately",
+  "give or take",
+  "roughly"
+ ],
+ "kursi": [
+  "seat",
+  "stool",
+  "armchair"
+ ],
+ "kutip": [
+  "to gather",
+  "to quote",
+  "to collect up"
+ ],
+ "lagi": [
+  "once more",
+  "in the middle of",
+  "currently",
+  "right now"
+ ],
+ "lagipula": [
+  "in addition",
+  "furthermore",
+  "anyway",
+  "what's more",
+  "also"
+ ],
+ "lalu": [
+  "next",
+  "afterwards"
+ ],
+ "lama": [
+  "ancient",
+  "a long time",
+  "long time"
+ ],
+ "lampu": [
+  "bulb",
+  "light bulb",
+  "lights",
+  "lamps"
+ ],
+ "lampu merah": [
+  "red light",
+  "stop light",
+  "traffic signal",
+  "stoplight",
+  "traffic lights"
+ ],
+ "langsung": [
+  "immediately",
+  "right away",
+  "straightaway",
+  "instantly",
+  "at once",
+  "direct"
+ ],
+ "lantai": [
+  "ground",
+  "level",
+  "story",
+  "flooring"
+ ],
+ "lapar": [
+  "starving",
+  "famished",
+  "peckish",
+  "hungry feeling",
+  "ravenous"
+ ],
+ "laporan": [
+  "write-up",
+  "statement",
+  "summary"
+ ],
+ "laptop": [
+  "notebook computer",
+  "portable computer",
+  "notebook",
+  "laptop computer"
+ ],
+ "lari": [
+  "to sprint",
+  "to jog",
+  "to dash",
+  "to flee",
+  "to run away"
+ ],
+ "laris": [
+  "sells well",
+  "popular",
+  "hot item",
+  "flying off the shelves",
+  "bestselling",
+  "selling well"
+ ],
+ "layan": [
+  "to wait on",
+  "to attend to",
+  "to serve customers",
+  "to assist",
+  "to help customers"
+ ],
+ "lebar": [
+  "broad"
+ ],
+ "lebih": [
+  "greater"
+ ],
+ "lebih baik": [
+  "superior",
+  "improved"
+ ],
+ "lebih banyak": [
+  "greater amount",
+  "additional"
+ ],
+ "lebih buruk": [
+  "inferior",
+  "not as good"
+ ],
+ "lebih cepat": [
+  "quicker",
+  "more quickly"
+ ],
+ "lebih dekat": [
+  "nearer",
+  "more near"
+ ],
+ "lebih jauh": [
+  "further",
+  "more distant"
+ ],
+ "lebih kurang": [
+  "about",
+  "give or take",
+  "around"
+ ],
+ "lebih lambat / lebih pelan": [
+  "more slowly",
+  "not as fast"
+ ],
+ "lebih mahal": [
+  "pricier",
+  "costlier"
+ ],
+ "lebih murah": [
+  "less expensive",
+  "more affordable"
+ ],
+ "lebih sedikit": [
+  "not as much",
+  "smaller amount"
+ ],
+ "lele": [
+  "catfish fish"
+ ],
+ "lemah": [
+  "feeble",
+  "frail"
+ ],
+ "lemari": [
+  "closet",
+  "cabinet",
+  "dresser",
+  "armoire",
+  "cupboards",
+  "wardrobes"
+ ],
+ "lembur": [
+  "extra hours",
+  "working late",
+  "extra work hours",
+  "working overtime",
+  "extra shift"
+ ],
+ "lembut": [
+  "gentle",
+  "smooth",
+  "tender"
+ ],
+ "lezat": [
+  "tasty",
+  "yummy",
+  "scrumptious"
+ ],
+ "libur": [
+  "vacation",
+  "time off",
+  "holiday time",
+  "off day"
+ ],
+ "lihat": [
+  "to look",
+  "to look at",
+  "to watch",
+  "to view",
+  "to notice"
+ ],
+ "lipat": [
+  "to fold up",
+  "to tuck"
+ ],
+ "listrik": [
+  "power",
+  "electric",
+  "electrical power",
+  "electric power",
+  "current"
+ ],
+ "login": [
+  "to sign in",
+  "to log on",
+  "to sign on",
+  "to enter your account"
+ ],
+ "loh": [
+  "hey",
+  "whoa",
+  "surprise",
+  "hold on"
+ ],
+ "loh / lho": [
+  "you know",
+  "oh",
+  "hey"
+ ],
+ "luar": [
+  "exterior",
+  "outdoors",
+  "outer",
+  "out",
+  "external",
+  "the outside"
+ ],
+ "lucu": [
+  "amusing",
+  "humorous",
+  "adorable"
+ ],
+ "luka": [
+  "injury",
+  "hurt",
+  "cut"
+ ],
+ "lulus": [
+  "to pass an exam",
+  "to finish school",
+  "to complete studies",
+  "to qualify"
+ ],
+ "lumayan": [
+  "fairly good",
+  "okay",
+  "reasonable",
+  "not bad",
+  "pretty good",
+  "decent"
+ ],
+ "lupa": [
+  "to be forgetful",
+  "to not remember",
+  "to overlook",
+  "to lose track of",
+  "to have forgotten"
+ ],
+ "lurus": [
+  "go straight",
+  "straight on",
+  "keep going straight",
+  "directly ahead"
+ ],
+ "lusa": [
+  "in two days",
+  "two days from now",
+  "day after next",
+  "in two days time"
+ ],
+ "maaf": [
+  "pardon",
+  "apologies",
+  "pardon me",
+  "apologize",
+  "i apologize"
+ ],
+ "maaf mengganggu": [
+  "sorry for disturbing you",
+  "sorry to disturb you",
+  "sorry for the interruption",
+  "excuse the interruption",
+  "sorry to interrupt"
+ ],
+ "macet": [
+  "gridlock",
+  "congestion",
+  "traffic",
+  "jammed",
+  "stuck in traffic",
+  "bumper to bumper"
+ ],
+ "mah": [
+  "as for",
+  "as for me",
+  "speaking of"
+ ],
+ "mahal": [
+  "costly",
+  "pricey",
+  "pricy"
+ ],
+ "mahasiswa": [
+  "college student",
+  "undergraduate",
+  "university pupil",
+  "uni student"
+ ],
+ "main": [
+  "to have fun",
+  "to hang out",
+  "to play around",
+  "to go out to play"
+ ],
+ "maju": [
+  "to advance",
+  "to go forward",
+  "to progress",
+  "to move ahead",
+  "to step forward"
+ ],
+ "makan": [
+  "to have a meal",
+  "to dine",
+  "to consume",
+  "to have food",
+  "to have dinner"
+ ],
+ "makan malam": [
+  "supper",
+  "evening meal",
+  "night meal",
+  "eat dinner",
+  "have dinner"
+ ],
+ "makan siang": [
+  "midday meal",
+  "eat lunch",
+  "have lunch",
+  "lunch meal",
+  "afternoon meal"
+ ],
+ "makanan": [
+  "meal",
+  "foods",
+  "dish",
+  "eats",
+  "cuisine"
+ ],
+ "makanya": [
+  "so that is why",
+  "which is why",
+  "for that reason",
+  "therefore"
+ ],
+ "mal": [
+  "mall",
+  "shopping center",
+  "shopping centre",
+  "shopping plaza"
+ ],
+ "malah": [
+  "rather",
+  "on the contrary",
+  "contrary to expectation",
+  "in fact"
+ ],
+ "malam": [
+  "evening",
+  "nighttime",
+  "at night",
+  "tonight"
+ ],
+ "malas": [
+  "idle",
+  "unmotivated",
+  "can't be bothered",
+  "slothful",
+  "lethargic"
+ ],
+ "malu": [
+  "ashamed",
+  "bashful",
+  "self conscious"
+ ],
+ "mana": [
+  "which",
+  "where is"
+ ],
+ "mandi": [
+  "to take a bath",
+  "to take a shower",
+  "to wash up",
+  "to have a bath",
+  "to have a shower"
+ ],
+ "mangga": [
+  "mangoes",
+  "mangos"
+ ],
+ "manis": [
+  "cute",
+  "sugary",
+  "pleasant",
+  "lovely"
+ ],
+ "mantap": [
+  "great",
+  "excellent",
+  "solid",
+  "cool",
+  "nice",
+  "awesome"
+ ],
+ "marah": [
+  "mad",
+  "furious",
+  "upset"
+ ],
+ "mari": [
+  "come on",
+  "lets go",
+  "come along",
+  "shall we"
+ ],
+ "masak": [
+  "to prepare food",
+  "to prepare a meal",
+  "to make food",
+  "to fix a meal",
+  "to be cooking"
+ ],
+ "masih": [
+  "yet",
+  "even now",
+  "continues to",
+  "remains"
+ ],
+ "masjid": [
+  "muslim temple",
+  "muslim place of worship",
+  "islamic place of worship",
+  "mosques"
+ ],
+ "masuk": [
+  "to go in",
+  "to come in",
+  "to get in",
+  "to step in",
+  "to go inside"
+ ],
+ "masuk angin": [
+  "under the weather",
+  "unwell",
+  "caught a chill"
+ ],
+ "matahari": [
+  "sunshine",
+  "the sun",
+  "sunlight",
+  "daylight"
+ ],
+ "matang": [
+  "done",
+  "well cooked",
+  "mature",
+  "fully cooked",
+  "ready"
+ ],
+ "mati": [
+  "to pass away",
+  "to be dead",
+  "to stop working",
+  "to switch off",
+  "to be off"
+ ],
+ "mati lampu": [
+  "blackout",
+  "power cut",
+  "power failure",
+  "lights out",
+  "no electricity"
+ ],
+ "mau": [
+  "would like",
+  "wish to",
+  "going to",
+  "gonna"
+ ],
+ "meja": [
+  "desk",
+  "tabletop",
+  "counter"
+ ],
+ "memang": [
+  "truly",
+  "admittedly",
+  "it is true",
+  "for sure"
+ ],
+ "membaca": [
+  "to read out",
+  "to peruse",
+  "to be reading",
+  "to read through"
+ ],
+ "membosankan": [
+  "dull",
+  "tedious",
+  "tiresome"
+ ],
+ "menarik": [
+  "fascinating",
+  "attractive",
+  "engaging"
+ ],
+ "mendingan": [
+  "might as well",
+  "would rather",
+  "preferable",
+  "better to",
+  "had better"
+ ],
+ "mendung": [
+  "gloomy",
+  "dark clouds",
+  "clouded over",
+  "grey skies",
+  "cloudy weather"
+ ],
+ "mengatakan": [
+  "tell",
+  "state",
+  "speak",
+  "declare"
+ ],
+ "mengerti": [
+  "to comprehend",
+  "to get it",
+  "to grasp",
+  "to follow",
+  "to see"
+ ],
+ "mengirim": [
+  "to dispatch",
+  "to mail",
+  "to ship",
+  "to forward",
+  "to transmit"
+ ],
+ "menit": [
+  "minutes",
+  "mins",
+  "min"
+ ],
+ "mentah": [
+  "unripe",
+  "not cooked",
+  "uncooked",
+  "undercooked",
+  "fresh"
+ ],
+ "menulis": [
+  "to write down",
+  "to compose",
+  "to author",
+  "to be writing",
+  "to pen"
+ ],
+ "menurut": [
+  "in the opinion of",
+  "as per",
+  "in my view",
+  "from the view of"
+ ],
+ "merah muda": [
+  "light red",
+  "rose"
+ ],
+ "meski": [
+  "although",
+  "even if"
+ ],
+ "meskipun": [
+  "despite the fact",
+  "even if"
+ ],
+ "mie": [
+  "noodle",
+  "pasta",
+  "ramen",
+  "mee",
+  "noodle dish"
+ ],
+ "minggu depan": [
+  "the coming week",
+  "following week",
+  "upcoming week",
+  "week ahead"
+ ],
+ "minggu lalu": [
+  "the past week",
+  "previous week",
+  "past week",
+  "week before"
+ ],
+ "minta": [
+  "to request",
+  "to demand",
+  "to beg",
+  "to ask for something"
+ ],
+ "minum": [
+  "to have a drink",
+  "to sip",
+  "to consume a drink",
+  "to gulp",
+  "to have something to drink"
+ ],
+ "minuman": [
+  "beverage",
+  "drinks",
+  "beverages",
+  "refreshment",
+  "something to drink"
+ ],
+ "minyak": [
+  "cooking oil",
+  "oils"
+ ],
+ "mirip": [
+  "resembling",
+  "alike",
+  "looks like"
+ ],
+ "misalnya": [
+  "such as",
+  "for instance"
+ ],
+ "mobil": [
+  "automobile",
+  "vehicle",
+  "cars",
+  "auto"
+ ],
+ "model": [
+  "fashion"
+ ],
+ "mohon": [
+  "kindly",
+  "i request",
+  "i ask",
+  "i beg"
+ ],
+ "motor": [
+  "motorcycle",
+  "scooter",
+  "bike",
+  "motorbikes"
+ ],
+ "mual": [
+  "nausea",
+  "sick",
+  "queasy",
+  "feel sick"
+ ],
+ "muat": [
+  "fits",
+  "be big enough"
+ ],
+ "muda": [
+  "youthful"
+ ],
+ "mudah": [
+  "simple",
+  "effortless"
+ ],
+ "mulai": [
+  "to start",
+  "to commence",
+  "to kick off",
+  "to get started",
+  "to initiate"
+ ],
+ "mungkin": [
+  "perhaps",
+  "probably",
+  "possible",
+  "might",
+  "could be",
+  "perchance"
+ ],
+ "murah": [
+  "inexpensive",
+  "affordable",
+  "low cost"
+ ],
+ "murid": [
+  "school pupil",
+  "schoolchild",
+  "learner",
+  "school kid"
+ ],
+ "musim": [
+  "time of year",
+  "season of year"
+ ],
+ "musim hujan": [
+  "wet season",
+  "monsoon season",
+  "monsoon",
+  "time of rain"
+ ],
+ "musim kemarau": [
+  "drought season",
+  "hot season",
+  "drought"
+ ],
+ "mutlak": [
+  "total",
+  "complete",
+  "definite"
+ ],
+ "nah": [
+  "there you go",
+  "well",
+  "now then",
+  "here we go"
+ ],
+ "naik": [
+  "to climb",
+  "to rise",
+  "to get on",
+  "to board",
+  "to go upward"
+ ],
+ "namanya": [
+  "the name",
+  "it's called",
+  "what it's named",
+  "is called",
+  "named"
+ ],
+ "namun": [
+  "nevertheless",
+  "nonetheless",
+  "yet",
+  "but"
+ ],
+ "nanti": [
+  "afterwards",
+  "soon",
+  "after a while",
+  "in a while",
+  "in a bit"
+ ],
+ "nasi": [
+  "cooked rice",
+  "steamed rice"
+ ],
+ "nawar": [
+  "bargain",
+  "to bargain",
+  "negotiate the price",
+  "haggling",
+  "bargaining",
+  "to negotiate price"
+ ],
+ "nenek": [
+  "grandma",
+  "granny",
+  "grandmother",
+  "gran"
+ ],
+ "ngecas": [
+  "to recharge",
+  "recharge",
+  "charging",
+  "plug in"
+ ],
+ "ngerti": [
+  "get it",
+  "comprehend",
+  "understand",
+  "grasp",
+  "know"
+ ],
+ "nggak": [
+  "don't",
+  "isn't",
+  "not",
+  "doesn't",
+  "won't"
+ ],
+ "nggak / enggak": [
+  "don't",
+  "isn't"
+ ],
+ "nggak usah": [
+  "no need to",
+  "needn't",
+  "don't need to",
+  "not necessary",
+  "skip it"
+ ],
+ "nih": [
+  "this one",
+  "look",
+  "see this",
+  "check this out"
+ ],
+ "nilai": [
+  "score",
+  "mark",
+  "worth"
+ ],
+ "nomor": [
+  "digit",
+  "numeral"
+ ],
+ "nonton": [
+  "to view",
+  "to look at",
+  "to see a movie",
+  "to be watching",
+  "to see a show"
+ ],
+ "nyala": [
+  "turned on",
+  "switched on",
+  "lit",
+  "burning",
+  "working"
+ ],
+ "nyalakan": [
+  "to switch on",
+  "to light",
+  "to power on",
+  "to ignite",
+  "to put on"
+ ],
+ "nyanyi": [
+  "to chant",
+  "to carol",
+  "to perform a song",
+  "to sing a song",
+  "to croon"
+ ],
+ "obat": [
+  "drug",
+  "medication",
+  "pills"
+ ],
+ "ojek": [
+  "motorcycle taxi",
+  "bike taxi",
+  "motorbike ride",
+  "scooter taxi",
+  "taxi bike",
+  "moto taxi"
+ ],
+ "oke": [
+  "ok",
+  "alright",
+  "sure",
+  "all right"
+ ],
+ "olah": [
+  "to prepare"
+ ],
+ "olahraga": [
+  "workout",
+  "sports",
+  "physical activity"
+ ],
+ "oleh": [
+  "done by",
+  "carried out by"
+ ],
+ "oleh karena itu": [
+  "thus",
+  "hence",
+  "for that reason",
+  "consequently",
+  "so"
+ ],
+ "oles": [
+  "to smear",
+  "to rub on",
+  "to coat",
+  "to put on",
+  "to slather"
+ ],
+ "ongkos": [
+  "transport cost",
+  "charges",
+  "travel cost",
+  "fee",
+  "cost of travel",
+  "fare cost"
+ ],
+ "orang": [
+  "people",
+  "human",
+  "persons",
+  "individual"
+ ],
+ "oranye": [
+  "orange color"
+ ],
+ "pada": [
+  "on",
+  "upon",
+  "during"
+ ],
+ "pada akhirnya": [
+  "in the end",
+  "eventually",
+  "at the end of the day",
+  "finally"
+ ],
+ "padahal": [
+  "although",
+  "whereas",
+  "despite the fact",
+  "actually"
+ ],
+ "pagi": [
+  "a.m",
+  "early",
+  "early morning",
+  "am"
+ ],
+ "pak": [
+  "mister",
+  "mr",
+  "gentleman"
+ ],
+ "pakai": [
+  "to put on",
+  "to utilize",
+  "to employ",
+  "to have on",
+  "to make use of"
+ ],
+ "pakaian": [
+  "garments",
+  "attire",
+  "apparel"
+ ],
+ "paling": [
+  "the most",
+  "extremely",
+  "-est"
+ ],
+ "panas": [
+  "warm"
+ ],
+ "panci": [
+  "cooking pot",
+  "saucepan",
+  "pan",
+  "pots"
+ ],
+ "panggil": [
+  "to summon",
+  "to phone",
+  "to call out",
+  "to name",
+  "to page"
+ ],
+ "panjang": [
+  "lengthy"
+ ],
+ "pantai": [
+  "seashore",
+  "shore",
+  "seaside",
+  "coastline"
+ ],
+ "pantau": [
+  "to observe",
+  "to keep watch",
+  "to keep track",
+  "to track",
+  "to watch over"
+ ],
+ "parkir": [
+  "parking lot",
+  "car park",
+  "parked",
+  "parking space",
+  "parking spot"
+ ],
+ "pas": [
+  "perfect fit",
+  "fits",
+  "just right",
+  "precisely",
+  "exactly right",
+  "correct amount"
+ ],
+ "pasar": [
+  "marketplace",
+  "bazaar",
+  "market place"
+ ],
+ "pasti": [
+  "certainly",
+  "for sure",
+  "without a doubt",
+  "undoubtedly",
+  "definitely sure"
+ ],
+ "payung": [
+  "brolly",
+  "umbrellas"
+ ],
+ "pedas": [
+  "hot",
+  "fiery"
+ ],
+ "pegang": [
+  "to grip",
+  "to grasp",
+  "to clutch",
+  "to hold on to",
+  "to grab hold of"
+ ],
+ "pekerjaan": [
+  "occupation",
+  "employment",
+  "career",
+  "profession",
+  "task"
+ ],
+ "pelabuhan": [
+  "seaport",
+  "dock",
+  "docks",
+  "marina",
+  "ferry port",
+  "harbor"
+ ],
+ "pelajaran": [
+  "study material"
+ ],
+ "pelajari": [
+  "to examine",
+  "to look into",
+  "to research",
+  "to go over",
+  "to master"
+ ],
+ "pembeli": [
+  "customer",
+  "purchaser",
+  "shopper",
+  "client",
+  "consumer",
+  "buyers"
+ ],
+ "pemberitahuan": [
+  "notice",
+  "alert",
+  "announcement",
+  "notification",
+  "message"
+ ],
+ "pengen": [
+  "would like",
+  "wish to",
+  "desire",
+  "feel like"
+ ],
+ "penjual": [
+  "vendor",
+  "seller",
+  "merchant",
+  "salesman",
+  "trader",
+  "shopkeeper"
+ ],
+ "pensil": [
+  "lead pencil",
+  "graphite",
+  "writing pencil"
+ ],
+ "penting": [
+  "essential",
+  "significant",
+  "vital"
+ ],
+ "penuh": [
+  "filled",
+  "packed"
+ ],
+ "perempatan": [
+  "four way junction",
+  "junction",
+  "crossroad",
+  "intersections",
+  "four way intersection",
+  "crossing"
+ ],
+ "pergi": [
+  "depart",
+  "go away",
+  "head off",
+  "exit",
+  "going"
+ ],
+ "periksa": [
+  "check",
+  "inspect",
+  "check up"
+ ],
+ "perlu": [
+  "require",
+  "necessary",
+  "have to",
+  "must"
+ ],
+ "permisi": [
+  "pardon me",
+  "coming through",
+  "may i pass",
+  "may i come in"
+ ],
+ "permisi dulu": [
+  "i must be going",
+  "i will be going now",
+  "excuse me i am leaving",
+  "pardon me i am leaving",
+  "i will take my leave",
+  "i am off"
+ ],
+ "pernah": [
+  "have done before",
+  "once before",
+  "at some point",
+  "have been"
+ ],
+ "pertama": [
+  "firstly",
+  "number one",
+  "first of all"
+ ],
+ "perut": [
+  "tummy",
+  "abdomen"
+ ],
+ "pesan": [
+  "to book",
+  "to reserve",
+  "to place an order",
+  "to send a message",
+  "to request"
+ ],
+ "pesawat": [
+  "airplane",
+  "plane",
+  "aircraft",
+  "jet",
+  "airliner",
+  "flight"
+ ],
+ "peta": [
+  "maps",
+  "chart",
+  "plan"
+ ],
+ "petir": [
+  "thunderbolt",
+  "thunderstorm",
+  "a lightning strike",
+  "bolt of lightning",
+  "thunder and lightning"
+ ],
+ "pikir": [
+  "to ponder",
+  "to consider",
+  "to reflect"
+ ],
+ "pilek": [
+  "runny nose",
+  "stuffy nose"
+ ],
+ "pilih": [
+  "to select",
+  "to pick",
+  "to opt for",
+  "to decide on",
+  "to elect"
+ ],
+ "pindah": [
+  "to relocate",
+  "to shift",
+  "to transfer",
+  "to move house"
+ ],
+ "pinjam": [
+  "to loan",
+  "to take on loan",
+  "to lend",
+  "to rent",
+  "to take a loan"
+ ],
+ "pinjaman": [
+  "loans",
+  "borrowing",
+  "credit loan",
+  "money lent",
+  "advance",
+  "lending"
+ ],
+ "pintar": [
+  "smart",
+  "intelligent",
+  "bright",
+  "skilled",
+  "brilliant"
+ ],
+ "pintu": [
+  "entrance",
+  "doorway",
+  "gate"
+ ],
+ "piring": [
+  "dish",
+  "plates"
+ ],
+ "pisang": [
+  "bananas",
+  "plantain"
+ ],
+ "pisau": [
+  "blade",
+  "knives"
+ ],
+ "porsi": [
+  "servings",
+  "helping",
+  "share",
+  "plate",
+  "portions"
+ ],
+ "potong": [
+  "to slice",
+  "to chop",
+  "to trim",
+  "to clip",
+  "to carve"
+ ],
+ "proyek": [
+  "undertaking",
+  "venture",
+  "initiative"
+ ],
+ "pukul": [
+  "to beat",
+  "to punch",
+  "to strike",
+  "to smack",
+  "to knock"
+ ],
+ "pulang": [
+  "to return home",
+  "to head home",
+  "to go back home",
+  "to come home",
+  "to get home"
+ ],
+ "puluhan": [
+  "tens",
+  "tens of",
+  "dozens of",
+  "several tens",
+  "scores of"
+ ],
+ "punya": [
+  "possess",
+  "got",
+  "own",
+  "has",
+  "have got"
+ ],
+ "pura": [
+  "hindu temple",
+  "temple",
+  "balinese temple"
+ ],
+ "pusing": [
+  "dizziness",
+  "lightheaded"
+ ],
+ "puskesmas": [
+  "health center",
+  "public clinic",
+  "health clinic"
+ ],
+ "putar": [
+  "to spin",
+  "to twist",
+  "to revolve",
+  "to rotate",
+  "to play"
+ ],
+ "putus": [
+  "to snap",
+  "to cut off",
+  "to be cut",
+  "to be cut off",
+  "to break up"
+ ],
+ "rajin": [
+  "industrious",
+  "hard working",
+  "studious",
+  "conscientious",
+  "assiduous"
+ ],
+ "rak": [
+  "rack",
+  "shelves",
+  "bookshelf",
+  "stand"
+ ],
+ "ramah": [
+  "kind",
+  "amiable",
+  "welcoming"
+ ],
+ "rancang": [
+  "to plan out",
+  "to devise",
+  "to draft",
+  "to scheme",
+  "to design something"
+ ],
+ "rapat": [
+  "session",
+  "get together"
+ ],
+ "rapi": [
+  "orderly",
+  "well organized",
+  "organized",
+  "clean and tidy",
+  "in order",
+  "neatly arranged"
+ ],
+ "rasa": [
+  "to sense",
+  "to taste like",
+  "to think",
+  "to experience",
+  "to feel like"
+ ],
+ "ratusan": [
+  "hundreds",
+  "many hundreds",
+  "several hundred"
+ ],
+ "rawat": [
+  "to look after",
+  "to nurse",
+  "to tend",
+  "to take care of",
+  "to maintain"
+ ],
+ "rayakan": [
+  "to commemorate",
+  "to party",
+  "to observe",
+  "to have a party",
+  "to mark"
+ ],
+ "rebut": [
+  "to snatch",
+  "to fight for"
+ ],
+ "rehat": [
+  "to relax",
+  "to take a break",
+  "to take a rest",
+  "to have a rest",
+  "to pause"
+ ],
+ "rekan kerja": [
+  "coworker",
+  "workmate",
+  "work colleague",
+  "office mate",
+  "teammate"
+ ],
+ "rekening": [
+  "account",
+  "bank accounts",
+  "bill",
+  "account number"
+ ],
+ "relatif": [
+  "comparative",
+  "relatively"
+ ],
+ "rendang": [
+  "beef curry",
+  "dry curry",
+  "slow cooked beef",
+  "spicy beef",
+  "beef stew"
+ ],
+ "resep": [
+  "cooking instructions",
+  "recipe for food"
+ ],
+ "resmi": [
+  "authorized"
+ ],
+ "ribuan": [
+  "thousands",
+  "many thousands",
+  "several thousand"
+ ],
+ "rindu": [
+  "to long for",
+  "to pine for",
+  "to yearn for",
+  "to be homesick",
+  "to feel nostalgic"
+ ],
+ "ringan": [
+  "lightweight"
+ ],
+ "roti": [
+  "loaf",
+  "bun",
+  "toast",
+  "loaves"
+ ],
+ "ruang tamu": [
+  "lounge",
+  "sitting room",
+  "front room",
+  "parlor",
+  "guest room"
+ ],
+ "rugi": [
+  "loss",
+  "what a waste",
+  "losing money",
+  "wasteful",
+  "deficit",
+  "unfortunate"
+ ],
+ "rumah": [
+  "home",
+  "house",
+  "residence",
+  "dwelling"
+ ],
+ "rumah sakit": [
+  "clinic"
+ ],
+ "rumit": [
+  "complex",
+  "intricate"
+ ],
+ "rupiah": [
+  "indonesian currency",
+  "indonesian money",
+  "indonesian rupiah",
+  "idr",
+  "indonesian dollar"
+ ],
+ "rusak": [
+  "to be broken",
+  "to ruin",
+  "to spoil",
+  "to harm",
+  "to break down"
+ ],
+ "sabun": [
+  "soap bar",
+  "bar of soap",
+  "detergent"
+ ],
+ "sadar": [
+  "to be conscious",
+  "to be mindful",
+  "to be awake",
+  "to recognize",
+  "to notice"
+ ],
+ "sadari": [
+  "to be aware of",
+  "to become aware of",
+  "to notice",
+  "to understand",
+  "to recognize"
+ ],
+ "saja": [
+  "merely",
+  "simply",
+  "nothing but",
+  "that's all"
+ ],
+ "sakit": [
+  "ill",
+  "unwell",
+  "pain",
+  "ache",
+  "hurt",
+  "painful"
+ ],
+ "salah": [
+  "incorrect",
+  "mistaken",
+  "error"
+ ],
+ "salam": [
+  "hello",
+  "regards",
+  "greeting",
+  "best wishes",
+  "hi"
+ ],
+ "salam kenal": [
+  "pleased to meet you",
+  "good to meet you",
+  "nice to meet you too",
+  "glad to meet you",
+  "happy to meet you"
+ ],
+ "salim": [
+  "kiss the hand",
+  "hand kiss",
+  "respectful greeting",
+  "greeting elders"
+ ],
+ "sama": [
+  "identical",
+  "equivalent",
+  "alike"
+ ],
+ "sama … dengan …": [
+  "just as"
+ ],
+ "sama-sama": [
+  "no problem",
+  "my pleasure",
+  "not at all",
+  "no worries"
+ ],
+ "samakan": [
+  "to equalize",
+  "to equate",
+  "to even out",
+  "to align",
+  "to make the same"
+ ],
+ "sambal": [
+  "chili sauce",
+  "chilli paste",
+  "hot sauce",
+  "chilli sauce",
+  "spicy paste",
+  "chili relish"
+ ],
+ "sambil": [
+  "whilst",
+  "as",
+  "at the same time",
+  "at the same time as"
+ ],
+ "sambung": [
+  "to link",
+  "to join",
+  "to attach",
+  "to carry on"
+ ],
+ "sambut": [
+  "to greet",
+  "to receive",
+  "to embrace"
+ ],
+ "sampah": [
+  "garbage",
+  "waste",
+  "litter",
+  "refuse",
+  "junk",
+  "bin waste"
+ ],
+ "sampai": [
+  "till",
+  "up to",
+  "reach",
+  "arrive",
+  "as far as"
+ ],
+ "sampai jumpa": [
+  "goodbye",
+  "bye",
+  "see you soon",
+  "until we meet again",
+  "farewell",
+  "catch you later"
+ ],
+ "sampai nanti": [
+  "see you soon",
+  "until later",
+  "catch you later",
+  "talk to you later",
+  "later",
+  "till later"
+ ],
+ "sana": [
+  "there",
+  "that place",
+  "yonder"
+ ],
+ "sandal": [
+  "flip flops",
+  "slippers",
+  "thongs"
+ ],
+ "sangat": [
+  "extremely",
+  "really",
+  "so",
+  "highly"
+ ],
+ "santai": [
+  "laid back",
+  "casual",
+  "easygoing"
+ ],
+ "santan": [
+  "coconut cream"
+ ],
+ "sapi": [
+  "bull",
+  "steer",
+  "cattle",
+  "ox",
+  "beef cow"
+ ],
+ "sapu": [
+  "to brush",
+  "to clean the floor",
+  "to sweep up",
+  "to broom",
+  "to sweep the floor"
+ ],
+ "sarapan": [
+  "morning meal",
+  "eat breakfast",
+  "have breakfast",
+  "breakfast meal"
+ ],
+ "sate": [
+  "satay skewers",
+  "skewers",
+  "grilled skewers",
+  "kebab",
+  "satay"
+ ],
+ "satu juta": [
+  "a million",
+  "million"
+ ],
+ "sawah": [
+  "paddy",
+  "paddy field",
+  "rice paddy",
+  "rice paddies"
+ ],
+ "saya": [
+  "me",
+  "myself",
+  "i am"
+ ],
+ "sayang": [
+  "to cherish",
+  "to be fond of",
+  "to adore",
+  "to care for",
+  "to hold dear"
+ ],
+ "sayangku": [
+  "my dear",
+  "honey",
+  "sweetheart",
+  "my darling",
+  "beloved"
+ ],
+ "sayur": [
+  "veggies",
+  "vegetables",
+  "greens",
+  "veg"
+ ],
+ "seakan-akan": [
+  "as if",
+  "like",
+  "seemingly"
+ ],
+ "sebab": [
+  "reason",
+  "since",
+  "due to"
+ ],
+ "sebagainya": [
+  "and so forth",
+  "et cetera",
+  "and the rest",
+  "and such"
+ ],
+ "sebagian": [
+  "partly",
+  "a portion",
+  "portion",
+  "a part",
+  "partially",
+  "a portion of"
+ ],
+ "sebaliknya": [
+  "the opposite",
+  "in contrast",
+  "vice versa",
+  "on the other hand"
+ ],
+ "sebanding": [
+  "proportional",
+  "on par",
+  "equivalent"
+ ],
+ "sebar": [
+  "to scatter",
+  "to distribute",
+  "to disperse",
+  "to circulate",
+  "to broadcast"
+ ],
+ "sebelah": [
+  "beside",
+  "adjacent",
+  "next door",
+  "alongside",
+  "by the side of",
+  "neighboring"
+ ],
+ "sebelum": [
+  "prior to",
+  "earlier than",
+  "ahead of"
+ ],
+ "sebentar": [
+  "a second",
+  "a while",
+  "a minute",
+  "for a moment",
+  "shortly",
+  "just a moment"
+ ],
+ "sebut": [
+  "to name",
+  "to cite",
+  "to refer to",
+  "to state",
+  "to call"
+ ],
+ "secara khusus": [
+  "in particular",
+  "especially",
+  "particularly"
+ ],
+ "secara umum": [
+  "overall",
+  "on the whole",
+  "broadly",
+  "as a rule"
+ ],
+ "sedang": [
+  "currently",
+  "at the moment",
+  "right now",
+  "presently",
+  "busy doing"
+ ],
+ "sedangkan": [
+  "whilst",
+  "on the other hand"
+ ],
+ "sederhana": [
+  "plain",
+  "basic",
+  "modest"
+ ],
+ "sedih": [
+  "unhappy",
+  "upset",
+  "blue",
+  "down"
+ ],
+ "sedikit": [
+  "a bit",
+  "small amount",
+  "not many",
+  "some"
+ ],
+ "seduh": [
+  "to steep",
+  "to make tea",
+  "to make coffee",
+  "to infuse",
+  "to pour hot water"
+ ],
+ "segar": [
+  "crisp",
+  "refreshing"
+ ],
+ "segel": [
+  "to close up",
+  "to stamp",
+  "to lock",
+  "to secure",
+  "to make airtight"
+ ],
+ "segera": [
+  "immediately",
+  "at once",
+  "soon",
+  "straight away",
+  "quickly",
+  "promptly"
+ ],
+ "sehat": [
+  "fit",
+  "in good health",
+  "well",
+  "wholesome"
+ ],
+ "sehingga": [
+  "thus",
+  "with the result",
+  "in order that"
+ ],
+ "sejak": [
+  "ever since",
+  "starting from",
+  "from"
+ ],
+ "sekali": [
+  "extremely",
+  "really",
+  "very much",
+  "one time",
+  "a single time"
+ ],
+ "sekali lagi": [
+  "one more time",
+  "one more",
+  "again once",
+  "once again",
+  "another time"
+ ],
+ "sekarang": [
+  "right now",
+  "currently",
+  "at present",
+  "at the moment",
+  "nowadays"
+ ],
+ "sekitar": [
+  "roughly",
+  "about",
+  "circa"
+ ],
+ "sekolah": [
+  "schools",
+  "to attend school"
+ ],
+ "selain itu": [
+  "in addition",
+  "furthermore",
+  "additionally",
+  "apart from that"
+ ],
+ "selalu": [
+  "every time",
+  "constantly"
+ ],
+ "selama": [
+  "throughout",
+  "over",
+  "as long as"
+ ],
+ "selamat datang": [
+  "greetings",
+  "glad you came",
+  "come in"
+ ],
+ "selamat jalan": [
+  "have a safe trip",
+  "safe journey",
+  "bon voyage",
+  "farewell",
+  "travel safely",
+  "safe trip"
+ ],
+ "selamat makan": [
+  "bon appetit",
+  "enjoy your food",
+  "dig in",
+  "eat well",
+  "enjoy the meal",
+  "have a good meal"
+ ],
+ "selamat malam": [
+  "good night",
+  "evening greeting",
+  "night"
+ ],
+ "selamat pagi": [
+  "morning",
+  "good morning to you"
+ ],
+ "selamat siang": [
+  "good afternoon",
+  "hello midday",
+  "afternoon"
+ ],
+ "selamat sore": [
+  "good evening",
+  "late afternoon greeting",
+  "evening"
+ ],
+ "selamat tidur": [
+  "sleep well",
+  "sweet dreams",
+  "nighty night",
+  "night night"
+ ],
+ "selamat tinggal": [
+  "farewell",
+  "bye",
+  "so long",
+  "bye bye"
+ ],
+ "selamat ulang tahun": [
+  "happy bday",
+  "many happy returns",
+  "happy birth day"
+ ],
+ "selanjutnya": [
+  "following that",
+  "after that",
+  "moving on",
+  "afterwards",
+  "later"
+ ],
+ "selesaikan": [
+  "to complete",
+  "to wrap up",
+  "to conclude",
+  "to end",
+  "to resolve"
+ ],
+ "selevel": [
+  "on par",
+  "equal level",
+  "same standard"
+ ],
+ "selimut": [
+  "cover",
+  "bed cover",
+  "comforter",
+  "blankets"
+ ],
+ "selip": [
+  "to slide",
+  "to insert",
+  "to slide in",
+  "to stick in"
+ ],
+ "sembuh": [
+  "heal",
+  "get better",
+  "recovered"
+ ],
+ "sembunyi": [
+  "to conceal",
+  "to take cover",
+  "to lie low",
+  "to keep out of sight",
+  "to cover"
+ ],
+ "sementara": [
+  "whilst",
+  "at the same time",
+  "for now"
+ ],
+ "seminggu sekali": [
+  "weekly",
+  "one time a week",
+  "once every week",
+  "every week",
+  "one a week"
+ ],
+ "semoga": [
+  "i hope",
+  "let us hope",
+  "god willing",
+  "may it be",
+  "wishing",
+  "i hope that"
+ ],
+ "semoga sukses": [
+  "best of luck",
+  "best wishes",
+  "wish you success",
+  "all the best",
+  "wishing you luck",
+  "hope you succeed"
+ ],
+ "sempit": [
+  "tight"
+ ],
+ "semua": [
+  "everything",
+  "all of them",
+  "everybody",
+  "the whole thing"
+ ],
+ "semuanya": [
+  "everything",
+  "everybody",
+  "all of them",
+  "the whole lot",
+  "the lot"
+ ],
+ "senang": [
+  "glad",
+  "pleased",
+  "joyful"
+ ],
+ "senang bertemu": [
+  "nice to meet you",
+  "good to meet you",
+  "glad to meet you",
+  "happy to meet you",
+  "delighted to meet you",
+  "nice meeting you"
+ ],
+ "sendiri": [
+  "by myself",
+  "by oneself",
+  "on my own",
+  "own",
+  "solo",
+  "personally"
+ ],
+ "sendok": [
+  "spoons",
+  "tablespoon",
+  "teaspoon"
+ ],
+ "seolah-olah": [
+  "as though",
+  "like",
+  "supposedly"
+ ],
+ "separuh": [
+  "a half",
+  "one half",
+  "half of it"
+ ],
+ "sepatu": [
+  "shoe",
+  "footwear"
+ ],
+ "sepeda": [
+  "bike",
+  "cycle",
+  "bicycles",
+  "pushbike"
+ ],
+ "seperempat": [
+  "one quarter",
+  "one fourth",
+  "a fourth",
+  "quarter"
+ ],
+ "seperti": [
+  "such as",
+  "as",
+  "resembling"
+ ],
+ "seram": [
+  "spooky",
+  "eerie",
+  "frightening",
+  "scary"
+ ],
+ "seratus": [
+  "a hundred",
+  "hundred"
+ ],
+ "seribu": [
+  "a thousand",
+  "thousand"
+ ],
+ "sering": [
+  "frequently"
+ ],
+ "serius": [
+  "earnest",
+  "grave"
+ ],
+ "setara": [
+  "equal",
+  "on par",
+  "comparable"
+ ],
+ "setelah": [
+  "afterwards",
+  "following",
+  "once",
+  "later than"
+ ],
+ "setengah": [
+  "a half",
+  "one half"
+ ],
+ "setiap": [
+  "per"
+ ],
+ "setiap hari": [
+  "daily",
+  "everyday",
+  "each day",
+  "per day",
+  "day after day"
+ ],
+ "setrika": [
+  "clothes iron",
+  "press clothes"
+ ],
+ "siang": [
+  "noon",
+  "afternoon",
+  "daytime",
+  "midday"
+ ],
+ "siapa": [
+  "whom",
+  "which person",
+  "who is it"
+ ],
+ "sibuk": [
+  "occupied",
+  "tied up",
+  "swamped",
+  "in the middle of something",
+  "bustling"
+ ],
+ "sih": [
+  "actually",
+  "anyway",
+  "i wonder"
+ ],
+ "sikat gigi": [
+  "tooth brush",
+  "teeth brush",
+  "brush for teeth"
+ ],
+ "silakan": [
+  "go right ahead",
+  "please go ahead",
+  "please help yourself",
+  "please do",
+  "after you",
+  "be my guest"
+ ],
+ "simak": [
+  "to pay attention",
+  "to listen closely",
+  "to listen attentively",
+  "to attend to",
+  "to follow closely"
+ ],
+ "simpan": [
+  "to keep",
+  "to put away",
+  "to store away",
+  "to stash",
+  "to hold on to"
+ ],
+ "singgah": [
+  "to drop by",
+  "to pop in",
+  "to visit briefly",
+  "to call in",
+  "to swing by"
+ ],
+ "singkatnya": [
+  "to sum up",
+  "briefly",
+  "in summary",
+  "in a nutshell",
+  "long story short"
+ ],
+ "sini": [
+  "over here",
+  "this place",
+  "come here"
+ ],
+ "sinyal": [
+  "coverage",
+  "network"
+ ],
+ "siram": [
+  "to sprinkle",
+  "to water plants",
+  "to drench"
+ ],
+ "sita": [
+  "to seize",
+  "to impound",
+  "to take away",
+  "to appropriate",
+  "to repossess"
+ ],
+ "situ": [
+  "over there",
+  "that place"
+ ],
+ "soalnya": [
+  "since",
+  "the reason is",
+  "it's just that"
+ ],
+ "sobek": [
+  "to rip",
+  "to rip up",
+  "to split",
+  "to rend",
+  "to tear up"
+ ],
+ "sopan": [
+  "courteous",
+  "respectful",
+  "well mannered"
+ ],
+ "sore": [
+  "evening",
+  "late afternoon",
+  "dusk",
+  "afternoon"
+ ],
+ "sorot": [
+  "to spotlight",
+  "to illuminate",
+  "to light up",
+  "to emphasize"
+ ],
+ "soto": [
+  "spiced soup",
+  "indonesian soup",
+  "broth soup",
+  "spicy broth",
+  "soup"
+ ],
+ "stasiun": [
+  "railway station",
+  "rail station",
+  "station",
+  "depot"
+ ],
+ "struk": [
+  "sales slip",
+  "till slip",
+  "sales receipt",
+  "proof of purchase",
+  "payment slip",
+  "printed receipt"
+ ],
+ "subuh": [
+  "early morning",
+  "daybreak",
+  "before dawn",
+  "predawn",
+  "first light",
+  "dawn prayer"
+ ],
+ "sudah": [
+  "finished",
+  "completed",
+  "over",
+  "have done",
+  "already done"
+ ],
+ "suka": [
+  "to enjoy",
+  "to be fond of",
+  "to love",
+  "to be into",
+  "to fancy"
+ ],
+ "suku": [
+  "ethnicity",
+  "ethnic group",
+  "clan",
+  "people",
+  "tribe"
+ ],
+ "sulap": [
+  "to perform magic",
+  "to conjure",
+  "to convert",
+  "to turn into"
+ ],
+ "sulit": [
+  "hard to do",
+  "tough",
+  "challenging"
+ ],
+ "supaya": [
+  "so",
+  "in order that",
+  "so as to"
+ ],
+ "suruh": [
+  "to instruct",
+  "to command",
+  "to ask someone to",
+  "to direct",
+  "to send someone"
+ ],
+ "susah": [
+  "tough",
+  "tricky",
+  "challenging"
+ ],
+ "susu": [
+  "dairy",
+  "cow milk"
+ ],
+ "susun": [
+  "to organize",
+  "to put in order",
+  "to stack",
+  "to compile",
+  "to set up"
+ ],
+ "tabungan": [
+  "savings account",
+  "money saved",
+  "nest egg",
+  "savings money",
+  "deposit account",
+  "reserves"
+ ],
+ "tadi": [
+  "a moment ago",
+  "just now",
+  "a while ago",
+  "recently",
+  "previously"
+ ],
+ "tahu": [
+  "bean curd"
+ ],
+ "tahun": [
+  "years",
+  "yearly"
+ ],
+ "tahun depan": [
+  "the coming year",
+  "following year",
+  "upcoming year",
+  "year ahead"
+ ],
+ "tahun lalu": [
+  "the past year",
+  "previous year",
+  "past year",
+  "year before"
+ ],
+ "tak": [
+  "isn't",
+  "don't",
+  "never",
+  "does not"
+ ],
+ "taksi": [
+  "cab",
+  "taxicab",
+  "cabs",
+  "hired car"
+ ],
+ "takut": [
+  "afraid",
+  "frightened",
+  "fearful",
+  "fear"
+ ],
+ "tampung": [
+  "to contain",
+  "to catch",
+  "to house"
+ ],
+ "tanah": [
+  "ground",
+  "earth",
+  "dirt"
+ ],
+ "tangan": [
+  "hands"
+ ],
+ "tangga": [
+  "staircase",
+  "steps",
+  "ladder",
+  "stairway"
+ ],
+ "tanggal": [
+  "day of the month",
+  "calendar date",
+  "day of month"
+ ],
+ "tanggung": [
+  "to take responsibility",
+  "to shoulder",
+  "to carry",
+  "to be liable for",
+  "to be accountable for"
+ ],
+ "tangkap": [
+  "to capture",
+  "to seize",
+  "to apprehend",
+  "to grab",
+  "to nab"
+ ],
+ "tanpa": [
+  "lacking",
+  "with no",
+  "minus",
+  "free of"
+ ],
+ "tanya": [
+  "to inquire",
+  "to question",
+  "to enquire",
+  "to ask a question",
+  "to query"
+ ],
+ "tarik": [
+  "to drag",
+  "to tug",
+  "to yank"
+ ],
+ "tas": [
+  "handbag",
+  "purse",
+  "backpack",
+  "sack"
+ ],
+ "tawar": [
+  "to haggle",
+  "to negotiate",
+  "to make an offer",
+  "to haggle over price"
+ ],
+ "tawarkan": [
+  "to propose",
+  "to put forward",
+  "to present",
+  "to extend",
+  "to give an offer"
+ ],
+ "tebak": [
+  "to make a guess",
+  "to take a guess",
+  "to estimate",
+  "to speculate",
+  "to predict"
+ ],
+ "teh": [
+  "tea drink",
+  "cup of tea"
+ ],
+ "televisi": [
+  "tv",
+  "telly",
+  "tele",
+  "tv set"
+ ],
+ "telur": [
+  "eggs"
+ ],
+ "teman": [
+  "buddy",
+  "mate",
+  "pal",
+  "companion"
+ ],
+ "tempat": [
+  "location",
+  "position",
+  "site",
+  "venue"
+ ],
+ "tenang": [
+  "peaceful",
+  "still",
+  "relaxed"
+ ],
+ "tengah malam": [
+  "middle of the night",
+  "twelve at night",
+  "12 midnight",
+  "twelve midnight"
+ ],
+ "tentang": [
+  "regarding",
+  "on the subject of",
+  "concerning",
+  "relating to"
+ ],
+ "tentu": [
+  "definitely",
+  "naturally",
+  "sure",
+  "for sure"
+ ],
+ "terakhir": [
+  "latest",
+  "most recent",
+  "final one",
+  "at the end",
+  "ultimate",
+  "lastly"
+ ],
+ "terang": [
+  "well lit",
+  "shiny"
+ ],
+ "terima kasih": [
+  "thanks",
+  "thank you very much",
+  "many thanks",
+  "thanks a lot"
+ ],
+ "terima kasih kembali": [
+  "thank you in return",
+  "my pleasure",
+  "thanks in return"
+ ],
+ "terkenal": [
+  "well known",
+  "renowned",
+  "celebrated"
+ ],
+ "terlalu": [
+  "overly",
+  "excessively",
+  "more than needed"
+ ],
+ "terlambat": [
+  "tardy",
+  "delayed",
+  "behind schedule"
+ ],
+ "terminal": [
+  "bus station",
+  "bus depot",
+  "coach station",
+  "bus stop terminal"
+ ],
+ "ternyata": [
+  "turns out",
+  "as it happens",
+  "apparently",
+  "it appears",
+  "actually"
+ ],
+ "tersesat": [
+  "got lost",
+  "lost my way",
+  "lost the way",
+  "gone astray",
+  "get lost",
+  "misplaced"
+ ],
+ "terus": [
+  "next",
+  "after that",
+  "continue",
+  "carry on",
+  "afterwards",
+  "go on"
+ ],
+ "tetapi / tapi": [
+  "yet",
+  "however",
+  "though"
+ ],
+ "tiba": [
+  "arrive at",
+  "get there",
+  "reach",
+  "come to",
+  "show up",
+  "land"
+ ],
+ "tiba-tiba": [
+  "all of a sudden",
+  "unexpectedly",
+  "abruptly",
+  "out of the blue"
+ ],
+ "tidak": [
+  "isnt",
+  "dont",
+  "not at all"
+ ],
+ "tidak masalah": [
+  "no worries",
+  "not a problem",
+  "its fine",
+  "its okay",
+  "no trouble",
+  "its alright"
+ ],
+ "tidak sama": [
+  "unequal",
+  "not identical",
+  "unlike"
+ ],
+ "tidak usah": [
+  "no need to",
+  "dont bother",
+  "no thank you",
+  "you dont need to",
+  "not necessary",
+  "no thanks"
+ ],
+ "tidur": [
+  "to be asleep",
+  "to go to sleep",
+  "to sleep in",
+  "to slumber",
+  "to nap"
+ ],
+ "tiduran": [
+  "lying down",
+  "lie",
+  "lounge",
+  "recline",
+  "rest lying down"
+ ],
+ "tinggal": [
+  "to reside",
+  "to dwell",
+  "to be living"
+ ],
+ "tinggalkan": [
+  "to abandon",
+  "to go away from",
+  "to depart from",
+  "to quit",
+  "to desert"
+ ],
+ "tipis": [
+  "slim",
+  "sheer"
+ ],
+ "titik": [
+  "full stop",
+  "point",
+  "spot",
+  "period",
+  "dot"
+ ],
+ "titip": [
+  "leave with",
+  "pass along",
+  "leave something with",
+  "ask to hand over",
+  "deposit",
+  "drop off with"
+ ],
+ "toko": [
+  "shops",
+  "stores",
+  "retail shop",
+  "shop front"
+ ],
+ "tolong": [
+  "to assist",
+  "to aid",
+  "to give a hand",
+  "to lend a hand",
+  "please help"
+ ],
+ "topi": [
+  "baseball cap"
+ ],
+ "transfer": [
+  "wire",
+  "wire transfer",
+  "money transfer",
+  "online transfer",
+  "bank wire",
+  "transfer money"
+ ],
+ "tua": [
+  "elderly",
+  "aged"
+ ],
+ "tugas": [
+  "duty",
+  "chore",
+  "homework"
+ ],
+ "tuh": [
+  "look",
+  "see there",
+  "over there",
+  "there it is",
+  "look there"
+ ],
+ "tumbuh": [
+  "to develop",
+  "to sprout",
+  "to expand",
+  "to get bigger",
+  "to increase"
+ ],
+ "tunai": [
+  "hard cash",
+  "cash payment",
+  "in cash",
+  "ready money",
+  "paying cash",
+  "pay cash"
+ ],
+ "tunggu": [
+  "to hold on",
+  "to await",
+  "to hang on",
+  "to stay put",
+  "to hold"
+ ],
+ "turun": [
+  "to descend",
+  "to come down",
+  "to drop",
+  "to decline",
+  "to get off"
+ ],
+ "tutup": [
+  "to shut",
+  "to seal",
+  "to shut down"
+ ],
+ "uang": [
+  "cash money",
+  "funds",
+  "currency",
+  "dough",
+  "coin and notes"
+ ],
+ "uang kecil": [
+  "small bills",
+  "loose change",
+  "small denominations",
+  "coins and small notes",
+  "small money",
+  "low denomination notes"
+ ],
+ "ubah": [
+  "to alter",
+  "to modify",
+  "to adjust",
+  "to transform",
+  "to switch"
+ ],
+ "udah": [
+  "done",
+  "finished",
+  "over"
+ ],
+ "udang": [
+  "prawns",
+  "shrimps",
+  "crustacean"
+ ],
+ "ujian": [
+  "test",
+  "examination",
+  "trial",
+  "quiz",
+  "final"
+ ],
+ "ukur": [
+  "to gauge",
+  "to size",
+  "to assess",
+  "to quantify",
+  "to take measurements"
+ ],
+ "ukuran": [
+  "dimension"
+ ],
+ "ulang": [
+  "to do again",
+  "to redo",
+  "to say again",
+  "to reiterate",
+  "to go over"
+ ],
+ "umum": [
+  "public",
+  "widespread"
+ ],
+ "umumnya": [
+  "usually",
+  "typically",
+  "in general",
+  "normally",
+  "commonly"
+ ],
+ "undang": [
+  "to call over",
+  "to have over",
+  "to send an invitation"
+ ],
+ "unduh / download": [
+  "downloading",
+  "get a file",
+  "save a file"
+ ],
+ "universitas": [
+  "college"
+ ],
+ "untuk": [
+  "so as to",
+  "intended for",
+  "in order"
+ ],
+ "untung": [
+  "gain",
+  "fortunately",
+  "thankfully",
+  "lucky for"
+ ],
+ "urus": [
+  "to deal with",
+  "to manage",
+  "to sort out",
+  "to arrange",
+  "to look after"
+ ],
+ "utang": [
+  "owe",
+  "owed",
+  "borrowed money",
+  "liability",
+  "owing",
+  "indebted"
+ ],
+ "wajan": [
+  "frying pan",
+  "pan",
+  "skillet",
+  "wok pan"
+ ],
+ "waktu": [
+  "moment",
+  "period",
+  "while",
+  "duration"
+ ],
+ "walaupun": [
+  "despite the fact",
+  "even if"
+ ],
+ "warna": [
+  "color"
+ ],
+ "warung": [
+  "small restaurant",
+  "small shop",
+  "food stall",
+  "local eatery",
+  "family restaurant",
+  "small cafe"
+ ],
+ "wujudkan": [
+  "to achieve",
+  "to bring about",
+  "to make real",
+  "to materialize",
+  "to make come true"
+ ],
+ "ya": [
+  "yeah",
+  "yep",
+  "okay"
+ ],
+ "yakin": [
+  "to be certain",
+  "to be confident",
+  "to be convinced",
+  "to believe",
+  "to be positive"
+ ],
+ "yang": [
+  "the ones that",
+  "whom",
+  "that which"
+ ],
+ "ziarah": [
+  "to make a pilgrimage",
+  "to pay respects",
+  "to go on a pilgrimage",
+  "to visit a grave",
+  "to visit a shrine"
+ ]
+}
