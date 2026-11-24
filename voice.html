@@ -1526,14 +1526,20 @@ function vlogSend(push) {
 // A log saved by an earlier session that couldn't get out (no sync token at
 // the time) goes out as soon as the page opens, before a new session's log
 // replaces it.
-// Only if it hasn't gone already, or every page open would be a write.
+// The log covers one page visit, from opening to leaving, so the speech
+// model's load (which starts before Start) is in it. The previous visit's
+// log goes out first, once (not on every open), then this visit starts fresh.
 const VLOG_SENT_KEY = 'bahasa:voice:logSent:v1';
-setTimeout(() => {
+(function rollLog() {
   const mark = String(vlogEntries.length) + ':' + (vlogEntries.length ? vlogEntries[vlogEntries.length - 1].t : 0);
-  if (!vlogEntries.length || localStorage.getItem(VLOG_SENT_KEY) === mark) return;
-  localStorage.setItem(VLOG_SENT_KEY, mark);
-  vlogSend(true);
-}, 1500);
+  if (vlogEntries.length && localStorage.getItem(VLOG_SENT_KEY) !== mark) {
+    localStorage.setItem(VLOG_SENT_KEY, mark);
+    vlogSend(true);
+  }
+  vlogEntries = [];
+  vlogT0 = Date.now();
+  vlog('open', navigator.userAgent);
+})();
 
 // ---- Session state ---------------------------------------------------------
 let running = false;
@@ -1903,7 +1909,9 @@ function whisperLoad() {
         const pct = Math.round((p.loaded / p.total) * 100);
         if (pct !== last && running) {
           last = pct;
-          show(cached ? 'Loading speech model… ' + pct + '%'
+          // A cache read shows no percentage: counting up, it looked exactly
+          // like a download every time the app opened.
+          show(cached ? 'Getting the speech model ready…'
                       : 'Downloading speech model… ' + pct + '% (first time only)');
         }
       },
@@ -2276,8 +2284,6 @@ function start() {
   const wantWhisper = prefs.engine === 'whisper' && !!whisperDevice();
   if (!SR && !wantWhisper) return;
   fatalMic = null;
-  vlogT0 = Date.now();
-  vlogEntries = [];
   vlog('start', navigator.userAgent + ' engine=' + (wantWhisper ? 'whisper' : 'safari'));
   unlockAudio();
   running = true;
@@ -2288,7 +2294,7 @@ function start() {
   if (!wantWhisper) { engine = 'safari'; run(); return; }
   // Mic first, inside the tap; then the model (cached after the first time).
   const mic = whisperMicStart();
-  if (!W.asr) show('Loading speech model…');
+  if (!W.asr) show('Getting the speech model ready…');
   Promise.all([mic, whisperLoad()]).then(() => {
     if (!running) return;
     engine = 'whisper';
@@ -2370,7 +2376,16 @@ whisperHasGpu().then(() => {
   // Already on the phone: start reading it into memory now, so Start doesn't
   // wait on it. Never starts a download before Start is tapped.
   if (dev && prefs.engine === 'whisper') {
-    whisperCached().then(cached => { if (cached && !W.loading && !W.asr) whisperLoad().catch(() => {}); });
+    whisperCached().then(cached => {
+      vlog('whisper.cached', cached);
+      if (cached && !W.loading && !W.asr) whisperLoad().catch(() => {});
+    });
+  }
+  // Ask the browser to keep this site's storage (the ~40 MB model with it)
+  // instead of clearing it when the phone runs low on space.
+  if (navigator.storage && navigator.storage.persist) {
+    navigator.storage.persist().then(granted => navigator.storage.estimate().then(est =>
+      vlog('storage', 'persist=' + granted + ' used=' + Math.round((est.usage || 0) / 1e6) + 'MB'))).catch(() => {});
   }
   if (dev && !SR) { $('unsupported').hidden = true; $('startBtn').disabled = false; }
 });
