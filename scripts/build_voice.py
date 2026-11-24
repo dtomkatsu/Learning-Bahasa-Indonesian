@@ -567,6 +567,19 @@ async function whisperHasGpu() {
   return W.gpu;
 }
 
+// The model's files are kept in the browser's own cache after the first
+// download, so later sessions only read them back into memory. The library's
+// progress events look the same either way (it even calls a cache read a
+// "download"), so ask the cache directly: the wording, and whether it is safe
+// to start loading before Start is tapped, depend on it.
+async function whisperCached() {
+  try {
+    if (!('caches' in window)) return false;
+    const keys = await (await caches.open('transformers-cache')).keys();
+    return keys.some(r => r.url.includes(W_MODEL) && r.url.endsWith('.onnx'));
+  } catch (_) { return false; }
+}
+
 function whisperLoad() {
   if (W.asr) return Promise.resolve(W.asr);
   if (W.loading) return W.loading;
@@ -574,7 +587,8 @@ function whisperLoad() {
     const t0 = Date.now();
     const device = W.device = whisperDevice();
     if (!device) throw new Error('on-device recognition crashed this phone before');
-    vlog('whisper.load', device);
+    const cached = await whisperCached();
+    vlog('whisper.load', device + (cached ? ' cached' : ' download'));
     const { pipeline, env } = await import(W_LIB);
     env.allowLocalModels = false;
     let last = -1;
@@ -585,7 +599,11 @@ function whisperLoad() {
       progress_callback: p => {
         if (p.status !== 'progress' || !p.total) return;
         const pct = Math.round((p.loaded / p.total) * 100);
-        if (pct !== last && running) { last = pct; show('Downloading speech model\u2026 ' + pct + '% (first time only)'); }
+        if (pct !== last && running) {
+          last = pct;
+          show(cached ? 'Loading speech model\u2026 ' + pct + '%'
+                      : 'Downloading speech model\u2026 ' + pct + '% (first time only)');
+        }
       },
     });
     await asr(new Float32Array(16000));      // compile once, before the first answer
@@ -967,7 +985,7 @@ function start() {
   if (!wantWhisper) { engine = 'safari'; run(); return; }
   // Mic first, inside the tap; then the model (cached after the first time).
   const mic = whisperMicStart();
-  show('Loading speech model\u2026');
+  if (!W.asr) show('Loading speech model\u2026');
   Promise.all([mic, whisperLoad()]).then(() => {
     if (!running) return;
     engine = 'whisper';
@@ -1046,6 +1064,11 @@ whisperHasGpu().then(() => {
   }
   if (!prefs.engine) prefs.engine = dev ? 'whisper' : 'safari';
   $('engineSel').value = prefs.engine;
+  // Already on the phone: start reading it into memory now, so Start doesn't
+  // wait on it. Never starts a download before Start is tapped.
+  if (dev && prefs.engine === 'whisper') {
+    whisperCached().then(cached => { if (cached && !W.loading && !W.asr) whisperLoad().catch(() => {}); });
+  }
   if (dev && !SR) { $('unsupported').hidden = true; $('startBtn').disabled = false; }
 });
 
