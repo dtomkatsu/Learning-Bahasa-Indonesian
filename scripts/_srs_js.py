@@ -337,6 +337,26 @@ function srsPickFirstAvoiding(list, keyOf) {
   }
   return list[0];
 }
+// ---- Refresh: words already seen, most likely forgotten first --------------
+// The schedule's own estimate of how likely you are to recall a word right
+// now (FSRS retrievability). Refresh drills seen words in rising order of it,
+// down to REFRESH_BELOW, whether or not they're due: for when the schedule is
+// more confident than your memory. A word answered in a refresh is reviewed
+// like any other, so a miss brings it back into regular review sooner.
+const REFRESH_BELOW = 0.95;
+function srsRecallNow(state, now) {
+  if (!state || !state.stability || !state.lastReview) return 0;
+  return fsrsRetrievability(((now || Date.now()) - state.lastReview) / DAY_MS, state.stability);
+}
+function srsWeakestOrder(items, stateOf, idOf) {
+  const now = Date.now();
+  return items
+    .filter(i => stateOf(i) && srsRecallNow(stateOf(i), now) < REFRESH_BELOW)
+    .map(i => [srsRecallNow(stateOf(i), now), i])
+    .sort((a, b) => a[0] - b[0] || srsOrderKey(idOf(a[1])) - srsOrderKey(idOf(b[1])))
+    .map(x => x[1]);
+}
+
 function srsPickInOrder(items, keyOf, stateOf, idOf) {
   return srsPickFirstAvoiding(srsQueueOrder(items, stateOf, idOf), keyOf);
 }

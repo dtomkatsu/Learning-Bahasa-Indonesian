@@ -227,7 +227,9 @@ function buildSession(practice) {
   practiceRun = !!practice;
   const all = [...computeFlashItems(), ...computeQuizItems()];
   if (practice) {
-    session = shuffle(all.filter(i => stateFor(i))).slice(0, 20);
+    // The 20 seen items you're most likely to have forgotten (srsWeakestOrder).
+    session = srsWeakestOrder(all, stateFor, i => (i.kind === 'flash' ? i.front : i.id)).slice(0, 20);
+    if (!session.length) session = shuffle(all.filter(i => stateFor(i))).slice(0, 20);
   } else {
     // Same order as Flashcards and the voice drill (srsQueueOrder): most
     // overdue first, new items in the shared fixed order.
@@ -425,7 +427,7 @@ function renderSummary() {
       <p>Today: ${doneToday} / ${goal} reviews${doneToday >= goal ? ' &nbsp;✓ goal met' : ''}</p>
       <p>Next review ${srsFmtDue(nextDue)}${in24h ? ` · ${in24h} due within 24h` : ''}.</p>
       <div>
-        <button id="moreBtn">Practice 20 more</button>
+        <button id="moreBtn">Refresh 20 weakest</button>
         <a href="index.html">Done for now</a>
       </div>
     </div>`;

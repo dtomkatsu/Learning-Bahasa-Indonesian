@@ -255,6 +255,7 @@ __STICKY_RATE_CSS__
         <button class="plain" id="browseToggleBtn">Browse</button>
         <button class="plain" id="addToggleBtn">+ Card</button>
         <button class="plain" id="bulkToggleBtn">+ List</button>
+        <button class="plain" id="refreshBtn" title="Go through words you've already seen, the ones you're most likely to have forgotten first">Refresh old words</button>
       </div>
       <div class="row" id="speedGroup" title="Speed of generated/volunteer clips — real family audio is unaffected">
         <span class="stats">Clip speed</span>
@@ -493,12 +494,22 @@ syncRemoteAutoPull(() => {
 
 function dueIn(items) { return items.filter(d => srsIsDue(srs[d.front])); }
 
+// Refresh: seen words, most likely forgotten first (srsWeakestOrder), instead
+// of due-then-new. Toggled from the More panel.
+let refreshMode = false;
+
 function pickNext() {
   if (!pool.length) { renderEmpty('No cards for this tag.'); return; }
   // If an undo displaced a card, give that one back rather than drawing a
   // fresh random one — otherwise "Go back" loses your place in the deck.
   const queued = srsTakeForward(c => pool.find(d => d.front === c.front));
   if (queued) { showCard(queued); return; }
+  if (refreshMode) {
+    const weak = srsWeakestOrder(pool, d => srs[d.front], d => d.front);
+    if (!weak.length) { renderEmpty('Every word you\u2019ve seen is fresh. Tap Refresh old words again to go back to normal review.'); return; }
+    showCard(srsPickFirstAvoiding(weak, srsWordKeys));
+    return;
+  }
   // Reviews first, then any brand-new card; practice-ahead ignores the
   // schedule entirely once even that pool is exhausted.
   const due = srsDuePool(pool, d => srs[d.front], practiceAhead);
@@ -1167,6 +1178,15 @@ cardEl.addEventListener('click', flip);
 });
 document.getElementById('removeBtn').addEventListener('click', removeCurrentCard);
 document.getElementById('undoBtn').addEventListener('click', undoLast);
+document.getElementById('refreshBtn').addEventListener('click', () => {
+  refreshMode = !refreshMode;
+  const b = document.getElementById('refreshBtn');
+  b.classList.toggle('active', refreshMode);
+  b.textContent = refreshMode ? 'Refreshing \u2014 tap to stop' : 'Refresh old words';
+  srsClearForward();
+  pickNext();
+});
+
 document.getElementById('moreBtn').addEventListener('click', () => {
   // Both states are cheap to recompute and only matter while the menu is up,
   // so they're derived on open rather than kept in sync on every card.

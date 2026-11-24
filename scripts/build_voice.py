@@ -117,6 +117,9 @@ __PWA_META__
   <div class="stats" id="stats"></div>
   <div class="settings">
     <label>Words <select id="tagSel"></select></label>
+    <label>Mode <select id="modeSel">
+      <option value="normal">Due and new words</option>
+      <option value="refresh">Refresh: old words, weakest first</option></select></label>
     <label>New words per session <select id="newSel">
       <option value="0">0 — reviews only</option><option value="5">5</option>
       <option value="10">10</option><option value="20">20</option></select></label>
@@ -180,7 +183,7 @@ function computeDeck() {
 }
 let DECK = computeDeck();
 
-const prefs = Object.assign({ tag: '', newPer: 5, waitMs: 8000, engine: '' }, srsLoad(PREFS_KEY));
+const prefs = Object.assign({ tag: '', newPer: 5, waitMs: 8000, engine: '', mode: 'normal' }, srsLoad(PREFS_KEY));
 function savePrefs() { srsSave(PREFS_KEY, prefs); }
 
 function renderTagSel() {
@@ -197,6 +200,8 @@ $('tagSel').onchange = e => { prefs.tag = e.target.value; savePrefs(); renderSta
 $('newSel').onchange = e => { prefs.newPer = Number(e.target.value); savePrefs(); renderStats(); };
 $('waitSel').onchange = e => { prefs.waitMs = Number(e.target.value); savePrefs(); };
 $('engineSel').onchange = e => { prefs.engine = e.target.value; savePrefs(); };
+$('modeSel').value = prefs.mode;
+$('modeSel').onchange = e => { prefs.mode = e.target.value; savePrefs(); renderStats(); };
 
 function setSyncState() {}
 syncRemoteAutoPull(() => { srs = srsLoad(SRS_KEY); DECK = computeDeck(); renderTagSel(); renderStats(); }, setSyncState);
@@ -260,6 +265,9 @@ function pool() {
 function pickNext() {
   if (upNext.length) return upNext.shift();
   const p = pool();
+  if (prefs.mode === 'refresh') {
+    return srsPickFirstAvoiding(srsWeakestOrder(p, d => srs[d.front], d => d.front), srsWordKeys);
+  }
   const reviews = p.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
   let due = reviews;
   if (!due.length && newShown < prefs.newPer) due = p.filter(d => !srs[d.front]);
@@ -274,7 +282,10 @@ function renderStats() {
   const s = session.done
     ? `This session: ${session.done} reviewed, ${session.right} right. `
     : '';
-  $('stats').textContent = `${s}${due} due · ${fresh} new available`;
+  const weak = srsWeakestOrder(p, d => srs[d.front], d => d.front).length;
+  $('stats').textContent = prefs.mode === 'refresh'
+    ? `${s}${weak} old words to refresh`
+    : `${s}${due} due · ${fresh} new available`;
 }
 renderStats();
 
@@ -896,7 +907,8 @@ async function run() {
       guard(id);
       const card = pickNext();
       if (!card) {
-        show('All caught up', { front: '', answer: pool().length ? 'Nothing due right now.' : 'No words in this filter.', heard: '', verdict: '' });
+        show('All caught up', { front: '', answer: prefs.mode === 'refresh' ? 'Every word you\u2019ve seen is fresh.'
+          : pool().length ? 'Nothing due right now.' : 'No words in this filter.', heard: '', verdict: '' });
         await sayEnParts([session.done ? VOICE_PHRASES.caughtUp : VOICE_PHRASES.nothingDue]);
         stop();
         return;

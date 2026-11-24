@@ -86,6 +86,9 @@
   <div class="stats" id="stats"></div>
   <div class="settings">
     <label>Words <select id="tagSel"></select></label>
+    <label>Mode <select id="modeSel">
+      <option value="normal">Due and new words</option>
+      <option value="refresh">Refresh: old words, weakest first</option></select></label>
     <label>New words per session <select id="newSel">
       <option value="0">0 — reviews only</option><option value="5">5</option>
       <option value="10">10</option><option value="20">20</option></select></label>
@@ -442,6 +445,26 @@ function srsPickFirstAvoiding(list, keyOf) {
   }
   return list[0];
 }
+// ---- Refresh: words already seen, most likely forgotten first --------------
+// The schedule's own estimate of how likely you are to recall a word right
+// now (FSRS retrievability). Refresh drills seen words in rising order of it,
+// down to REFRESH_BELOW, whether or not they're due: for when the schedule is
+// more confident than your memory. A word answered in a refresh is reviewed
+// like any other, so a miss brings it back into regular review sooner.
+const REFRESH_BELOW = 0.95;
+function srsRecallNow(state, now) {
+  if (!state || !state.stability || !state.lastReview) return 0;
+  return fsrsRetrievability(((now || Date.now()) - state.lastReview) / DAY_MS, state.stability);
+}
+function srsWeakestOrder(items, stateOf, idOf) {
+  const now = Date.now();
+  return items
+    .filter(i => stateOf(i) && srsRecallNow(stateOf(i), now) < REFRESH_BELOW)
+    .map(i => [srsRecallNow(stateOf(i), now), i])
+    .sort((a, b) => a[0] - b[0] || srsOrderKey(idOf(a[1])) - srsOrderKey(idOf(b[1])))
+    .map(x => x[1]);
+}
+
 function srsPickInOrder(items, keyOf, stateOf, idOf) {
   return srsPickFirstAvoiding(srsQueueOrder(items, stateOf, idOf), keyOf);
 }
@@ -1446,7 +1469,7 @@ function computeDeck() {
 }
 let DECK = computeDeck();
 
-const prefs = Object.assign({ tag: '', newPer: 5, waitMs: 8000, engine: '' }, srsLoad(PREFS_KEY));
+const prefs = Object.assign({ tag: '', newPer: 5, waitMs: 8000, engine: '', mode: 'normal' }, srsLoad(PREFS_KEY));
 function savePrefs() { srsSave(PREFS_KEY, prefs); }
 
 function renderTagSel() {
@@ -1463,6 +1486,8 @@ $('tagSel').onchange = e => { prefs.tag = e.target.value; savePrefs(); renderSta
 $('newSel').onchange = e => { prefs.newPer = Number(e.target.value); savePrefs(); renderStats(); };
 $('waitSel').onchange = e => { prefs.waitMs = Number(e.target.value); savePrefs(); };
 $('engineSel').onchange = e => { prefs.engine = e.target.value; savePrefs(); };
+$('modeSel').value = prefs.mode;
+$('modeSel').onchange = e => { prefs.mode = e.target.value; savePrefs(); renderStats(); };
 
 function setSyncState() {}
 syncRemoteAutoPull(() => { srs = srsLoad(SRS_KEY); DECK = computeDeck(); renderTagSel(); renderStats(); }, setSyncState);
@@ -1526,6 +1551,9 @@ function pool() {
 function pickNext() {
   if (upNext.length) return upNext.shift();
   const p = pool();
+  if (prefs.mode === 'refresh') {
+    return srsPickFirstAvoiding(srsWeakestOrder(p, d => srs[d.front], d => d.front), srsWordKeys);
+  }
   const reviews = p.filter(d => srs[d.front] && srsIsDue(srs[d.front]));
   let due = reviews;
   if (!due.length && newShown < prefs.newPer) due = p.filter(d => !srs[d.front]);
@@ -1540,7 +1568,10 @@ function renderStats() {
   const s = session.done
     ? `This session: ${session.done} reviewed, ${session.right} right. `
     : '';
-  $('stats').textContent = `${s}${due} due · ${fresh} new available`;
+  const weak = srsWeakestOrder(p, d => srs[d.front], d => d.front).length;
+  $('stats').textContent = prefs.mode === 'refresh'
+    ? `${s}${weak} old words to refresh`
+    : `${s}${due} due · ${fresh} new available`;
 }
 renderStats();
 
@@ -2162,7 +2193,8 @@ async function run() {
       guard(id);
       const card = pickNext();
       if (!card) {
-        show('All caught up', { front: '', answer: pool().length ? 'Nothing due right now.' : 'No words in this filter.', heard: '', verdict: '' });
+        show('All caught up', { front: '', answer: prefs.mode === 'refresh' ? 'Every word you’ve seen is fresh.'
+          : pool().length ? 'Nothing due right now.' : 'No words in this filter.', heard: '', verdict: '' });
         await sayEnParts([session.done ? VOICE_PHRASES.caughtUp : VOICE_PHRASES.nothingDue]);
         stop();
         return;

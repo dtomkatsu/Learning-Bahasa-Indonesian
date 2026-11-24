@@ -720,3 +720,18 @@ asyncSuite('sync: the save on leaving works with a big progress file', async () 
   ok(g.files[SYNC_FILENAME] && g.files[SYNC_FILENAME].length > 64000, 'the large file was sent');
   localStorage.clear(); delete globalThis.fetch;
 });
+
+suite('refresh: seen words, most likely forgotten first', () => {
+  const now = Date.now();
+  const st = {
+    lupa: { stability: 2, lastReview: now - 30 * DAY_MS, due: now + 99 * DAY_MS, difficulty: 5 },     // long gone
+    agak: { stability: 10, lastReview: now - 10 * DAY_MS, due: now + 99 * DAY_MS, difficulty: 5 },    // slipping
+    baru: { stability: 50, lastReview: now - 1 * DAY_MS, due: now + 99 * DAY_MS, difficulty: 5 },     // fresh
+    kini: { stability: 1, lastReview: now, due: now + DAY_MS, difficulty: 5 },                        // just seen
+  };
+  const items = ['baru', 'agak', 'kini', 'lupa', 'tidak-pernah'].map(front => ({ front }));
+  const order = srsWeakestOrder(items, d => st[d.front], d => d.front).map(d => d.front);
+  deepEq(order, ['lupa', 'agak'], 'weakest first; fresh, just-seen and never-seen words left out');
+  ok(srsRecallNow(st.lupa) < srsRecallNow(st.agak), 'recall estimate falls with time since review');
+  eq(srsRecallNow(undefined), 0, 'an unseen word has no recall estimate');
+});
